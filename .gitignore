@@ -25,3 +25,6 @@ pip-log.txt
 # editors
 *.swo
 *.swp
+
+# OS
+*.DS_Store
