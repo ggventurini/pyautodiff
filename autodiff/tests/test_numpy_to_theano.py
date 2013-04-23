@@ -29,7 +29,7 @@ def checkfn(fn, var_ndim, *args):
     assert np.allclose(theano_fn(*values), result)
 
 
-class Test_NumPy_fn_to_Theano(unittest.TestCase):
+class NumpyFns(unittest.TestCase):
     """
     Test for coverage of functions in np namespace
     """
@@ -70,45 +70,34 @@ class Test_NumPy_fn_to_Theano(unittest.TestCase):
         checkfn(fn, [2])
 
     def test_maximum(self):
-        def fn(x):
-            return np.maximum(x)
-        checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        def fn(x, y):
+            return np.maximum(x, y)
+        checkfn(fn, [2, 2])
 
+    @unittest.skip('No max criteria')
     def test_max(self):
-        def fn1(x):
-            return np.max(x)
-
-        def fn2(x):
-            return max(x)
-
-        checkfn(fn1, [2])
-        checkfn(fn2, [2])
+        pass
 
     def test_minimum(self):
-        def fn(x):
-            return np.minimum(x)
-        checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        def fn(x, y):
+            return np.minimum(x, y)
+        checkfn(fn, [2, 2])
 
+    @unittest.skip('No min criteria')
     def test_min(self):
-        def fn1(x):
-            return np.min(x)
-
-        def fn2(x):
-            return min(x)
-
-        checkfn(fn1, [2])
-        checkfn(fn2, [2])
+        pass
 
     def test_reshape(self):
-        raise NotImplementedError("pass dim")
+        def fn(x, shape):
+            return np.reshape(x, shape)
+        checkfn(fn, [2], [2, 8])
+        checkfn(fn, [2], [2, -1])
 
     def test_sum(self):
-        def fn(x):
-            return np.sum(x)
+        def fn(x, axis=None):
+            return np.sum(x, axis=axis)
         checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        checkfn(fn, [2], 0)
 
     def test_sqrt(self):
         def fn(x):
@@ -126,7 +115,7 @@ class Test_NumPy_fn_to_Theano(unittest.TestCase):
         checkfn(fn, [2])
 
 
-class Test_NumPy_method_to_Theano(unittest.TestCase):
+class ArrayMethods(unittest.TestCase):
     """
     Test for coverage of array methods.
     """
@@ -137,45 +126,48 @@ class Test_NumPy_method_to_Theano(unittest.TestCase):
         checkfn(fn, [2])
 
     def test_max(self):
-        def fn(x):
-            return x.max()
+        def fn(x, axis=None):
+            return x.max(axis=axis)
         checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        checkfn(fn, [2], 0)
 
     def test_mean(self):
-        def fn(x):
-            return x.mean()
+        def fn(x, axis=None):
+            return x.mean(axis=axis)
         checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        checkfn(fn, [2], 0)
 
     def test_min(self):
-        def fn(x):
-            return x.min()
+        def fn(x, axis=None):
+            return x.min(axis=axis)
         checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        checkfn(fn, [2], 0)
 
     def test_reshape(self):
-        raise NotImplementedError("pass dim")
+        def fn(x, shape):
+            return x.reshape(shape)
+        checkfn(fn, [2], [2, 8])
+        checkfn(fn, [2], [2, -1])
 
     def test_sum(self):
-        def fn(x):
-            return x.sum()
+        def fn(x, axis=None):
+            return x.sum(axis=axis)
         checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        checkfn(fn, [2], 0)
 
     def test_astype(self):
         def fn(x):
-            return x.astype(np.int8)
+            return x.astype('int8')
         checkfn(fn, [2])
 
     def test_std(self):
-        def fn(x):
-            return x.std()
+        def fn(x, axis=None):
+            return x.std(axis=axis)
         checkfn(fn, [2])
-        raise NotImplementedError("pass axes")
+        checkfn(fn, [2], 0)
 
 
-class Test_Compare_to_Theano(unittest.TestCase):
+class Comparison(unittest.TestCase):
     """
     Test for coverage of operators
     """
@@ -209,7 +201,6 @@ class Test_Compare_to_Theano(unittest.TestCase):
             return x != y
         checkfn(fn, [2, 2])
 
+    @unittest.skip('skip test for is')
     def test_is(self):
-        def fn(x, y):
-            return x is x
-        checkfn(fn, [2])
+        pass
