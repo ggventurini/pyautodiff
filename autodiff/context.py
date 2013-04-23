@@ -403,6 +403,12 @@ class FrameVM(object):
         else:
             self.push(())
 
+    def op_BUILD_LIST(self, i, op, arg):
+        if arg:
+            self.push(list(self.popN(arg)))
+        else:
+            self.push([])
+
     def op_CALL_FUNCTION(self, i, op, arg, call_vargs=None, call_kwargs=None):
         if call_vargs is None:
             # -- these are the things passed with *foo syntax
