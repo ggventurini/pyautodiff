@@ -464,22 +464,6 @@ class FrameVM(object):
             if any(id(a) in self.watcher.svars for a in all_args):
                 if func.__name__ in ('abs', 'absolute'):
                     self.watcher.shadow(rval, abs(*s_args))
-                elif func.__name__ == 'any':
-                    self.watcher.shadow(rval, theano.tensor.any(*s_args))
-                elif func.__name__ == 'dot':
-                    self.watcher.shadow(rval, theano.tensor.dot(*s_args))
-                elif func.__name__ == 'exp':
-                    self.watcher.shadow(rval, theano.tensor.exp(*s_args))
-                elif func.__name__ == 'log':
-                    self.watcher.shadow(rval, theano.tensor.log(*s_args))
-                elif func.__name__ == 'log1p':
-                    self.watcher.shadow(rval, theano.tensor.log1p(*s_args))
-                elif func.__name__ == 'log10':
-                    self.watcher.shadow(rval, theano.tensor.log10(*s_args))
-                elif func.__name__ == 'maximum':
-                    self.watcher.shadow(rval, theano.tensor.maximum(*s_args))
-                elif func.__name__ == 'minimum':
-                    self.watcher.shadow(rval, theano.tensor.minimum(*s_args))
                 elif func.__name__ == 'max':
                     assert str(func) == '<built-in function max>'
                     # N.B. builtin max -> tensor.maximum
@@ -491,24 +475,15 @@ class FrameVM(object):
                     s_rval = theano.tensor.minimum(*s_args)
                     assert s_rval.ndim == 0  # builtin min can't make vector
                     self.watcher.shadow(rval, s_rval)
-                elif func.__name__ == 'mean':
-                    self.watcher.shadow(rval, theano.tensor.mean(*s_args,
-                        **s_kwargs))
                 elif func.__name__ == 'reshape':
-                    self.watcher.shadow(rval, theano.tensor.reshape(*s_args,
-                        **s_kwargs))
-                elif func.__name__ == 'sum':
-                    self.watcher.shadow(rval, theano.tensor.sum(*s_args,
-                        **s_kwargs))
-                elif func.__name__ == 'sqrt':
-                    self.watcher.shadow(rval, theano.tensor.sqrt(*s_args))
-                elif func.__name__ == 'tanh':
-                    self.watcher.shadow(rval, theano.tensor.tanh(*s_args))
-                elif func.__name__ == 'zeros_like':
-                    self.watcher.shadow(rval,
-                            theano.tensor.zeros_like(*s_args, **s_kwargs))
+                    self.watcher.shadow(rval, theano.tensor.reshape(
+                        *s_args, **s_kwargs))
                 else:
-                    raise NotImplementedError(func)
+                    try:
+                        theano_fn = getattr(theano.tensor, func.__name__)
+                    except:
+                        raise NotImplementedError(func)
+                    self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
             else:
                 # no argument was shadowed (e.g. zeros())
                 if isinstance(rval, np.ndarray):
@@ -518,90 +493,36 @@ class FrameVM(object):
             s_self = self.watcher.svars[id(func.__self__)]
 
             if 0: pass
-            elif func.__name__ == 'argmax':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.argmax(*s_args, **s_kwargs))
-            elif func.__name__ == 'argmin':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.argmin(*s_args, **s_kwargs))
-            elif func.__name__ == 'argsort':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.argsort(*s_args, **s_kwargs))
-            elif func.__name__ == 'clip':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.clip(*s_args, **s_kwargs))
-            elif func.__name__ == 'conj':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.conj(*s_args, **s_kwargs))
-            elif func.__name__ == 'conjugate':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.conjugate(*s_args, **s_kwargs))
             elif func.__name__ == 'copy':
                 assert not args
                 assert not kwargs
                 rval = func()
                 self.watcher.shadow(rval, s_self.copy())
-            elif func.__name__ == 'diagonal':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.diagonal(*s_args, **s_kwargs))
-            elif func.__name__ == 'dot':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.dot(*s_args, **s_kwargs))
-            elif func.__name__ == 'flatten':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.flatten(*s_args, **s_kwargs))
-            elif func.__name__ == 'max':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.max(*s_args, **s_kwargs))
-            elif func.__name__ == 'mean':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.mean(*s_args, **s_kwargs))
-            elif func.__name__ == 'min':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.min(*s_args, **s_kwargs))
-            elif func.__name__ == 'prod':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.prod(*s_args, **s_kwargs))
-            elif func.__name__ == 'ravel':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.ravel(*s_args, **s_kwargs))
-            elif func.__name__ == 'repeat':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.repeat(*s_args, **s_kwargs))
             elif func.__name__ == 'reshape':
                 rval = func(*args, **kwargs)
                 # Theano requires shape to be a tuple
                 if not isinstance(s_args[0], (list, tuple)):
                     s_args = (s_args,)
                 self.watcher.shadow(rval, s_self.reshape(*s_args, **s_kwargs))
-            elif func.__name__ == 'sort':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.sort(*s_args, **s_kwargs))
-            elif func.__name__ == 'sum':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.sum(*s_args, **s_kwargs))
-            elif func.__name__ == 'std':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.std(*s_args, **s_kwargs))
             elif func.__name__ == 'swapaxes':
                 rval = func(*args, **kwargs)
                 axis1, axis2 = args
                 s_dims = range(s_self.ndim)
                 s_dims[axis1], s_dims[axis2] = s_dims[axis2], s_dims[axis1]
                 self.watcher.shadow(rval, s_self.dimshuffle(*s_dims))
-            elif func.__name__ == 'transpose':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.transpose(*s_args, **s_kwargs))
-            elif func.__name__ == 'var':
-                rval = func(*args, **kwargs)
-                self.watcher.shadow(rval, s_self.var(*s_args, **s_kwargs))
             elif func.__name__ == 'astype':
                 rval = func(*args, **kwargs)
                 assert not kwargs
                 assert list(args) == s_args
                 self.watcher.shadow(rval, s_self.astype(str(args[0])))
             else:
-                raise NotImplementedError(func)
+                try:
+                    theano_fn = getattr(s_self, func.__name__)
+                except:
+                    raise NotImplementedError(func)
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
+
         elif isinstance(getattr(func, '__self__', None), np.number):
             assert id(func.__self__) in self.watcher.svars
             s_self = self.watcher.svars[id(func.__self__)]

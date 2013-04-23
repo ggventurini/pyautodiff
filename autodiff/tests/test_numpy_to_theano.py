@@ -33,6 +33,11 @@ class NumpyFns(unittest.TestCase):
     """
     Test for coverage of functions in np namespace
     """
+    def test_all(self):
+        def fn(x):
+            return np.all(x>.5)
+        checkfn(fn, [2])
+
     def test_any(self):
         def fn(x):
             return np.any(x>.5)
