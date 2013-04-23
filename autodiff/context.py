@@ -461,7 +461,7 @@ class FrameVM(object):
             rval = func(*args, **kwargs)
             all_args = args + kwargs.values()
             if any(id(a) in self.watcher.svars for a in all_args):
-                if func.__name__ == 'abs':
+                if func.__name__ in ('abs', 'absolute'):
                     self.watcher.shadow(rval, abs(*s_args))
                 elif func.__name__ == 'any':
                     print 'WARNING: ignoring dependency through np.any'
