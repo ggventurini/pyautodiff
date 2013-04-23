@@ -465,11 +465,7 @@ class FrameVM(object):
                 if func.__name__ in ('abs', 'absolute'):
                     self.watcher.shadow(rval, abs(*s_args))
                 elif func.__name__ == 'any':
-                    print 'WARNING: ignoring dependency through np.any'
-                    # XXX This could be implementable with something like
-                    # sum(tensor.neq(x, 0))
-                    # but any might take more arguments, check docs and write
-                    # tests.
+                    self.watcher.shadow(rval, theano.tensor.any(*s_args))
                 elif func.__name__ == 'dot':
                     self.watcher.shadow(rval, theano.tensor.dot(*s_args))
                 elif func.__name__ == 'exp':
