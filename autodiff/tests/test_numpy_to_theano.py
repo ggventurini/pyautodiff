@@ -120,9 +120,66 @@ class ArrayMethods(unittest.TestCase):
     Test for coverage of array methods.
     """
 
+    def test_argmax(self):
+        def fn(x, axis=None):
+            return x.argmax(axis=axis)
+        checkfn(fn, [2])
+        checkfn(fn, [2], 0)
+        checkfn(fn, [2], 1)
+
+    def test_argmin(self):
+        def fn(x, axis=None):
+            return x.argmin(axis=axis)
+        checkfn(fn, [2])
+        checkfn(fn, [2], 0)
+        checkfn(fn, [2], 1)
+
+    def test_argsort(self):
+        def fn(x, axis=None):
+            return x.argsort(axis=axis)
+        checkfn(fn, [2])
+        checkfn(fn, [2], 0)
+        checkfn(fn, [2], 1)
+
+    def test_clip(self):
+        def fn(x, a, b):
+            return x.clip(a, b)
+        checkfn(fn, [2], .4, .45)
+
+    def test_conj(self):
+        def fn(x):
+            return x.conj()
+        checkfn(fn, [2])
+
+    def test_conjugate(self):
+        def fn(x):
+            return x.conjugate()
+        checkfn(fn, [2])
+
     def test_copy(self):
         def fn(x):
             return x.copy()
+        checkfn(fn, [2])
+
+    def test_diagonal(self):
+        def fn(x):
+            return x.diagonal()
+        checkfn(fn, [2])
+
+    def test_dot(self):
+        def fn(x, y):
+            return x.dot(y)
+        checkfn(fn, [2, 2])
+        checkfn(fn, [1, 2])
+
+    def test_imag(self):
+        def fn(x):
+            return x.imag
+        checkfn(fn, [2])
+
+    def test_flatten(self):
+        def fn(x):
+            return x.flatten()
         checkfn(fn, [2])
 
     def test_max(self):

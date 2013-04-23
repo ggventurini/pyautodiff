@@ -522,11 +522,38 @@ class FrameVM(object):
             s_self = self.watcher.svars[id(func.__self__)]
 
             if 0: pass
+            elif func.__name__ == 'argmax':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.argmax(*s_args, **s_kwargs))
+            elif func.__name__ == 'argmin':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.argmin(*s_args, **s_kwargs))
+            elif func.__name__ == 'argsort':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.argsort(*s_args, **s_kwargs))
+            elif func.__name__ == 'clip':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.clip(*s_args, **s_kwargs))
+            elif func.__name__ == 'conj':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.conj(*s_args, **s_kwargs))
+            elif func.__name__ == 'conjugate':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.conjugate(*s_args, **s_kwargs))
             elif func.__name__ == 'copy':
                 assert not args
                 assert not kwargs
                 rval = func()
                 self.watcher.shadow(rval, s_self.copy())
+            elif func.__name__ == 'diagonal':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.diagonal(*s_args, **s_kwargs))
+            elif func.__name__ == 'dot':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.dot(*s_args, **s_kwargs))
+            elif func.__name__ == 'flatten':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.flatten(*s_args, **s_kwargs))
             elif func.__name__ == 'max':
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, s_self.max(*s_args, **s_kwargs))
@@ -758,6 +785,9 @@ class FrameVM(object):
             elif attr == 'T':
                 rval = tos.T
                 self.watcher.shadow(rval, s_tos.T)
+            elif attr == 'imag':
+                rval = tos.imag
+                self.watcher.shadow(rval, s_tos.imag)
             else:
                 raise NotImplementedError('ndarray attribute %s' % attr)
             self.push(rval)
