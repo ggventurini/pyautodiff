@@ -97,7 +97,7 @@ class FrameVM(object):
         #    program can guarantee that all views of that memory are
         #    immutable.
         if isinstance(x, int):
-            if type(x) is int and 0 <= x < 256:
+            if type(x) is int and -5 <= x <= 256:
                 raise Exception('cannot shadow low integer constants')
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
@@ -113,7 +113,7 @@ class FrameVM(object):
 
     def ensure_shadow(self, x):
         # CPython re-uses ids for low integers, so we can't shadow them
-        if type(x) is int and 0 <= x < 256:
+        if type(x) is int and -5 <= x <= 256:
             # It is admitedly a misnomer that ensure_shadow() does not in fact
             # create an svars entry for id(x)...  not sure how to deal with
             # that.
