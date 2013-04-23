@@ -364,10 +364,9 @@ class FrameVM(object):
         #print 'tos1', tos1
         rval = tos1[tos]
         self.push(rval)
-        w = self.watcher
-        if id(tos) in w.svars or id(tos1) in w.svars:
-            if id(tos) in w.svars:
-                s_tos = w.svars[id(tos)]
+        if id(tos) in self.watcher or id(tos1) in self.watcher:
+            if id(tos) in self.watcher:
+                s_tos = self.watcher.svars[id(tos)]
                 s_tos1 = self.ensure_shadow(tos1)
                 s_rval = s_tos1[s_tos]
             elif isinstance(tos, int):
@@ -377,12 +376,12 @@ class FrameVM(object):
             elif isinstance(tos, slice):
                 raise NotImplementedError('x[slice]')
             elif isinstance(tos, tuple):
-                assert id(tos1) in w.svars
-                s_tos1 = w.svars[id(tos1)]
+                assert id(tos1) in self.watcher
+                s_tos1 = self.watcher.svars[id(tos1)]
                 s_rval = s_tos1.__getitem__(tos)
             else:
                 raise NotImplementedError()
-            w.shadow(rval, s_rval)
+            self.watcher.shadow(rval, s_rval)
 
     def op_BUILD_MAP(self, i, op, arg):
         self.push({})
