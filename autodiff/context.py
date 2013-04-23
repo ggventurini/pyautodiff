@@ -456,6 +456,7 @@ class FrameVM(object):
                 or isinstance(func, np.ufunc)
                 or str(func) == '<built-in function abs>'
                 or str(func) == '<built-in function max>'
+                or str(func) == '<built-in function min>'
                 ):
 
             rval = func(*args, **kwargs)
@@ -481,11 +482,18 @@ class FrameVM(object):
                     self.watcher.shadow(rval, theano.tensor.log10(*s_args))
                 elif func.__name__ == 'maximum':
                     self.watcher.shadow(rval, theano.tensor.maximum(*s_args))
+                elif func.__name__ == 'minimum':
+                    self.watcher.shadow(rval, theano.tensor.minimum(*s_args))
                 elif func.__name__ == 'max':
                     assert str(func) == '<built-in function max>'
                     # N.B. builtin max -> tensor.maximum
                     s_rval = theano.tensor.maximum(*s_args)
                     assert s_rval.ndim == 0  # builtin max can't make vector
+                elif func.__name__ == 'min':
+                    assert str(func) == '<built-in function min>'
+                    # N.B. builtin max -> tensor.minimum
+                    s_rval = theano.tensor.minimum(*s_args)
+                    assert s_rval.ndim == 0  # builtin min can't make vector
                     self.watcher.shadow(rval, s_rval)
                 elif func.__name__ == 'mean':
                     self.watcher.shadow(rval, theano.tensor.mean(*s_args,
@@ -534,6 +542,9 @@ class FrameVM(object):
             elif func.__name__ == 'sum':
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, s_self.sum(*s_args, **s_kwargs))
+            elif func.__name__ == 'std':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.std(*s_args, **s_kwargs))
             elif func.__name__ == 'astype':
                 rval = func(*args, **kwargs)
                 assert not kwargs
@@ -737,7 +748,7 @@ class FrameVM(object):
             # hard-code of how to deal with every ndarray property :/
             # XXX: think of how not to list all of the methods twice (!) as in
             # both here and in the CALL_FUNCTION handler
-            if attr in ('astype', 'copy', 'dtype', 'min', 'mean', 'max', 'reshape', 'sum'):
+            if attr in ('astype', 'copy', 'dtype', 'min', 'mean', 'max', 'reshape', 'sum', 'std'):
                 rval = getattr(tos, attr)
             elif attr == 'shape':
                 rval = tos.shape
