@@ -115,9 +115,9 @@ class NumpyFns(unittest.TestCase):
         checkfn(fn, [2])
 
 
-class ArrayMethods(unittest.TestCase):
+class ArrayMethodsAttributes(unittest.TestCase):
     """
-    Test for coverage of array methods.
+    Test for coverage of array methods and attributes
     """
 
     def test_argmax(self):
@@ -200,17 +200,52 @@ class ArrayMethods(unittest.TestCase):
         checkfn(fn, [2])
         checkfn(fn, [2], 0)
 
+    def test_prod(self):
+        def fn(x, axis=None):
+            return x.prod(axis=axis)
+        checkfn(fn, [2])
+        checkfn(fn, [2], 0)
+
+    def test_ravel(self):
+        def fn(x):
+            return x.ravel()
+        checkfn(fn, [2])
+
+    def test_repeat(self):
+        def fn(x, repeats, axis=None):
+            return x.repeat(repeats, axis=axis)
+        checkfn(fn, [2], 5)
+        checkfn(fn, [2], 5, 0)
+        checkfn(fn, [2], 5, 1)
+
+    def test_real(self):
+        def fn(x):
+            return x.real
+        checkfn(fn, [2])
+
     def test_reshape(self):
         def fn(x, shape):
             return x.reshape(shape)
         checkfn(fn, [2], [2, 8])
         checkfn(fn, [2], [2, -1])
 
+    def test_sort(self):
+        def fn(x, axis=-1):
+            x.sort(axis=axis)
+            return x
+        checkfn(fn, [2])
+        checkfn(fn, [2], 0)
+
     def test_sum(self):
         def fn(x, axis=None):
             return x.sum(axis=axis)
         checkfn(fn, [2])
         checkfn(fn, [2], 0)
+
+    def test_swapaxes(self):
+        def fn(x, a1, a2):
+            return x.swapaxes(a1, a2)
+        checkfn(fn, [2], 0, 1)
 
     def test_astype(self):
         def fn(x):
@@ -220,6 +255,24 @@ class ArrayMethods(unittest.TestCase):
     def test_std(self):
         def fn(x, axis=None):
             return x.std(axis=axis)
+        checkfn(fn, [2])
+        checkfn(fn, [2], 0)
+
+    def test_T(self):
+        def fn(x):
+            return x.T
+        checkfn(fn, [1])
+        checkfn(fn, [2])
+
+    def test_transpose(self):
+        def fn(x):
+            return x.transpose()
+        checkfn(fn, [1])
+        checkfn(fn, [2])
+
+    def test_var(self):
+        def fn(x, axis=None):
+            return x.var(axis=axis)
         checkfn(fn, [2])
         checkfn(fn, [2], 0)
 

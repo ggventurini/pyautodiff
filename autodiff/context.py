@@ -563,15 +563,39 @@ class FrameVM(object):
             elif func.__name__ == 'min':
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, s_self.min(*s_args, **s_kwargs))
+            elif func.__name__ == 'prod':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.prod(*s_args, **s_kwargs))
+            elif func.__name__ == 'ravel':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.ravel(*s_args, **s_kwargs))
+            elif func.__name__ == 'repeat':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.repeat(*s_args, **s_kwargs))
             elif func.__name__ == 'reshape':
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, s_self.reshape(*s_args, **s_kwargs))
+            elif func.__name__ == 'sort':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.sort(*s_args, **s_kwargs))
             elif func.__name__ == 'sum':
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, s_self.sum(*s_args, **s_kwargs))
             elif func.__name__ == 'std':
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, s_self.std(*s_args, **s_kwargs))
+            elif func.__name__ == 'swapaxes':
+                rval = func(*args, **kwargs)
+                axis1, axis2 = args
+                s_dims = range(s_self.ndim)
+                s_dims[axis1], s_dims[axis2] = s_dims[axis2], s_dims[axis1]
+                self.watcher.shadow(rval, s_self.dimshuffle(*s_dims))
+            elif func.__name__ == 'transpose':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.transpose(*s_args, **s_kwargs))
+            elif func.__name__ == 'var':
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(rval, s_self.var(*s_args, **s_kwargs))
             elif func.__name__ == 'astype':
                 rval = func(*args, **kwargs)
                 assert not kwargs
