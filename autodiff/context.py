@@ -117,10 +117,10 @@ class FrameVM(object):
             # It is admitedly a misnomer that ensure_shadow() does not in fact
             # create an svars entry for id(x)...  not sure how to deal with
             # that.
-            assert id(x) not in self.watcher.svars
+            assert id(x) not in self.watcher
             return theano.tensor.as_tensor_variable(x)
 
-        if id(x) not in self.watcher.svars:
+        if id(x) not in self.watcher:
             self.add_shadow(x)
         return self.watcher.svars[id(x)]
 
@@ -148,7 +148,7 @@ class FrameVM(object):
             _locals[0] = func.im_self
             bind_varnames = co_varnames[1:]
             bind_offset = 1
-            if id(func.im_self) in self.watchers.svars:
+            if id(func.im_self) in self.watcher:
                 raise NotImplementedError('bound method on shadowed var: %s' %
                                           func.__name__)
         else:
@@ -243,8 +243,7 @@ class FrameVM(object):
 
         # print 'BINDING'
         for name, lval in zip(co_varnames, _locals):
-            if (isinstance(lval, np.ndarray)
-                    and not id(lval) in self.watcher.svars):
+            if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
                 self.add_shadow(lval)
             #print '  locals:', name, lval, id(lval)
 
@@ -277,8 +276,7 @@ class FrameVM(object):
         assert not hasattr(arg2, 'type')
         r = arg1 + arg2
         self.push(r)
-        if (id(arg1) in self.watcher.svars
-                or id(arg2) in self.watcher.svars):
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
             if isinstance(r, np.ndarray):
@@ -294,8 +292,7 @@ class FrameVM(object):
         assert not hasattr(arg2, 'type')
         r = arg1 / arg2
         self.push(r)
-        if (id(arg1) in self.watcher.svars
-                or id(arg2) in self.watcher.svars):
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
             if isinstance(r, np.ndarray):
@@ -310,8 +307,7 @@ class FrameVM(object):
         assert not hasattr(arg2, 'type')
         r = arg1 // arg2
         self.push(r)
-        if (id(arg1) in self.watcher.svars
-                or id(arg2) in self.watcher.svars):
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
             if isinstance(r, np.ndarray):
@@ -326,8 +322,7 @@ class FrameVM(object):
         assert not hasattr(arg2, 'type')
         r = arg1 - arg2
         self.push(r)
-        if (id(arg1) in self.watcher.svars
-                or id(arg2) in self.watcher.svars):
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
             if isinstance(r, np.ndarray):
@@ -342,8 +337,7 @@ class FrameVM(object):
         self.push(r)
         assert not hasattr(arg1, 'type')
         assert not hasattr(arg2, 'type')
-        if (id(arg1) in self.watcher.svars
-                or id(arg2) in self.watcher.svars):
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
             if isinstance(r, np.ndarray):
@@ -357,8 +351,7 @@ class FrameVM(object):
         arg1 = self.pop()
         r = arg1 ** arg2
         self.push(r)
-        if (id(arg1) in self.watcher.svars
-                or id(arg2) in self.watcher.svars):
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
             self.watcher.shadow(r, s1 ** s2)
@@ -440,8 +433,8 @@ class FrameVM(object):
         #print dir(func)
         #print func.__self__
         all_args = args + kwargs.values()
-        s_args = [self.watcher.svars.get(id(a), a) for a in args]
-        s_kwargs = dict([(kw, self.watcher.svars.get(id(val), val))
+        s_args = [self.watcher.getvar(a) for a in args]
+        s_kwargs = dict([(kw, self.watcher.getvar(val))
                          for kw, val in kwargs.items()])
 
         if hasattr(func, '__theano_op__'):
@@ -450,7 +443,7 @@ class FrameVM(object):
             #      going to know that.
             # -- hand control back to Python for duration of func
             rval = func(*args, **kwargs)
-            if any(id(a) in self.watcher.svars for a in all_args):
+            if any(id(a) in self.watcher for a in all_args):
                 s_rval = func.__theano_op__(*s_args, **s_kwargs)
                 self.watcher.shadow(rval, s_rval)
         elif (
@@ -464,7 +457,7 @@ class FrameVM(object):
 
             rval = func(*args, **kwargs)
             all_args = args + kwargs.values()
-            if any(id(a) in self.watcher.svars for a in all_args):
+            if any(id(a) in self.watcher for a in all_args):
                 if func.__name__ in ('abs', 'absolute'):
                     self.watcher.shadow(rval, abs(*s_args))
                 elif func.__name__ == 'max':
@@ -492,7 +485,7 @@ class FrameVM(object):
                 if isinstance(rval, np.ndarray):
                     self.add_shadow(rval)
         elif isinstance(getattr(func, '__self__', None), np.ndarray):
-            assert id(func.__self__) in self.watcher.svars
+            assert id(func.__self__) in self.watcher
             s_self = self.watcher.svars[id(func.__self__)]
 
             if 0:
@@ -528,7 +521,7 @@ class FrameVM(object):
                 self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
 
         elif isinstance(getattr(func, '__self__', None), np.number):
-            assert id(func.__self__) in self.watcher.svars
+            assert id(func.__self__) in self.watcher
             s_self = self.watcher.svars[id(func.__self__)]
             if 0:
                 pass
@@ -585,8 +578,8 @@ class FrameVM(object):
         else:
             raise NotImplementedError('comparison: %s' % opname)
 
-        if any(id(a) in self.watcher.svars for a in [left, right]):
-            sargs = [self.watcher.svars.get(id(a), a) for a in [left, right]]
+        if any(id(a) in self.watcher for a in [left, right]):
+            sargs = [self.watcher.getvar(a) for a in [left, right]]
             tos = self.stack[-1]
             if 0:
                 pass
@@ -631,8 +624,7 @@ class FrameVM(object):
         r = tos1
         r += tos
         self.push(r)
-        if (id(tos) in self.watcher.svars
-                or id(tos1) in self.watcher.svars):
+        if (id(tos) in self.watcher or id(tos1) in self.watcher):
             s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
             self.watcher.shadow(r, s_tos + s_tos1, force=True)
@@ -644,8 +636,7 @@ class FrameVM(object):
         r = tos1
         r /= tos
         self.push(r)
-        if (id(tos) in self.watcher.svars
-                or id(tos1) in self.watcher.svars):
+        if (id(tos) in self.watcher or id(tos1) in self.watcher):
             s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
             self.watcher.shadow(r, s_tos1 / s_tos, force=True)
@@ -657,8 +648,7 @@ class FrameVM(object):
         r = tos1
         r *= tos
         self.push(r)
-        if (id(tos) in self.watcher.svars
-                or id(tos1) in self.watcher.svars):
+        if (id(tos) in self.watcher or id(tos1) in self.watcher):
             s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
             self.watcher.shadow(r, s_tos * s_tos1, force=True)
@@ -669,8 +659,7 @@ class FrameVM(object):
         r = tos1
         r -= tos
         self.push(r)
-        if (id(tos) in self.watcher.svars
-                or id(tos1) in self.watcher.svars):
+        if (id(tos) in self.watcher or id(tos1) in self.watcher):
             s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
             self.watcher.shadow(r, s_tos1 - s_tos, force=True)
@@ -690,7 +679,7 @@ class FrameVM(object):
     def op_GET_ITER(self, i, op, arg):
         # replace tos -> iter(tos)
         tos = self.stack[-1]
-        if id(tos) in self.watcher.svars:
+        if id(tos) in self.watcher:
             raise NotImplementedError('iterator of watched value')
         self.stack[-1] = iter(tos)
 
@@ -698,8 +687,7 @@ class FrameVM(object):
         # print 'LOAD_GLOBAL', self.names[arg]
         tos = self._myglobals[self.func.func_code.co_names[arg]]
         self.push(tos)
-        if (isinstance(tos, np.ndarray)
-                and id(tos) not in self.watcher.svars):
+        if (isinstance(tos, np.ndarray) and id(tos) not in self.watcher):
             self.add_shadow(self.stack[-1])
 
     def op_LOAD_ATTR(self, i, op, arg):
@@ -714,11 +702,11 @@ class FrameVM(object):
         tos = self.pop()
 
         if isinstance(tos, np.ndarray):
-            if id(tos) not in self.watcher.svars:
+            if id(tos) not in self.watcher:
                 raise NotImplementedError('how did this var get here?',
                         (id(tos), tos))
 
-        if id(tos) in self.watcher.svars:
+        if id(tos) in self.watcher:
             s_tos = self.watcher.svars[id(tos)]
 
             if attr == 'shape':
@@ -742,18 +730,17 @@ class FrameVM(object):
             logger.debug('attribute access %s' % attr)
             rval = getattr(tos, attr)
             self.push(rval)
-            if (isinstance(rval, np.ndarray)
-                    and id(rval) not in self.watcher.svars):
+            if (isinstance(rval, np.ndarray) and id(rval) not in self.watcher):
                 self.add_shadow(rval)
 
     def op_LOAD_CONST(self, i, op, arg):
         tos = self.func.func_code.co_consts[arg]
         self.push(tos)
-            if id(tos) not in self.watcher.svars:
-                self.watcher.svars[id(tos)] = theano.tensor.as_tensor_variable(tos)
-        if (isinstance(tos, np.ndarray)
-                and id(tos) not in self.watcher.svars):
         if isinstance(tos, float):
+            if id(tos) not in self.watcher:
+                var = theano.tensor.as_tensor_variable(tos)
+                self.watcher.svars[id(tos)] = var
+        if (isinstance(tos, np.ndarray) and id(tos) not in self.watcher):
             raise NotImplementedError()
 
     def op_LOAD_CLOSURE(self, i, op, arg):
@@ -799,8 +786,7 @@ class FrameVM(object):
             cell = closure[arg - len(co_cellvars)]
             thing = cellget(cell)
         self.push(thing)
-        if (isinstance(thing, np.ndarray)
-                and id(thing) not in self.watcher.svars):
+        if (isinstance(thing, np.ndarray) and id(thing) not in self.watcher):
             self.add_shadow(thing)
 
     def op_LOAD_FAST(self, i, op, arg):
@@ -809,8 +795,7 @@ class FrameVM(object):
             self.push(tos)
         except LoadUnassigned:
             raise LoadUnassigned(self.func.func_code.co_varnames[arg])
-        if (isinstance(tos, np.ndarray)
-                and id(tos) not in self.watcher.svars):
+        if (isinstance(tos, np.ndarray) and id(tos) not in self.watcher):
             self.add_shadow(tos)
 
     def op_MAKE_CLOSURE(self, i, op, arg):
@@ -877,10 +862,10 @@ class FrameVM(object):
         new_tos = TOS1[TOS:]
         self.push(new_tos)
         watcher = self.watcher
-        if any(id(t) in watcher.svars for t in [TOS, TOS1]):
-            s  = w.get(TOS)
-            s1 = w.get(TOS1)
-            s_rval = s2[s1:]
+        if any(id(t) in watcher for t in [TOS, TOS1]):
+            s  = watcher.getvar(TOS)
+            s1 = watcher.getvar(TOS1)
+            s_rval = s1[s:]
             self.watcher.shadow(new_tos, s_rval)
 
     def op_SLICE_PLUS_2(self, i, op, arg):
@@ -889,10 +874,10 @@ class FrameVM(object):
         new_tos = TOS1[:TOS]
         self.push(new_tos)
         watcher = self.watcher
-        if any(id(t) in watcher.svars for t in [TOS, TOS1]):
-            s  = w.get(TOS)
-            s1 = w.get(TOS1)
-            s_rval = s2[:s1]
+        if any(id(t) in watcher for t in [TOS, TOS1]):
+            s  = watcher.getvar(TOS)
+            s1 = watcher.getvar(TOS1)
+            s_rval = s1[:s]
             self.watcher.shadow(new_tos, s_rval)
 
     def op_SLICE_PLUS_3(self, i, op, arg):
@@ -902,10 +887,10 @@ class FrameVM(object):
         self.stack[-3:] = [rval]
 
         watcher = self.watcher
-        if any(id(t) in watcher.svars for t in [TOS, TOS1, TOS2]):
-            s  = w.get(TOS)
-            s1 = w.get(TOS1)
-            s2 = w.get(TOS2)
+        if any(id(t) in watcher for t in [TOS, TOS1, TOS2]):
+            s  = watcher.getvar(TOS)
+            s1 = watcher.getvar(TOS1)
+            s2 = watcher.getvar(TOS2)
             s_rval = s2[s1:s]
             self.watcher.shadow(rval, s_rval)
 
@@ -927,16 +912,13 @@ class FrameVM(object):
 
         tos1[tos] = tos2
 
-        watcher = self.watcher
-        svars = watcher.svars
         # tos can't be real-valued so there's no gradient through it
-        if id(tos1) in svars or id(tos2) in svars:
+        if id(tos1) in self.watcher or id(tos2) in self.watcher:
             s_tos1 = self.ensure_shadow(tos1)
             s_tos2 = self.ensure_shadow(tos2)
 
             new_s_tos1 = theano.tensor.set_subtensor(s_tos1[tos], s_tos2)
-            svars[id(tos1)] = new_s_tos1
-
+            self.watcher.svars[id(tos1)] = new_s_tos1
 
     def op_RAISE_VARARGS(self, i, op, arg):
         print >> sys.stderr, "Exception in autodiff.Context:"
@@ -982,7 +964,7 @@ class FrameVM(object):
         assert not hasattr(arg1, 'type')
         r = -arg1
         self.push(r)
-        if id(arg1) in self.watcher.svars:
+        if id(arg1) in self.watcher:
             s1 = self.ensure_shadow(arg1)
             self.watcher.shadow(r,  -s1)
 
@@ -1009,6 +991,7 @@ class Context(object):
             self.svars[id(rval)] = sval
         else:
             self.svars.setdefault(id(rval), sval)
+
         # -- shadow vars have to match dtype and ndim
         if isinstance(rval, np.ndarray):
             if str(rval.dtype) == 'bool':
@@ -1016,8 +999,9 @@ class Context(object):
             else:
                 assert str(rval.dtype) == sval.dtype, (rval, sval)
             assert rval.ndim == sval.ndim, (rval, sval)
+
         # -- assert postcondition
-        assert sval is self.svars[id(rval)]
+        assert sval is self.getvar(rval)
         self.nogc.append(rval)
 
     def call(self, fn, args=(), kwargs={}):
