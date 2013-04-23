@@ -1000,6 +1000,9 @@ class Context(object):
         self.borrowable_ids = [id(b) for b in borrowable]
         self.floatX = floatX
 
+    def __iter__(self):
+        return self.svars.__iter__()
+
     def shadow(self, rval, sval, force=True):
         assert hasattr(sval, 'type')  # assert sval is Theano variable
         if force:
@@ -1028,3 +1031,7 @@ class Context(object):
             return theano.tensor._shared(obj, borrow=borrow)
         else:
             return theano.shared(obj, borrow=borrow)
+
+    def getvar(self, var):
+        return self.svars.get(id(var), var)
+
