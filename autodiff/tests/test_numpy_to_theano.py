@@ -200,6 +200,11 @@ class ArrayMethodsAttributes(unittest.TestCase):
         checkfn(fn, [2])
         checkfn(fn, [2], 0)
 
+    @unittest.skip('skip nonzero')
+    def test_nonzero(self):
+        def fn(x):
+            pass
+
     def test_prod(self):
         def fn(x, axis=None):
             return x.prod(axis=axis)
@@ -263,6 +268,11 @@ class ArrayMethodsAttributes(unittest.TestCase):
             return x.T
         checkfn(fn, [1])
         checkfn(fn, [2])
+
+    @unittest.skip('skip trace')
+    def test_trace(self):
+        def fn(x):
+            pass
 
     def test_transpose(self):
         def fn(x):
