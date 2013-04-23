@@ -772,12 +772,7 @@ class FrameVM(object):
         if id(tos) in self.watcher.svars:
             s_tos = self.watcher.svars[id(tos)]
 
-            # hard-code of how to deal with every ndarray property :/
-            # XXX: think of how not to list all of the methods twice (!) as in
-            # both here and in the CALL_FUNCTION handler
-            if attr in ('astype', 'copy', 'dtype', 'min', 'mean', 'max', 'reshape', 'sum', 'std'):
-                rval = getattr(tos, attr)
-            elif attr == 'shape':
+            if attr == 'shape':
                 rval = tos.shape
                 # XXX: NOT TRACKING SHAPE CHANGES BECAUSE
                 #      BAD INTERACTION WITH fbncc.__theano_op__
@@ -789,7 +784,10 @@ class FrameVM(object):
                 rval = tos.imag
                 self.watcher.shadow(rval, s_tos.imag)
             else:
-                raise NotImplementedError('ndarray attribute %s' % attr)
+                try:
+                    rval = getattr(tos, attr)
+                except:
+                    raise NotImplementedError('ndarray attribute %s' % attr)
             self.push(rval)
         else:
             logger.debug('attribute access %s' % attr)
