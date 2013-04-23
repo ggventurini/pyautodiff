@@ -97,7 +97,7 @@ class FrameVM(object):
         #    program can guarantee that all views of that memory are
         #    immutable.
         if isinstance(x, int):
-            if type(x) is int and -5 <= x <= 256:
+            if isinstance(x, int) and -5 <= x <= 256:
                 raise Exception('cannot shadow low integer constants')
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
@@ -113,7 +113,7 @@ class FrameVM(object):
 
     def ensure_shadow(self, x):
         # CPython re-uses ids for low integers, so we can't shadow them
-        if type(x) is int and -5 <= x <= 256:
+        if isinstance(x, int) and -5 <= x <= 256:
             # It is admitedly a misnomer that ensure_shadow() does not in fact
             # create an svars entry for id(x)...  not sure how to deal with
             # that.
@@ -125,9 +125,9 @@ class FrameVM(object):
         return self.watcher.svars[id(x)]
 
     def call(self, args, kwargs):
-        if type(args) != tuple:
+        if not isinstance(args, tuple):
             raise TypeError('vm.call: args must be tuple', args)
-        if type(kwargs) != dict:
+        if not isinstance(kwargs, dict):
             raise TypeError('vm.call: kwargs must be dict', kwargs)
 
         func = self.func
@@ -377,13 +377,13 @@ class FrameVM(object):
                 s_tos = w.svars[id(tos)]
                 s_tos1 = self.ensure_shadow(tos1)
                 s_rval = s_tos1[s_tos]
-            elif type(tos) == int:
+            elif isinstance(tos, int):
                 # don't make a symbol for this constant yet
                 s_tos1 = self.ensure_shadow(tos1)
                 s_rval = s_tos1[tos]
-            elif type(tos) == slice:
+            elif isinstance(tos, slice):
                 raise NotImplementedError('x[slice]')
-            elif type(tos) == tuple:
+            elif isinstance(tos, tuple):
                 assert id(tos1) in w.svars
                 s_tos1 = w.svars[id(tos1)]
                 s_rval = s_tos1.__getitem__(tos)
@@ -749,11 +749,11 @@ class FrameVM(object):
     def op_LOAD_CONST(self, i, op, arg):
         tos = self.func.func_code.co_consts[arg]
         self.push(tos)
-        if type(tos) is float:
             if id(tos) not in self.watcher.svars:
                 self.watcher.svars[id(tos)] = theano.tensor.as_tensor_variable(tos)
         if (isinstance(tos, np.ndarray)
                 and id(tos) not in self.watcher.svars):
+        if isinstance(tos, float):
             raise NotImplementedError()
 
     def op_LOAD_CLOSURE(self, i, op, arg):
