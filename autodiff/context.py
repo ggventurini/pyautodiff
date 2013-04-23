@@ -1,5 +1,6 @@
 """
-Example of how to use byte-code execution technique to trace accesses to numpy arrays.
+Example of how to use byte-code execution technique to trace accesses to numpy
+arrays.
 
 This file demonstrates two applications of this technique:
 * optimize numpy computations for repeated calling
@@ -100,9 +101,11 @@ class FrameVM(object):
                 raise Exception('cannot shadow low integer constants')
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
-            s_x = self.watcher.shared(np.asarray(x).astype(self.watcher.floatX))
+            s_x = self.watcher.shared(
+                np.asarray(x).astype(self.watcher.floatX))
         elif x.dtype == bool:
-            print >> sys.stderr, "Warning: Theano has no bool, upgrading to int8"
+            print >> sys.stderr, ('Warning: Theano has no bool, '
+                                  'upgrading to int8')
             s_x = self.watcher.shared(x.astype('int8'))
         else:
             s_x = self.watcher.shared(x)
@@ -147,7 +150,7 @@ class FrameVM(object):
             bind_offset = 1
             if id(func.im_self) in self.watchers.svars:
                 raise NotImplementedError('bound method on shadowed var: %s' %
-                        func.__name__)
+                                          func.__name__)
         else:
             bind_varnames = co_varnames
             bind_offset = 0
@@ -201,7 +204,8 @@ class FrameVM(object):
             raise
 
         if len(args) > co_argcount and not extra_args_ok:
-            raise TypeError('Argument count exceeds number of positional params')
+            raise TypeError('Argument count exceeds number of '
+                            'positional params')
 
         # -- bind positional arguments
         for i, (param_i, arg_i) in enumerate(zip(param_names, args)):
@@ -235,7 +239,7 @@ class FrameVM(object):
             defaults = func.func_defaults
             for ii, val in enumerate(defaults):
                 if _locals[co_argcount - len(defaults) + ii] is Unassigned:
-                   _locals[co_argcount - len(defaults) + ii] = val
+                    _locals[co_argcount - len(defaults) + ii] = val
 
         # print 'BINDING'
         for name, lval in zip(co_varnames, _locals):
@@ -252,8 +256,7 @@ class FrameVM(object):
             except StopIteration:
                 break
             name = opcode.opname[op]
-            name = {
-                    'SLICE+0': 'SLICE_PLUS_0',
+            name = {'SLICE+0': 'SLICE_PLUS_0',
                     'SLICE+1': 'SLICE_PLUS_1',
                     'SLICE+2': 'SLICE_PLUS_2',
                     'SLICE+3': 'SLICE_PLUS_3',
@@ -419,9 +422,9 @@ class FrameVM(object):
         n_args = arg & 0xFF
         n_kwargs = (arg & 0xFF00) >> 8
         #print 'N_ARGS', n_args, n_kwargs, call_vargs
-        assert not (arg >> 16) # what would this stuff up here mean?
+        assert not (arg >> 16)  # what would this stuff up here mean?
         kwargs = dict([(self.stack[-2 * ii], self.stack[-2 * ii + 1])
-                for ii in range(n_kwargs, 0, -1)])
+                       for ii in range(n_kwargs, 0, -1)])
         args = [self.stack[-ii - 2 * n_kwargs] for ii in range(n_args, 0, -1)]
         assert all(Unassigned is not ai for ai in args)
         # -- pop all args off the stack
@@ -439,7 +442,7 @@ class FrameVM(object):
         all_args = args + kwargs.values()
         s_args = [self.watcher.svars.get(id(a), a) for a in args]
         s_kwargs = dict([(kw, self.watcher.svars.get(id(val), val))
-            for kw, val in kwargs.items()])
+                         for kw, val in kwargs.items()])
 
         if hasattr(func, '__theano_op__'):
             # XXX: document that we are assuming func is pure -
@@ -492,7 +495,8 @@ class FrameVM(object):
             assert id(func.__self__) in self.watcher.svars
             s_self = self.watcher.svars[id(func.__self__)]
 
-            if 0: pass
+            if 0:
+                pass
             elif func.__name__ == 'copy':
                 assert not args
                 assert not kwargs
@@ -545,14 +549,14 @@ class FrameVM(object):
                     raise NotImplementedError()
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
-                assert not kwargs # -- rand doesn't take kwargs right?
+                assert not kwargs  # -- rand doesn't take kwargs right?
                 if list(args) != list(s_args):
                     raise NotImplementedError()
                 self.watcher.shadow(rval,
-                        global_randomstreams.uniform(
-                            low=0, high=1,
-                            size=tuple(args),
-                            dtype=str(rval.dtype)))
+                                    global_randomstreams.uniform(
+                                        low=0, high=1,
+                                        size=tuple(args),
+                                        dtype=str(rval.dtype)))
             else:
                 raise NotImplementedError(func)
         else:
@@ -584,7 +588,8 @@ class FrameVM(object):
         if any(id(a) in self.watcher.svars for a in [left, right]):
             sargs = [self.watcher.svars.get(id(a), a) for a in [left, right]]
             tos = self.stack[-1]
-            if 0: pass
+            if 0:
+                pass
             elif opname == '==':
                 self.watcher.shadow(tos, theano.tensor.eq(*sargs))
             elif opname == '!=':
@@ -601,7 +606,7 @@ class FrameVM(object):
                 pass
             else:
                 raise NotImplementedError('Comparison on watched args',
-                        opname)
+                                          opname)
 
     def op_DUP_TOPX(self, i, op, arg):
         assert arg > 0
@@ -904,7 +909,6 @@ class FrameVM(object):
             s_rval = s2[s1:s]
             self.watcher.shadow(rval, s_rval)
 
-
     def op_STORE_FAST(self, i, op, arg):
         #print 'STORE_FAST', self.varnames[arg], self.stack[-1]
         self._locals[arg] = self.pop()
@@ -990,7 +994,7 @@ class FrameVM(object):
 class Context(object):
     def __init__(self, device=None, borrowable=(), floatX='float64'):
         self.svars = {}
-        self.nogc = [] # ids that must not be reused
+        self.nogc = []  # ids that must not be reused
         # XXX: rethink to avoid actually holding on to all these intermediates.
         self.device = device
         self.borrowable_ids = [id(b) for b in borrowable]
