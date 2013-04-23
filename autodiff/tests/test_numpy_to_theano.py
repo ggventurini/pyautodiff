@@ -345,17 +345,29 @@ class Index_Slice(unittest.TestCase):
     Test for coverage of operators
     """
     def test_index(self):
-        self.assertTrue(checkfn(lambda x : x[0], [1]))
         self.assertTrue(checkfn(lambda x : x[1], [1]))
         self.assertTrue(checkfn(lambda x : x[-1], [1]))
-        self.assertTrue(checkfn(lambda x : x[-2], [1]))
-        self.assertTrue(checkfn(lambda x : x[0, 0], [2]))
-        self.assertTrue(checkfn(lambda x : x[-2, -2], [2]))
+        self.assertTrue(checkfn(lambda x : x[1, 1], [2]))
+        self.assertTrue(checkfn(lambda x : x[-1, -1], [2]))
 
     def test_slice(self):
-        self.assertTrue(checkfn(lambda x : x[0:], [1]))
         self.assertTrue(checkfn(lambda x : x[1:], [1]))
-        self.assertTrue(checkfn(lambda x : x[2:], [1]))
+        self.assertTrue(checkfn(lambda x : x[-2:], [1]))
+        self.assertTrue(checkfn(lambda x : x[1:, 1:], [2]))
+        self.assertTrue(checkfn(lambda x : x[-2:, -2:], [2]))
+
+        self.assertTrue(checkfn(lambda x : x[:2], [1]))
+        self.assertTrue(checkfn(lambda x : x[:-2], [1]))
+        self.assertTrue(checkfn(lambda x : x[:2, :2], [2]))
+        self.assertTrue(checkfn(lambda x : x[:-2, :-2], [2]))
+
+        self.assertTrue(checkfn(lambda x : x[1:3], [1]))
+        self.assertTrue(checkfn(lambda x : x[-3:-1], [1]))
+        self.assertTrue(checkfn(lambda x : x[1:3, 1:3], [2]))
+        self.assertTrue(checkfn(lambda x : x[-3:-1, -3:-1], [2]))
+
+    def test_adv_index(self):
+        self.assertTrue(checkfn(lambda x : x[[3,2,1], [1,2,3]], [2]))
 
 
 
