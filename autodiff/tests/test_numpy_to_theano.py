@@ -234,10 +234,14 @@ class ArrayMethodsAttributes(unittest.TestCase):
         checkfn(fn, [2])
 
     def test_reshape(self):
-        def fn(x, shape):
+        def fn1(x, shape):
             return x.reshape(shape)
-        checkfn(fn, [2], [2, 8])
-        checkfn(fn, [2], [2, -1])
+        def fn2(x, s1, s2):
+            return x.reshape(s1, s2)
+        checkfn(fn1, [2], [2, 8])
+        checkfn(fn1, [2], [2, -1])
+        checkfn(fn2, [2], 2, 8)
+        checkfn(fn2, [2], 2, -1)
 
     def test_sort(self):
         def fn(x, axis=-1):

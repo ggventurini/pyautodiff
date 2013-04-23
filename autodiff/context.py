@@ -570,6 +570,9 @@ class FrameVM(object):
                 self.watcher.shadow(rval, s_self.repeat(*s_args, **s_kwargs))
             elif func.__name__ == 'reshape':
                 rval = func(*args, **kwargs)
+                # Theano requires shape to be a tuple
+                if not isinstance(s_args[0], (list, tuple)):
+                    s_args = (s_args,)
                 self.watcher.shadow(rval, s_self.reshape(*s_args, **s_kwargs))
             elif func.__name__ == 'sort':
                 rval = func(*args, **kwargs)
