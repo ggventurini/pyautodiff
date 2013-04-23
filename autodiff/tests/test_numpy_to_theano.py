@@ -338,3 +338,21 @@ class Comparison(unittest.TestCase):
     @unittest.skip('skip test for is')
     def test_is(self):
         pass
+
+
+class Index_Slice(unittest.TestCase):
+    """
+    Test for coverage of operators
+    """
+    def test_index(self):
+        self.assertTrue(checkfn(lambda x : x[0], [1]))
+        self.assertTrue(checkfn(lambda x : x[1], [1]))
+        self.assertTrue(checkfn(lambda x : x[-1], [1]))
+        self.assertTrue(checkfn(lambda x : x[-2], [1]))
+        self.assertTrue(checkfn(lambda x : x[0, 0], [2]))
+        self.assertTrue(checkfn(lambda x : x[-2, -2], [2]))
+
+    def test_slice(self):
+        self.assertTrue(checkfn(lambda x : x[0:], [1]))
+        self.assertTrue(checkfn(lambda x : x[1:], [1]))
+        self.assertTrue(checkfn(lambda x : x[2:], [1]))
