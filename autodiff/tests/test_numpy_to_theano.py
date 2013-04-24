@@ -29,6 +29,31 @@ def checkfn(fn, var_ndim, *args):
     return np.allclose(theano_fn(*values), result)
 
 
+class BasicMath(unittest.TestCase):
+    def test_basic_ops(self):
+        for d in range(3):
+            self.assertTrue(checkfn(lambda x : x + 2, [d]))
+            self.assertTrue(checkfn(lambda x : x - 2, [d]))
+            self.assertTrue(checkfn(lambda x : x * 2, [d]))
+            self.assertTrue(checkfn(lambda x : x / 2, [d]))
+            self.assertTrue(checkfn(lambda x : x / 2.0, [d]))
+            self.assertTrue(checkfn(lambda x : x // 2.0, [d]))
+            self.assertTrue(checkfn(lambda x : x ** 2, [d]))
+            self.assertTrue(checkfn(lambda x : x % 2, [d]))
+
+    def test_comparisons(self):
+        for d in range(3):
+            self.assertTrue(checkfn(lambda x, y : x > y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y : x < y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y : x >= y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y : x <= y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y : x == y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y : x != y, [d, d]))
+            self.assertTrue(checkfn(lambda x : x is x, [d]))
+            self.assertTrue(checkfn(lambda x, y: x is not y, [d, d]))
+
+
+
 class NumpyFns(unittest.TestCase):
     """
     Test for coverage of functions in np namespace
@@ -299,45 +324,6 @@ class ArrayMethodsAttributes(unittest.TestCase):
             return x.var(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
-
-
-class Comparison(unittest.TestCase):
-    """
-    Test for coverage of operators
-    """
-    def test_gt(self):
-        def fn(x, y):
-            return x > y
-        self.assertTrue(checkfn(fn, [2, 2]))
-
-    def test_lt(self):
-        def fn(x, y):
-            return x < y
-        self.assertTrue(checkfn(fn, [2, 2]))
-
-    def test_ge(self):
-        def fn(x, y):
-            return x >= y
-        self.assertTrue(checkfn(fn, [2, 2]))
-
-    def test_le(self):
-        def fn(x, y):
-            return x <= y
-        self.assertTrue(checkfn(fn, [2, 2]))
-
-    def test_eq(self):
-        def fn(x, y):
-            return x == y
-        self.assertTrue(checkfn(fn, [2, 2]))
-
-    def test_neq(self):
-        def fn(x, y):
-            return x != y
-        self.assertTrue(checkfn(fn, [2, 2]))
-
-    @unittest.skip('skip test for is')
-    def test_is(self):
-        pass
 
 
 class Index_Slice(unittest.TestCase):
