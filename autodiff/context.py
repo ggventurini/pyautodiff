@@ -368,7 +368,7 @@ class FrameVM(object):
             if id(tos) in self.watcher:
                 s_tos = self.watcher.svars[id(tos)]
                 s_tos1 = self.ensure_shadow(tos1)
-                s_rval = s_tos1[s_tos]
+                s_rval = s_tos1[s_tos.nonzero()]
             elif isinstance(tos, int):
                 # don't make a symbol for this constant yet
                 s_tos1 = self.ensure_shadow(tos1)

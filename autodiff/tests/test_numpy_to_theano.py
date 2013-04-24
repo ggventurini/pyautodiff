@@ -368,7 +368,11 @@ class Index_Slice(unittest.TestCase):
 
     def test_adv_index(self):
         self.assertTrue(checkfn(lambda x : x[[3,2,1], [1,2,3]], [2]))
+        self.assertTrue(checkfn(lambda x : x[x > .5], [2]))
 
-
-
+    @unittest.expectedFailure
+    def test_adv_index_known_failures(self):
+        self.assertTrue(checkfn(lambda x : x[1:, x > .5], [2]))
+        self.assertTrue(checkfn(lambda x : x[x > .5, 1:], [2]))
+        self.assertTrue(checkfn(lambda x : x[[2, 3], 1:], [2]))
 
