@@ -49,9 +49,6 @@ class BasicMath(unittest.TestCase):
             self.assertTrue(checkfn(lambda x, y : x <= y, [d, d]))
             self.assertTrue(checkfn(lambda x, y : x == y, [d, d]))
             self.assertTrue(checkfn(lambda x, y : x != y, [d, d]))
-            self.assertTrue(checkfn(lambda x : x is x, [d]))
-            self.assertTrue(checkfn(lambda x, y: x is not y, [d, d]))
-
 
 
 class NumpyFns(unittest.TestCase):
