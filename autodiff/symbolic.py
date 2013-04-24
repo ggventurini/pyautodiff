@@ -17,36 +17,6 @@ class Symbolic(object):
     def pyfn(self):
         return self._pyfn
 
-    def _collect_args(self, args, kwargs):
-        """
-        Given args and kwargs, return a (arg name : arg) ordered dictionary
-        for every supplied argument, based on the function signature.
-
-        *args are identified by their int index in the *args tuple
-        **kwargs are identified by their respective keywords
-        """
-        # get argument names and defaults
-        argspec = inspect.getargspec(self.pyfn)
-
-        if argspec.args is not None:
-            # line up positional arguments and names
-            arg_dict = OrderedDict(zip(argspec.args, args))
-
-            # add variable positional arguments by index in *args
-            arg_dict.update(OrderedDict(zip(
-                range(len(argspec.args)), args[len(argspec.args):])))
-
-        # add keyword arguments using their defaults
-        if argspec.defaults is not None:
-            arg_dict.update(OrderedDict(zip(
-                argspec.args[-len(argspec.defaults):], argspec.defaults)))
-
-        # add supplied keyword arguments
-        arg_dict.update(kwargs)
-
-        return arg_dict
-
-
     def _small_int_check(self, arg_dict):
         """
         Replace any small integer arguments with NumPy arrays.
