@@ -182,14 +182,14 @@ class FrameVM(object):
         # add varargs
         if argspec.varargs is not None:
             for arg in callargs[argspec.varargs]:
-                if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
-                # if not id(lval) in self.watcher:
+                # if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
+                if not id(arg) in self.watcher:
                     self.add_shadow(arg)
 
         for name, lval in callargs.iteritems():
             if name is not argspec.varargs:
-                if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
-                # if not id(lval) in self.watcher:
+                # if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
+                if not id(lval) in self.watcher:
                     self.add_shadow(lval)
 
         self.code_iter = itercode(func_code.co_code)
@@ -394,7 +394,24 @@ class FrameVM(object):
         #print dir(func)
         #print func.__self__
         all_args = args + kwargs.values()
-        s_args = [self.watcher.getvar(a) for a in args]
+
+        # if all_args contains a tuple (due to varargs), be able to iterate
+        # over all entries when checking id's later
+        all_args_expanded = []
+        for a in all_args:
+            if isinstance(a, tuple):
+                all_args_expanded.extend(a)
+            else:
+                all_args_expanded.append(a)
+
+        # if args contains a tuple (due to varargs), set up the watcher for
+        # each entry
+        s_args = []
+        for a in all_args:
+            if isinstance(a, tuple):
+                s_args.append([self.watcher.getvar(ai) for ai in a])
+            else:
+                s_args.append(self.watcher.getvar(a))
         s_kwargs = dict([(kw, self.watcher.getvar(val))
                          for kw, val in kwargs.items()])
 
@@ -404,7 +421,7 @@ class FrameVM(object):
             #      going to know that.
             # -- hand control back to Python for duration of func
             rval = func(*args, **kwargs)
-            if any(id(a) in self.watcher for a in all_args):
+            if any(id(a) in self.watcher for a in all_args_expanded):
                 s_rval = func.__theano_op__(*s_args, **s_kwargs)
                 self.watcher.shadow(rval, s_rval)
         elif (
@@ -417,9 +434,13 @@ class FrameVM(object):
                 ):
 
             rval = func(*args, **kwargs)
-            all_args = args + kwargs.values()
-            if any(id(a) in self.watcher for a in all_args):
-                if func.__name__ in ('abs', 'absolute'):
+            if any(id(a) in self.watcher for a in all_args_expanded):
+                if func.__name__ == 'sum':
+                    if isinstance(rval, int):
+                        rval = np.array(rval)
+                    s_rval = theano.tensor.sum(*s_args)
+                    self.watcher.shadow(rval, s_rval)
+                elif func.__name__ in ('abs', 'absolute'):
                     self.watcher.shadow(rval, abs(*s_args))
                 elif func.__name__ == 'max':
                     assert str(func) == '<built-in function max>'
@@ -499,7 +520,7 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
-                if any(id(a) in self.watcher.svars for a in all_args):
+                if any(id(a) in self.watcher.svars for a in all_args_expanded):
                     raise NotImplementedError()
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
