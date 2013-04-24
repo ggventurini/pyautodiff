@@ -1,26 +1,18 @@
 PyAutoDiff
 ==========
 
-Automatic differentiation for NumPy (very new, experimental, unreliable, etc... but *promising*)
+**This branch is under active development. Features may break or change.**
 
-    import autodiff, numpy as np
-    print autodiff.fmin_l_bfgs_b(lambda x: (x + 1) ** 2, (np.zeros(()),))
-    # -> (array(-1.0),)
+Automatic differentiation for NumPy (very new, experimental, unreliable, etc... but *promising*).
 
-Other examples include:
-  * Linear SVM done quick
-    (https://github.com/jaberg/pyautodiff/blob/master/autodiff/tests/test_svm.py)
+---
+### Dependencies:
+  * [NumPy](http://www.numpy.org/)
+  * [Theano](http://deeplearning.net/software/theano/)
 
-Dependencies:
-  * numpy
-  * Theano git master (*currently no official release will work*)
-    (https://github.com/Theano/Theano.git)
+---
+### With thanks:
+  * Travis Oliphant for posting a very early version of [numba](http://numba.pydata.org/) that provided the inspiration and starting point for this project.
+  * [James Bergstra](https://github.com/jaberg) for making PyAutoDiff a reality by writing the entire original backend.
+  * The entire Theano team.
 
-Installation:
-
-    pip install -r requirements.txt
-    python setup.py install
-
-
-Thanks:
-  * Travis Oliphant for posting a very early version of numba (https://github.com/numba/numba) which provided the inspiration and starting point for this project.
