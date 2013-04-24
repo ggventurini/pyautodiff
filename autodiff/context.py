@@ -357,6 +357,17 @@ class FrameVM(object):
             self.watcher.shadow(r, s1 ** s2)
             #print 'mul sym', id(r)
 
+    def op_BINARY_MODULO(self, i, op, arg):
+        arg2 = self.pop()
+        arg1 = self.pop()
+        r = arg1 % arg2
+        self.push(r)
+        if (id(arg1) in self.watcher or id(arg2) in self.watcher):
+            s1 = self.ensure_shadow(arg1)
+            s2 = self.ensure_shadow(arg2)
+            self.watcher.shadow(r, s1 % s2)
+            #print 'added sym'
+
     def op_BINARY_SUBSCR(self, i, op, arg):
         # Implements TOS = TOS1[TOS].
         tos1, tos = self.popN(2)
