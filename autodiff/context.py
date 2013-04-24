@@ -10,7 +10,7 @@ This file demonstrates two applications of this technique:
 
 import __builtin__
 import ctypes
-#import inspect
+import inspect
 import logging; logger = logging.getLogger(__name__)
 import opcode
 #import os
@@ -18,7 +18,7 @@ import sys
 #import trace
 import traceback
 import types
-
+from collections import OrderedDict
 
 import numpy as np
 import theano
@@ -138,7 +138,6 @@ class FrameVM(object):
 
         func_code = self.func.func_code
         co_varnames = self.func.func_code.co_varnames
-        co_argcount = self.func.func_code.co_argcount
 
         self._myglobals = {}
         self._locals = [Unassigned] * len(co_varnames)
@@ -146,13 +145,11 @@ class FrameVM(object):
         _locals = self._locals
         if hasattr(func, 'im_self'):
             _locals[0] = func.im_self
-            bind_varnames = co_varnames[1:]
             bind_offset = 1
             if id(func.im_self) in self.watcher:
                 raise NotImplementedError('bound method on shadowed var: %s' %
                                           func.__name__)
         else:
-            bind_varnames = co_varnames
             bind_offset = 0
 
         for name in func_code.co_names:
@@ -166,86 +163,34 @@ class FrameVM(object):
                     #print 'WARNING: name lookup failed', name
                     pass
 
-        extra_args_ok = bool(func_code.co_flags & 0x04)
-        extra_kwargs_ok = bool(func_code.co_flags & 0x08)
+        # get function arguments, in order
+        argspec = inspect.getargspec(func)
 
-        # -- assert that my understanding of calling protocol is correct
-        #
-        # param_names: the sequence of function parameter names
-        # args_param: [optional] the name of the *vargs parameter
-        # kwargs_param: [optional] the name of the **kwargs parameter
-        # pos_params: sequence of potentially-positional parameter names
-        try:
-            if extra_args_ok and extra_kwargs_ok:
-                assert len(bind_varnames) >= co_argcount + 2
-                param_names = bind_varnames[:co_argcount + 2]
-                args_param = param_names[co_argcount]
-                kwargs_param = param_names[co_argcount + 1]
-                pos_params = param_names[:co_argcount]
-            elif extra_kwargs_ok:
-                assert len(bind_varnames) >= co_argcount + 1
-                param_names = bind_varnames[:co_argcount + 1]
-                kwargs_param = param_names[co_argcount]
-                pos_params = param_names[:co_argcount]
-            elif extra_args_ok:
-                assert len(bind_varnames) >= co_argcount + 1
-                param_names = bind_varnames[:co_argcount + 1]
-                args_param = param_names[co_argcount]
-                pos_params = param_names[:co_argcount]
-            else:
-                assert len(bind_varnames) >= co_argcount
-                param_names = bind_varnames[:co_argcount]
-                pos_params = param_names[:co_argcount]
-        except AssertionError:
-            print 'YIKES: MISUNDERSTANDING OF CALL PROTOCOL:',
-            print co_argcount,
-            print bind_varnames,
-            print '%x' % func_code.co_flags
-            raise
+        # match function arguments to passed parameters
+        callargs = inspect.getcallargs(func, *args, **kwargs)
 
-        if len(args) > co_argcount and not extra_args_ok:
-            raise TypeError('Argument count exceeds number of '
-                            'positional params')
+        # build ordered map of function arguments and passed parameters
+        # note that if variable arguments were passed (*args), they go first
+        arg_dict = OrderedDict()
+        if argspec.varargs in callargs:
+            arg_dict[argspec.varargs] = callargs[argspec.varargs]
+        arg_dict.update(OrderedDict((a, callargs[a]) for a in argspec.args))
 
-        # -- bind positional arguments
-        for i, (param_i, arg_i) in enumerate(zip(param_names, args)):
-            assert bind_varnames[i] == param_i
-            _locals[i + bind_offset] = arg_i
+        # transfer arguments to correct place in locals
+        self._locals[bind_offset:len(arg_dict)+bind_offset] = arg_dict.values()
 
-        if extra_args_ok:
-            _locals[co_varnames.index(args_param)] == args[co_argcount:]
+        # add varargs
+        if argspec.varargs is not None:
+            for arg in callargs[argspec.varargs]:
+                if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
+                # if not id(lval) in self.watcher:
+                    self.add_shadow(arg)
 
-        # -- bind keyword arguments
-        if extra_kwargs_ok:
-            kwargs_pos = co_varnames.index(kwargs_param)
-            _locals[kwargs_pos] == {}
-
-        for aname, aval in kwargs.items():
-            try:
-                pos = pos_params.index(aname) + bind_offset
-            except ValueError:
-                if extra_kwargs_ok:
-                    _locals[kwargs_pos][aname] = aval
-                    continue
-                else:
-                    raise TypeError('Unrecognized keyword argument', aname)
-            if _locals[pos] == Unassigned:
-                _locals[pos] = aval
-            else:
-                raise TypeError('Duplicate argument for parameter', aname)
-
-        # -- find default values
-        if func.func_defaults:
-            defaults = func.func_defaults
-            for ii, val in enumerate(defaults):
-                if _locals[co_argcount - len(defaults) + ii] is Unassigned:
-                    _locals[co_argcount - len(defaults) + ii] = val
-
-        # print 'BINDING'
-        for name, lval in zip(co_varnames, _locals):
-            if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
-                self.add_shadow(lval)
-            #print '  locals:', name, lval, id(lval)
+        for name, lval in callargs.iteritems():
+            if name is not argspec.varargs:
+                if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
+                # if not id(lval) in self.watcher:
+                    self.add_shadow(lval)
 
         self.code_iter = itercode(func_code.co_code)
         jmp = None
