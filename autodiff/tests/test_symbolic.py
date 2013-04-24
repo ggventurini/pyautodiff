@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import theano
 
-from autodiff.classes import Gradient
+from autodiff.symbolic import Gradient
 
 
 class TestGradient(unittest.TestCase):
