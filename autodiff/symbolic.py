@@ -138,7 +138,7 @@ class Function(Symbolic):
     def fn(self):
         return self._fn
 
-    def _make_function(self, args, kwargs):
+    def _compile_function(self, args, kwargs):
         argspec = inspect.getargspec(self.pyfn)
 
         # trace the function
@@ -181,7 +181,7 @@ class Function(Symbolic):
 
     def __call__(self, *args, **kwargs):
         if self._fn is None:
-            self._make_function(args, kwargs)
+            self._compile_function(args, kwargs)
 
         argspec = inspect.getargspec(self.pyfn)
         callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
