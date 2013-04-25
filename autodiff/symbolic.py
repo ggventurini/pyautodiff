@@ -39,7 +39,7 @@ class Symbolic(object):
 
         return new_arg_dict
 
-    def make_symbolic(self, *args, **kwargs):
+    def trace(self, *args, **kwargs):
         """
         Given args and kwargs, call the Python function and get its
         symbolic representation.
