@@ -71,10 +71,10 @@ class Symbolic(object):
         # includes both positional and keyword args. The only variables
         # not included explicitly are varargs, which are stored under the
         # appropriate keyword as a tuple. Varargs must come first, if present.
+        arg_dict = OrderedDict()
         if argspec.varargs in callargs:
-            arg_dict = OrderedDict(
-                [(argspec.varargs, callargs[argspec.varargs])])
-        arg_dict.update(OrderedDict((a, callargs[a]) for a in argspec.args))
+            arg_dict.update([(argspec.varargs, callargs[argspec.varargs])])
+        arg_dict.update((a, callargs[a]) for a in argspec.args)
 
         # check for small ints
         if _small_int_check:
