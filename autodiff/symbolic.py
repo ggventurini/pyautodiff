@@ -19,7 +19,7 @@ class Symbolic(object):
 
     def _small_int_check(self, arg_dict):
         """
-        Replace any small integer arguments with NumPy arrays.
+        Replace any small integer arguments NumPy ints.
 
         CPython caches and reuses small integers (-5 <= i <= 256), meaning
         there is no way to differentiate them while tracing a function.
@@ -32,7 +32,7 @@ class Symbolic(object):
             if k == varargs_name:
                 varargs = [np.array(a) if isinstance(a, int) else a for a in v]
                 new_arg_dict[k] = tuple(varargs)
-            elif isinstance(v, int) and -5 <= v <= 256:
+            elif type(v) is int and -5 <= v <= 256:
                 new_arg_dict[k] = np.array(v)
             else:
                 new_arg_dict[k] = v
