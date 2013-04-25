@@ -169,28 +169,29 @@ class FrameVM(object):
         # match function arguments to passed parameters
         callargs = inspect.getcallargs(func, *args, **kwargs)
 
-        # build ordered map of function arguments and passed parameters
-        # note that if variable arguments were passed (*args), they go first
+        # build map of arguments: {name : argument}
         arg_dict = OrderedDict()
-        if argspec.varargs in callargs:
-            arg_dict[argspec.varargs] = callargs[argspec.varargs]
-        arg_dict.update(OrderedDict((a, callargs[a]) for a in argspec.args))
+        for arg in argspec.args:
+            arg_dict[arg] = callargs[arg]
+        var_args = callargs.get(argspec.varargs, ())
+        if var_args:
+            arg_dict[argspec.varargs] = callargs.get(argspec.varargs, ())
 
         # transfer arguments to correct place in locals
         self._locals[bind_offset:len(arg_dict)+bind_offset] = arg_dict.values()
 
-        # add varargs
-        if argspec.varargs is not None:
-            for arg in callargs[argspec.varargs]:
-                # if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
-                if not id(arg) in self.watcher:
-                    self.add_shadow(arg)
-
+        # shadow arguments
         for name, lval in callargs.iteritems():
             if name is not argspec.varargs:
                 # if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
                 if not id(lval) in self.watcher:
                     self.add_shadow(lval)
+
+        # add varargs
+        for arg in var_args:
+            # if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
+            if not id(arg) in self.watcher:
+                self.add_shadow(arg)
 
         self.code_iter = itercode(func_code.co_code)
         jmp = None
