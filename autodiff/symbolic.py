@@ -12,10 +12,15 @@ class Symbolic(object):
         self.s_vars = OrderedDict()
         self.s_args = OrderedDict()
         self.s_results = OrderedDict()
+        self._cache = dict()
 
     @property
     def pyfn(self):
         return self._pyfn
+
+    @property
+    def cache(self):
+        return self._cache
 
     def _small_int_check(self, arg_dict, var_args):
         """
