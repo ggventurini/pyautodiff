@@ -124,6 +124,54 @@ class Symbolic(object):
                 raise
 
 
+class Function(Symbolic):
+    def __init__(self, pyfn):
+        super(Function, self).__init__(pyfn)
+        self._fn = None
+
+    @property
+    def fn(self):
+        return self._fn
+
+    def __call__(self, *args, **kwargs):
+        argspec = inspect.getargspec(self.pyfn)
+        callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
+
+        if self.fn is None:
+
+            # trace the function
+            self.trace(*args, **kwargs)
+
+            # collect givens
+            givens = OrderedDict()
+            for name, arg in self.s_args.iteritems():
+                # check for the varargs tuple
+                if name == argspec.varargs:
+                    givens.update((v, v.type()) for v in arg)
+                else:
+                    givens[arg] = arg.type()
+
+            # collect inputs
+            defaults = dict()
+            if argspec.defaults:
+                default_slice = slice(-len(argspec.defaults),
+                                      -1 if argspec.varargs else None)
+                defaults.update(zip(argspec.args[default_slice],
+                                    argspec.defaults))
+            inputs = [theano.Param(
+                givens[arg], default=defaults.get(name), name=name)
+                for name, arg in self.s_args.iteritems()]
+
+            # collect outputs
+            outputs = self.s_results.values()
+            if len(outputs) == 1:
+                outputs = outputs[0]
+
+            self._fn = theano.function(inputs, outputs, givens=givens)
+        varargs = callargs.pop(argspec.varargs, ())
+        return self.fn(*varargs, **callargs)
+
+
 class Gradient(object):
     def __init__(self, fn):
         self._fn = fn
