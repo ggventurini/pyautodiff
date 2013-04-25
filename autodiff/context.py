@@ -23,7 +23,7 @@ from collections import OrderedDict
 import numpy as np
 import theano
 
-from .utils import itercode
+from autodiff.utils import itercode
 
 logger.setLevel(logging.INFO)
 
