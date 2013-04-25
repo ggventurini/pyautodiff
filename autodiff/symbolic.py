@@ -165,7 +165,10 @@ class Function(Symbolic):
         if len(outputs) == 1:
             outputs = outputs[0]
 
-        self._fn = theano.function(inputs, outputs, givens=givens)
+        self._fn = theano.function(inputs=inputs,
+                                   outputs=outputs,
+                                   givens=givens,
+                                   on_unused_input='ignore')
 
     def __call__(self, *args, **kwargs):
         if self._fn is None:
