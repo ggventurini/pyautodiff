@@ -38,11 +38,27 @@ class TestFunction(unittest.TestCase):
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, 2)
         self.assertRaises(TypeError, f, a=2, b=2)
-        self.assertTrue(checkfn(f, 2, 3))
-        self.assertTrue(checkfn(f, y=4, x=5))
+        self.assertRaises(Exception, f, 2, 3)
         self.assertTrue(checkfn(f, 2, 3, 4))
         self.assertTrue(checkfn(f, 2, 3, 4, 5))
 
+        # make sure function recompiles for different numbers of varargs
+        f = Function(fn)
+        self.assertTrue(checkfn(f, 2, 3, 4, 5, 6))
+        self.assertTrue(checkfn(f, 2, 3, 4))
+        self.assertTrue(checkfn(f, 2, 3, 4, 5))
+
+
+        # multiple args, one default
+        def fn(x, y=2):
+            return x * y
+        f = Function(fn)
+        self.assertRaises(TypeError, f)
+        self.assertRaises(TypeError, f, y=3)
+        self.assertTrue(checkfn(f, 2))
+        self.assertTrue(checkfn(f, 2, 3))
+        self.assertTrue(checkfn(f, y=4, x=5))
+        self.assertTrue(checkfn(f, x=5))
 
 class TestGradient(unittest.TestCase):
 
