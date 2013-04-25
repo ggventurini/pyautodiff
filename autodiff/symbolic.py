@@ -67,8 +67,10 @@ class Symbolic(object):
         argspec = inspect.getargspec(self.pyfn)
         callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
 
-        # collect arguments, sorted in calling order
-        # note varargs go first, if present
+        # collect arguments, sorted in calling order. Note that arg_dict
+        # includes both positional and keyword args. The only variables
+        # not included explicitly are varargs, which are stored under the
+        # appropriate keyword as a tuple. Varargs must come first, if present.
         if argspec.varargs in callargs:
             arg_dict = OrderedDict(
                 [(argspec.varargs, callargs[argspec.varargs])])
