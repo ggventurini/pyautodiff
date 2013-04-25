@@ -24,20 +24,22 @@ class Symbolic(object):
         CPython caches and reuses small integers (-5 <= i <= 256), meaning
         there is no way to differentiate them while tracing a function.
         """
-        varargs_name = inspect.getargspec(self.pyfn).varargs
 
         new_arg_dict = OrderedDict()
         for k, v in arg_dict.iteritems():
-            # if handling varargs, need to check inside the tuple
-            if k == varargs_name:
-                varargs = [np.array(a) if isinstance(a, int) else a for a in v]
-                new_arg_dict[k] = tuple(varargs)
-            elif type(v) is int and -5 <= v <= 256:
-                new_arg_dict[k] = np.array(v)
+            if type(v) is int and -5 <= v <= 256:
+                new_arg_dict[k] = np.int_(v)
             else:
                 new_arg_dict[k] = v
 
-        return new_arg_dict
+        new_var_args = []
+        for a in var_args:
+            if type(a) is int and -5 <= a <= 256:
+                new_var_args.append(np.int_(a))
+            else:
+                new_var_args.append(a)
+
+        return new_arg_dict, new_var_args
 
     def trace(self, *args, **kwargs):
         """
@@ -61,8 +63,6 @@ class Symbolic(object):
             The dictionaries are cleared every time this method is run.
 
         """
-        _small_int_check = kwargs.pop('_small_int_check', True)
-
         # get information about arguments
         argspec = inspect.getargspec(self.pyfn)
         callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
@@ -77,8 +77,7 @@ class Symbolic(object):
         var_args = callargs.get(argspec.varargs, [])
 
         # check for small ints
-        if _small_int_check:
-            arg_dict = self._small_int_check(arg_dict)
+        arg_dict, var_args = self._small_int_check(arg_dict, var_args)
 
         # clear symbolic dictionaries
         self.s_vars.clear()
