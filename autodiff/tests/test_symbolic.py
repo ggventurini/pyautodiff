@@ -4,6 +4,37 @@ import theano
 
 from autodiff.symbolic import Gradient
 
+def f1(x):
+    return x
+
+def f2(x, y):
+    return x * y
+
+def f3(x, y=1):
+    return x * y
+
+def f4(x, y, *z):
+    return x * y * sum(z)
+
+def f5(x, y=2, *z):
+    return x * y * sum(z)
+
+def f6(x=1, y=2, *z):
+    return x * y * sum(z)
+
+def f7(x, y=2, **z):
+    return x * y * z['f7']
+
+def f7(x):
+    def f7i(x):
+        return x * x
+    return f7i(x) + 1
+
+
+
+class TestFunction(unittest.TestCase):
+    pass
+
 
 class TestGradient(unittest.TestCase):
 
