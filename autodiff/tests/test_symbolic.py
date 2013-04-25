@@ -5,8 +5,8 @@ import theano
 from autodiff.symbolic import Symbolic, Function, Gradient
 
 
-def checkfn(F, *args, **kwargs):
-    return np.allclose(F(*args, **kwargs), F.pyfn(*args, **kwargs))
+def checkfn(symF, *args, **kwargs):
+    return np.allclose(symF(*args, **kwargs), symF.pyfn(*args, **kwargs))
 
 #========= Tests
 
