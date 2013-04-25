@@ -17,7 +17,7 @@ class Symbolic(object):
     def pyfn(self):
         return self._pyfn
 
-    def _small_int_check(self, arg_dict):
+    def _small_int_check(self, arg_dict, var_args):
         """
         Replace any small integer arguments NumPy ints.
 
@@ -72,9 +72,9 @@ class Symbolic(object):
         # not included explicitly are varargs, which are stored under the
         # appropriate keyword as a tuple. Varargs must come first, if present.
         arg_dict = OrderedDict()
-        if argspec.varargs in callargs:
-            arg_dict.update([(argspec.varargs, callargs[argspec.varargs])])
-        arg_dict.update((a, callargs[a]) for a in argspec.args)
+        for arg in argspec.args:
+            arg_dict[arg] = callargs[arg]
+        var_args = callargs.get(argspec.varargs, [])
 
         # check for small ints
         if _small_int_check:
@@ -87,8 +87,7 @@ class Symbolic(object):
 
         # trace the function
         c = Context()
-        var_args = arg_dict.pop(argspec.varargs, ())
-        results = c.call(self.pyfn, var_args, arg_dict)
+        results = c.call(self.pyfn, tuple(arg_dict.values() + var_args))
 
         # collect symbolic variables in s_vars
         self.s_vars.update(c.svars)
@@ -135,7 +134,6 @@ class Function(Symbolic):
 
     def _make_function(self, args, kwargs):
         argspec = inspect.getargspec(self.pyfn)
-        callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
 
         # trace the function
         self.trace(*args, **kwargs)
@@ -158,7 +156,10 @@ class Function(Symbolic):
                                 argspec.defaults))
         inputs = [theano.Param(
             givens[arg], default=defaults.get(name), name=name)
-            for name, arg in self.s_args.iteritems()]
+            for name, arg in self.s_args.iteritems()
+            if name is not argspec.varargs]
+
+        inputs.extend(givens[a] for a in self.s_args.get(argspec.varargs, ()))
 
         # collect outputs
         outputs = self.s_results.values()
@@ -173,10 +174,17 @@ class Function(Symbolic):
     def __call__(self, *args, **kwargs):
         if self._fn is None:
             self._make_function(args, kwargs)
+
         argspec = inspect.getargspec(self.pyfn)
         callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
-        varargs = callargs.pop(argspec.varargs, ())
-        return self.fn(*varargs, **callargs)
+
+        arg_dict = OrderedDict()
+        for arg in argspec.args:
+            arg_dict[arg] = callargs[arg]
+        var_args = list(callargs.get(argspec.varargs, ()))
+
+        return self.fn(*(arg_dict.values() + var_args))
+
 
 
 class Gradient(object):
