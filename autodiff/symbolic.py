@@ -91,23 +91,30 @@ class Symbolic(object):
         # collect symbolic variables in s_vars
         self.s_vars.update(c.svars)
 
-        # collect symbolic variable positional arguments in s_args
-        if argspec.varargs is not None:
-            self.s_args[argspec.varargs] = [self.s_vars[id(a)] for a in var_args]
-
         # collect symbolic arguments in s_args
         for name, arg in arg_dict.iteritems():
             try:
                 self.s_args[name] = self.s_vars[id(arg)]
+                self.s_args[name].name = name
             except KeyError:
-                if isinstance(name, int):
-                    raise ValueError('Unable to trace variable '
-                                     'positional argument {0}.'.format(name))
-                else:
-                    raise ValueError('Unable to trace argument '
-                                     '\'{0}\'.'.format(name))
+                raise KeyError('Unable to trace argument '
+                               '\'{0}\'.'.format(name))
             except:
                 raise
+
+        # collect symbolic variable positional arguments in s_args
+        if argspec.varargs is not None:
+            va = argspec.varargs
+            self.s_args[va] = ()
+            for i, arg in enumerate(var_args):
+                try:
+                    self.s_args[va] += (self.s_vars[id(arg)],)
+                    self.s_args[va][-1].name = '{0}_{1}'.format(va, i)
+                except KeyError:
+                    raise KeyError('Unable to trace variable argument '
+                                   'at position {0}.'.format(i))
+                except:
+                    raise
 
         # collect symbolic results in s_results
         if not isinstance(results, tuple):
@@ -116,8 +123,8 @@ class Symbolic(object):
             try:
                 self.s_results[id(r)] = self.s_vars[id(r)]
             except KeyError:
-                raise ValueError('Unable to trace result #{0} '
-                                 '(indexed from 1).'.format(i + 1))
+                raise KeyError('Unable to trace result #{0} '
+                               '(indexed from 1).'.format(i + 1))
             except:
                 raise
 
@@ -141,10 +148,12 @@ class Function(Symbolic):
         givens = OrderedDict()
         for name, arg in self.s_args.iteritems():
             # check for the varargs tuple
-            if name == argspec.varargs:
-                givens.update((v, v.type()) for v in arg)
+            if name != argspec.varargs:
+                givens[arg] = arg.type(name='{0}'.format(arg.name))
             else:
-                givens[arg] = arg.type()
+                givens.update(
+                    (v, v.type(name='{0}_{1}'.format(argspec.varargs, i)))
+                    for i, v in enumerate(arg))
 
         # collect inputs
         defaults = dict()
