@@ -432,11 +432,12 @@ class FrameVM(object):
                 or str(func) == '<built-in function abs>'
                 or str(func) == '<built-in function max>'
                 or str(func) == '<built-in function min>'
+                or str(func) == '<built-in function sum>'
                 ):
-
             rval = func(*args, **kwargs)
             if any(id(a) in self.watcher for a in all_args_expanded):
                 if func.__name__ == 'sum':
+                    # N.B. builtin sum -> tensor.sum
                     if isinstance(rval, int):
                         rval = np.array(rval)
                     s_rval = theano.tensor.sum(*s_args)
