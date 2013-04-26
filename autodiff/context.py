@@ -436,8 +436,8 @@ class FrameVM(object):
             if any(id(a) in self.watcher for a in all_args_expanded):
                 if func.__name__ == 'sum':
                     # N.B. builtin sum -> tensor.sum
-                    if isinstance(rval, int):
-                        rval = np.array(rval)
+                    if type(rval) == int:
+                        rval = np.int_(rval)
                     s_rval = theano.tensor.sum(*s_args, **s_kwargs)
                     self.watcher.shadow(rval, s_rval)
                 elif func.__name__ in ('abs', 'absolute'):
