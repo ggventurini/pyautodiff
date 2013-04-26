@@ -491,7 +491,10 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
                 assert not kwargs
                 assert list(args) == s_args
-                self.watcher.shadow(rval, s_self.astype(str(args[0])))
+                dtype = str(args[0])
+                if dtype == 'bool':
+                    dtype == 'int8'
+                self.watcher.shadow(rval, s_self.astype(dtype))
             else:
                 try:
                     theano_fn = getattr(s_self, func.__name__)
@@ -509,7 +512,10 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
                 assert not kwargs
                 assert list(args) == s_args
-                self.watcher.shadow(rval, s_self.astype(str(args[0])))
+                dtype = str(args[0])
+                if dtype == 'bool':
+                    dtype == 'int8'
+                self.watcher.shadow(rval, s_self.astype(dtype))
             else:
                 raise NotImplementedError(func)
         elif 'built-in' in str(func):
