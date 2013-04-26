@@ -183,14 +183,12 @@ class FrameVM(object):
         # shadow arguments
         for name, lval in callargs.iteritems():
             if name is not argspec.varargs:
-                # if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
-                if not id(lval) in self.watcher:
+                if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
                     self.add_shadow(lval)
 
         # add varargs
         for arg in var_args:
-            # if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
-            if not id(arg) in self.watcher:
+            if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
                 self.add_shadow(arg)
 
         self.code_iter = itercode(func_code.co_code)
