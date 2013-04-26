@@ -406,7 +406,7 @@ class FrameVM(object):
         # if args contains a tuple (due to varargs), set up the watcher for
         # each entry
         s_args = []
-        for a in all_args:
+        for a in args:
             if isinstance(a, tuple):
                 s_args.append([self.watcher.getvar(ai) for ai in a])
             else:
