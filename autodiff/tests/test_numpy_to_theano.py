@@ -118,6 +118,14 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2], [2, -1]))
 
     def test_sum(self):
+        self.assertTrue(checkfn(lambda x: np.sum(x), [2]))
+        self.assertTrue(checkfn(lambda x: np.sum(x, 1), [2]))
+        self.assertTrue(checkfn(lambda x: np.sum(x, axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, axis=a), [2], 0))
+
         def fn(x, axis=None):
             return np.sum(x, axis=axis)
         self.assertTrue(checkfn(fn, [2]))
@@ -138,32 +146,52 @@ class NumpyFns(unittest.TestCase):
             return np.zeros_like(x)
         self.assertTrue(checkfn(fn, [2]))
 
-
 class ArrayMethodsAttributes(unittest.TestCase):
     """
     Test for coverage of array methods and attributes
     """
 
     def test_argmax(self):
+        self.assertTrue(checkfn(lambda x: x.argmax(), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmax(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmax(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.argmax(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.argmax(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.argmax(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.argmax(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.argmax(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
-        self.assertTrue(checkfn(fn, [2], 1))
 
     def test_argmin(self):
+        self.assertTrue(checkfn(lambda x: x.argmin(), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmin(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmin(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.argmin(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.argmin(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.argmin(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.argmin(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.argmin(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
-        self.assertTrue(checkfn(fn, [2], 1))
 
     def test_argsort(self):
+        self.assertTrue(checkfn(lambda x: x.argsort(), [2]))
+        self.assertTrue(checkfn(lambda x: x.argsort(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.argsort(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.argsort(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.argsort(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.argsort(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.argsort(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.argsort(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
-        self.assertTrue(checkfn(fn, [2], 1))
 
     def test_clip(self):
         def fn(x, a, b):
@@ -207,24 +235,56 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2]))
 
     def test_max(self):
+        self.assertTrue(checkfn(lambda x: x.max(), [2]))
+        self.assertTrue(checkfn(lambda x: x.max(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.max(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.max(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.max(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.max(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.max(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.max(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
 
     def test_mean(self):
+        self.assertTrue(checkfn(lambda x: x.mean(), [2]))
+        self.assertTrue(checkfn(lambda x: x.mean(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.mean(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.mean(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.mean(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.mean(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.mean(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.mean(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
 
     def test_min(self):
+        self.assertTrue(checkfn(lambda x: x.min(), [2]))
+        self.assertTrue(checkfn(lambda x: x.min(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.min(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.min(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.min(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.min(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.min(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.min(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
 
     def test_prod(self):
+        self.assertTrue(checkfn(lambda x: x.prod(), [2]))
+        self.assertTrue(checkfn(lambda x: x.prod(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.prod(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.prod(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.prod(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.prod(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.prod(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.prod(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
@@ -258,13 +318,28 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn2, [2], 2, -1))
 
     def test_sort(self):
-        def fn(x, axis=-1):
-            x.sort(axis=axis)
-            return x
+        self.assertTrue(checkfn(lambda x: x.sort(), [2]))
+        self.assertTrue(checkfn(lambda x: x.sort(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.sort(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.sort(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.sort(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.sort(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.sort(axis=a), [2], 0))
+
+        def fn(x, axis=None):
+            return x.sort(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
 
     def test_sum(self):
+        self.assertTrue(checkfn(lambda x: x.sum(), [2]))
+        self.assertTrue(checkfn(lambda x: x.sum(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.sum(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.sum(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.sum(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.sum(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.sum(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.sum(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
@@ -281,6 +356,14 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2]))
 
     def test_std(self):
+        self.assertTrue(checkfn(lambda x: x.std(), [2]))
+        self.assertTrue(checkfn(lambda x: x.std(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.std(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.std(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.std(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.std(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.std(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.std(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
@@ -304,6 +387,14 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2]))
 
     def test_var(self):
+        self.assertTrue(checkfn(lambda x: x.var(), [2]))
+        self.assertTrue(checkfn(lambda x: x.var(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.var(axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: x.var(a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.var(a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: x.var(axis=a), [2], None))
+        self.assertTrue(checkfn(lambda x, a: x.var(axis=a), [2], 0))
+
         def fn(x, axis=None):
             return x.var(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
