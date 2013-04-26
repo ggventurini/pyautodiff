@@ -310,7 +310,7 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2], 0))
 
 
-class Index_Slice(unittest.TestCase):
+class IndexSlice(unittest.TestCase):
     """
     Test for coverage of operators
     """
