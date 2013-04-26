@@ -438,19 +438,19 @@ class FrameVM(object):
                     # N.B. builtin sum -> tensor.sum
                     if isinstance(rval, int):
                         rval = np.array(rval)
-                    s_rval = theano.tensor.sum(*s_args)
+                    s_rval = theano.tensor.sum(*s_args, **s_kwargs)
                     self.watcher.shadow(rval, s_rval)
                 elif func.__name__ in ('abs', 'absolute'):
                     self.watcher.shadow(rval, abs(*s_args))
                 elif func.__name__ == 'max':
                     assert str(func) == '<built-in function max>'
                     # N.B. builtin max -> tensor.maximum
-                    s_rval = theano.tensor.maximum(*s_args)
+                    s_rval = theano.tensor.maximum(*s_args, **s_kwargs)
                     assert s_rval.ndim == 0  # builtin max can't make vector
                 elif func.__name__ == 'min':
                     assert str(func) == '<built-in function min>'
                     # N.B. builtin max -> tensor.minimum
-                    s_rval = theano.tensor.minimum(*s_args)
+                    s_rval = theano.tensor.minimum(*s_args, **s_kwargs)
                     assert s_rval.ndim == 0  # builtin min can't make vector
                     self.watcher.shadow(rval, s_rval)
                 elif func.__name__ == 'reshape':
