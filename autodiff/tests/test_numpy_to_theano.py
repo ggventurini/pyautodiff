@@ -22,7 +22,7 @@ def checkfn(fn, var_ndim, *args):
     """Given a function and a list of ndim for each input variable,
     get a result and compare it to the Theano result."""
     dim = [[4] * nd for nd in var_ndim]
-    values = [np.random.random(d) for d in dim]
+    values = [np.random.random(d).astype(np.int64) for d in dim]
     context = Context()
     result = context.call(fn, tuple(values) + args)
     theano_fn = get_theano_fn(context, values, result)
@@ -57,12 +57,12 @@ class NumpyFns(unittest.TestCase):
     """
     def test_all(self):
         def fn(x):
-            return np.all(x>.5)
+            return np.all(x > .5)
         self.assertTrue(checkfn(fn, [2]))
 
     def test_any(self):
         def fn(x):
-            return np.any(x>.5)
+            return np.any(x > .5)
         self.assertTrue(checkfn(fn, [2]))
 
     def test_abs(self):
@@ -145,6 +145,7 @@ class NumpyFns(unittest.TestCase):
         def fn(x):
             return np.zeros_like(x)
         self.assertTrue(checkfn(fn, [2]))
+
 
 class ArrayMethodsAttributes(unittest.TestCase):
     """
@@ -308,26 +309,47 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2]))
 
     def test_reshape(self):
-        def fn1(x, shape):
+        def fn(x, shape):
             return x.reshape(shape)
-        def fn2(x, s1, s2):
+        self.assertTrue(checkfn(fn, [2], [2, 8]))
+        self.assertTrue(checkfn(fn, [2], [2, -1]))
+
+        def fn(x, s1, s2):
             return x.reshape(s1, s2)
-        self.assertTrue(checkfn(fn1, [2], [2, 8]))
-        self.assertTrue(checkfn(fn1, [2], [2, -1]))
-        self.assertTrue(checkfn(fn2, [2], 2, 8))
-        self.assertTrue(checkfn(fn2, [2], 2, -1))
+        self.assertTrue(checkfn(fn, [2], 2, 8))
+        self.assertTrue(checkfn(fn, [2], 2, -1))
 
     def test_sort(self):
-        self.assertTrue(checkfn(lambda x: x.sort(), [2]))
-        self.assertTrue(checkfn(lambda x: x.sort(1), [2]))
-        self.assertTrue(checkfn(lambda x: x.sort(axis=1), [2]))
-        self.assertTrue(checkfn(lambda x, a: x.sort(a), [2], None))
-        self.assertTrue(checkfn(lambda x, a: x.sort(a), [2], 0))
-        self.assertTrue(checkfn(lambda x, a: x.sort(axis=a), [2], None))
-        self.assertTrue(checkfn(lambda x, a: x.sort(axis=a), [2], 0))
+        def fn(x):
+            x.sort()
+            return x
+        self.assertTrue(checkfn(fn, [2]))
+
+        def fn(x):
+            x.sort(1)
+            return x
+        self.assertTrue(checkfn(fn, [2]))
+
+        def fn(x):
+            x.sort(axis=1)
+            return x
+        self.assertTrue(checkfn(fn, [2]))
+
+        def fn(x, a):
+            x.sort(a)
+            return x
+        self.assertTrue(checkfn(fn, [2], None))
+        self.assertTrue(checkfn(fn, [2], 0))
+
+        def fn(x, a):
+            x.sort(axis=a)
+            return x
+        self.assertTrue(checkfn(fn, [2], None))
+        self.assertTrue(checkfn(fn, [2], 0))
 
         def fn(x, axis=None):
-            return x.sort(axis=axis)
+            x.sort(axis=axis)
+            return x
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
 
@@ -428,7 +450,7 @@ class IndexSlice(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x[-3:-1, -3:-1], [2]))
 
     def test_adv_index(self):
-        self.assertTrue(checkfn(lambda x: x[[3,2,1], [1,2,3]], [2]))
+        self.assertTrue(checkfn(lambda x: x[[3, 2, 1], [1, 2, 3]], [2]))
         self.assertTrue(checkfn(lambda x: x[x > .5], [2]))
 
     @unittest.expectedFailure

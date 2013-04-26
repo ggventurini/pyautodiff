@@ -423,6 +423,8 @@ class FrameVM(object):
             if any(id(a) in self.watcher for a in all_args_expanded):
                 s_rval = func.__theano_op__(*s_args, **s_kwargs)
                 self.watcher.shadow(rval, s_rval)
+
+        # ================ NumPy and builtin functions
         elif (
                 (getattr(func, '__module__', None)
                     and func.__module__.startswith('numpy'))
@@ -464,6 +466,9 @@ class FrameVM(object):
                 # no argument was shadowed (e.g. zeros())
                 if isinstance(rval, np.ndarray):
                     self.add_shadow(rval)
+
+        # ================ Array methods
+
         elif isinstance(getattr(func, '__self__', None), np.ndarray):
             assert id(func.__self__) in self.watcher
             s_self = self.watcher.svars[id(func.__self__)]
@@ -495,6 +500,13 @@ class FrameVM(object):
                 if dtype == 'bool':
                     dtype == 'int8'
                 self.watcher.shadow(rval, s_self.astype(dtype))
+            elif func.__name__ == 'sort':
+                # sort is an inplace method
+                assert not args
+                assert not kwargs
+                rval = func() # returns None
+                # shadow the original array; it has been updated inplace
+                self.watcher.shadow(func.__self__, s_self.sort())
             else:
                 try:
                     theano_fn = getattr(s_self, func.__name__)
