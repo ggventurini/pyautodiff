@@ -32,23 +32,23 @@ def checkfn(fn, var_ndim, *args):
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
         for d in range(3):
-            self.assertTrue(checkfn(lambda x : x + 2, [d]))
-            self.assertTrue(checkfn(lambda x : x - 2, [d]))
-            self.assertTrue(checkfn(lambda x : x * 2, [d]))
-            self.assertTrue(checkfn(lambda x : x / 2, [d]))
-            self.assertTrue(checkfn(lambda x : x / 2.0, [d]))
-            self.assertTrue(checkfn(lambda x : x // 2.0, [d]))
-            self.assertTrue(checkfn(lambda x : x ** 2, [d]))
-            self.assertTrue(checkfn(lambda x : x % 2, [d]))
+            self.assertTrue(checkfn(lambda x: x + 2, [d]))
+            self.assertTrue(checkfn(lambda x: x - 2, [d]))
+            self.assertTrue(checkfn(lambda x: x * 2, [d]))
+            self.assertTrue(checkfn(lambda x: x / 2, [d]))
+            self.assertTrue(checkfn(lambda x: x / 2.0, [d]))
+            self.assertTrue(checkfn(lambda x: x // 2.0, [d]))
+            self.assertTrue(checkfn(lambda x: x ** 2, [d]))
+            self.assertTrue(checkfn(lambda x: x % 2, [d]))
 
     def test_comparisons(self):
         for d in range(3):
-            self.assertTrue(checkfn(lambda x, y : x > y, [d, d]))
-            self.assertTrue(checkfn(lambda x, y : x < y, [d, d]))
-            self.assertTrue(checkfn(lambda x, y : x >= y, [d, d]))
-            self.assertTrue(checkfn(lambda x, y : x <= y, [d, d]))
-            self.assertTrue(checkfn(lambda x, y : x == y, [d, d]))
-            self.assertTrue(checkfn(lambda x, y : x != y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y: x > y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y: x < y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y: x >= y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y: x <= y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y: x == y, [d, d]))
+            self.assertTrue(checkfn(lambda x, y: x != y, [d, d]))
 
 
 class NumpyFns(unittest.TestCase):
@@ -315,34 +315,34 @@ class IndexSlice(unittest.TestCase):
     Test for coverage of operators
     """
     def test_index(self):
-        self.assertTrue(checkfn(lambda x : x[1], [1]))
-        self.assertTrue(checkfn(lambda x : x[-1], [1]))
-        self.assertTrue(checkfn(lambda x : x[1, 1], [2]))
-        self.assertTrue(checkfn(lambda x : x[-1, -1], [2]))
+        self.assertTrue(checkfn(lambda x: x[1], [1]))
+        self.assertTrue(checkfn(lambda x: x[-1], [1]))
+        self.assertTrue(checkfn(lambda x: x[1, 1], [2]))
+        self.assertTrue(checkfn(lambda x: x[-1, -1], [2]))
 
     def test_slice(self):
-        self.assertTrue(checkfn(lambda x : x[1:], [1]))
-        self.assertTrue(checkfn(lambda x : x[-2:], [1]))
-        self.assertTrue(checkfn(lambda x : x[1:, 1:], [2]))
-        self.assertTrue(checkfn(lambda x : x[-2:, -2:], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:], [1]))
+        self.assertTrue(checkfn(lambda x: x[-2:], [1]))
+        self.assertTrue(checkfn(lambda x: x[1:, 1:], [2]))
+        self.assertTrue(checkfn(lambda x: x[-2:, -2:], [2]))
 
-        self.assertTrue(checkfn(lambda x : x[:2], [1]))
-        self.assertTrue(checkfn(lambda x : x[:-2], [1]))
-        self.assertTrue(checkfn(lambda x : x[:2, :2], [2]))
-        self.assertTrue(checkfn(lambda x : x[:-2, :-2], [2]))
+        self.assertTrue(checkfn(lambda x: x[:2], [1]))
+        self.assertTrue(checkfn(lambda x: x[:-2], [1]))
+        self.assertTrue(checkfn(lambda x: x[:2, :2], [2]))
+        self.assertTrue(checkfn(lambda x: x[:-2, :-2], [2]))
 
-        self.assertTrue(checkfn(lambda x : x[1:3], [1]))
-        self.assertTrue(checkfn(lambda x : x[-3:-1], [1]))
-        self.assertTrue(checkfn(lambda x : x[1:3, 1:3], [2]))
-        self.assertTrue(checkfn(lambda x : x[-3:-1, -3:-1], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:3], [1]))
+        self.assertTrue(checkfn(lambda x: x[-3:-1], [1]))
+        self.assertTrue(checkfn(lambda x: x[1:3, 1:3], [2]))
+        self.assertTrue(checkfn(lambda x: x[-3:-1, -3:-1], [2]))
 
     def test_adv_index(self):
-        self.assertTrue(checkfn(lambda x : x[[3,2,1], [1,2,3]], [2]))
-        self.assertTrue(checkfn(lambda x : x[x > .5], [2]))
+        self.assertTrue(checkfn(lambda x: x[[3,2,1], [1,2,3]], [2]))
+        self.assertTrue(checkfn(lambda x: x[x > .5], [2]))
 
     @unittest.expectedFailure
     def test_adv_index_known_failures(self):
-        self.assertTrue(checkfn(lambda x : x[1:, x > .5], [2]))
-        self.assertTrue(checkfn(lambda x : x[x > .5, 1:], [2]))
-        self.assertTrue(checkfn(lambda x : x[[2, 3], 1:], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:, x > .5], [2]))
+        self.assertTrue(checkfn(lambda x: x[x > .5, 1:], [2]))
+        self.assertTrue(checkfn(lambda x: x[[2, 3], 1:], [2]))
 
