@@ -22,6 +22,8 @@ Low-level implementation API (unstable!):
 
 """
 
+import autodiff.compat
+
 from fmin_scipy import fmin_l_bfgs_b
 
 from fmin_sgd import fmin_sgd

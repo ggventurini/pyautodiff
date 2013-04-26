@@ -18,12 +18,12 @@ import sys
 #import trace
 import traceback
 import types
-from collections import OrderedDict
 
 import numpy as np
 import theano
 
 from autodiff.utils import itercode
+from autodiff.compat import OrderedDict, getcallargs
 
 logger.setLevel(logging.INFO)
 
@@ -167,7 +167,7 @@ class FrameVM(object):
         argspec = inspect.getargspec(func)
 
         # match function arguments to passed parameters
-        callargs = inspect.getcallargs(func, *args, **kwargs)
+        callargs = getcallargs(func, *args, **kwargs)
 
         # build map of arguments: {name : argument}
         arg_dict = OrderedDict()

@@ -1,9 +1,10 @@
-import inspect
 import numpy as np
 import theano
 import theano.tensor as tt
-from collections import OrderedDict
+from inspect import getargspec
+
 from autodiff.context import Context
+from autodiff.compat import OrderedDict, getcallargs
 
 
 class Symbolic(object):
@@ -69,8 +70,8 @@ class Symbolic(object):
 
         """
         # get information about arguments
-        argspec = inspect.getargspec(self.pyfn)
-        callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
+        argspec = getargspec(self.pyfn)
+        callargs = getcallargs(self.pyfn, *args, **kwargs)
 
         # collect arguments, sorted in calling order. Note that arg_dict
         # includes both positional and keyword args. The only variables
@@ -139,8 +140,8 @@ class Function(Symbolic):
         super(Function, self).__init__(pyfn)
 
     def _compile_function(self, args, kwargs):
-        argspec = inspect.getargspec(self.pyfn)
-        callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
+        argspec = getargspec(self.pyfn)
+        callargs = getcallargs(self.pyfn, *args, **kwargs)
 
         # trace the function
         self.trace(*args, **kwargs)
@@ -187,8 +188,8 @@ class Function(Symbolic):
         return fn
 
     def __call__(self, *args, **kwargs):
-        argspec = inspect.getargspec(self.pyfn)
-        callargs = inspect.getcallargs(self.pyfn, *args, **kwargs)
+        argspec = getargspec(self.pyfn)
+        callargs = getcallargs(self.pyfn, *args, **kwargs)
 
         # try to retrieve function from cache; otherwise compile
         fn = self.cache.get(len(callargs.get(argspec.varargs, ())),
@@ -200,7 +201,6 @@ class Function(Symbolic):
         var_args = list(callargs.get(argspec.varargs, ()))
 
         return fn(*(arg_dict.values() + var_args))
-
 
 
 class Gradient(object):
@@ -246,4 +246,3 @@ class Gradient(object):
             self._grad_fn = None
             raise
         return grad_result
-
