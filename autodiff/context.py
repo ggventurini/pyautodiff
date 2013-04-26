@@ -445,6 +445,7 @@ class FrameVM(object):
                     assert str(func) == '<built-in function max>'
                     s_rval = theano.tensor.maximum(*s_args, **s_kwargs)
                     assert s_rval.ndim == 0  # builtin max can't make vector
+                    self.watcher.shadow(rval, s_rval)
                 elif func.__name__ == 'min':
                     assert str(func) == '<built-in function min>'
                     s_rval = theano.tensor.minimum(*s_args, **s_kwargs)
