@@ -106,18 +106,10 @@ class NumpyFns(unittest.TestCase):
             return np.maximum(x, y)
         self.assertTrue(checkfn(fn, [2, 2]))
 
-    @unittest.skip('No max criteria')
-    def test_max(self):
-        pass
-
     def test_minimum(self):
         def fn(x, y):
             return np.minimum(x, y)
         self.assertTrue(checkfn(fn, [2, 2]))
-
-    @unittest.skip('No min criteria')
-    def test_min(self):
-        pass
 
     def test_reshape(self):
         def fn(x, shape):
@@ -231,11 +223,6 @@ class ArrayMethodsAttributes(unittest.TestCase):
             return x.min(axis=axis)
         self.assertTrue(checkfn(fn, [2]))
         self.assertTrue(checkfn(fn, [2], 0))
-
-    @unittest.skip('skip nonzero')
-    def test_nonzero(self):
-        def fn(x):
-            pass
 
     def test_prod(self):
         def fn(x, axis=None):
