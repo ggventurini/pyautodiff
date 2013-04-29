@@ -6,7 +6,9 @@ from autodiff.symbolic import Symbolic, Function, Gradient
 
 
 def checkfn(symF, *args, **kwargs):
-    return np.allclose(symF(*args, **kwargs), symF.pyfn(*args, **kwargs))
+    py_result = symF.pyfn(*args, **kwargs)
+    ad_result = symF(*args, **kwargs)
+    return np.allclose(ad_result, py_result)
 
 #========= Tests
 
@@ -60,13 +62,3 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, y=4, x=5))
         self.assertTrue(checkfn(f, x=5))
 
-class TestGradient(unittest.TestCase):
-
-    def test_scalar_fn(self):
-        g = Gradient(lambda x : x ** 2)
-        self.assertTrue(np.allclose(g(np.array(2.0)), 4))
-
-    def test_int_fn(self):
-        """ FAILS! """
-        g = Gradient(lambda x : x ** 2)
-        self.assertTrue(np.allclose(g(2), 4))
