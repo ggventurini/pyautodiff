@@ -1,12 +1,11 @@
 import copy
 import numpy as np
 import theano
-import theano.tensor as tt
 from inspect import getargspec
 
 from autodiff.context import Context
 from autodiff.compat import OrderedDict
-from autodiff.utils import orderedcallargs
+import autodiff.utils as utils
 
 
 class Symbolic(object):
@@ -106,7 +105,7 @@ class Symbolic(object):
         self.s_vars.update(c.svars)
 
         # collect symbolic arguments in s_args
-        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
+        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
 
         for name, arg in callargs.iteritems():
 
@@ -251,14 +250,14 @@ class Function(Symbolic):
 
         # store in cache corresponding to the number of positional inputs
         argspec = getargspec(self.pyfn)
-        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
+        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
         self.cache[len(callargs.get(argspec.varargs, ()))] = fn
 
         return fn
 
     def call(self, *args, **kwargs):
         argspec = getargspec(self.pyfn)
-        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
+        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
 
         # try to retrieve function from cache; otherwise compile
         fn = self.cache.get(len(callargs.get(argspec.varargs, ())),
