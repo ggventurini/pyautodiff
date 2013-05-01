@@ -1,10 +1,12 @@
+import copy
 import numpy as np
 import theano
 import theano.tensor as tt
 from inspect import getargspec
 
 from autodiff.context import Context
-from autodiff.compat import OrderedDict, getcallargs
+from autodiff.compat import OrderedDict
+from autodiff.utils import orderedcallargs
 
 
 class Symbolic(object):
@@ -32,30 +34,6 @@ class Symbolic(object):
     def cache(self):
         return self._cache
 
-    def _small_int_check(self, arg_dict, var_args):
-        """
-        Replace any small integer arguments NumPy ints.
-
-        CPython caches and reuses small integers (-5 <= i <= 256), meaning
-        there is no way to differentiate them while tracing a function.
-        """
-
-        new_arg_dict = OrderedDict()
-        for k, v in arg_dict.iteritems():
-            if type(v) is int and -5 <= v <= 256:
-                new_arg_dict[k] = np.int_(v)
-            else:
-                new_arg_dict[k] = v
-
-        new_var_args = []
-        for a in var_args:
-            if type(a) is int and -5 <= a <= 256:
-                new_var_args.append(np.int_(a))
-            else:
-                new_var_args.append(a)
-
-        return new_arg_dict, new_var_args
-
     def trace(self, *args, **kwargs):
         """
         Given args and kwargs, call the Python function and get its
@@ -78,21 +56,33 @@ class Symbolic(object):
             The dictionaries are cleared every time this method is run.
 
         """
-        # get information about arguments
+
+        # check for small ints and collections
+        def check(name, i):
+            # Check argument i (with name 'name') for small ints or
+            # collections.  If it is a small int, replace it with a numpy int.
+            # If a collection, raise a helpful error.
+            #
+            # This is required because:
+            #     1. PyAutoDiff can not shadow CPython ints because they are
+            #     cached objects that reuse ids.
+            #
+            #     2. Theano functions can not accept arguments that are
+            #     collections.
+            if type(i) is int and -5 <= i <= 256:
+                return np.int_(i)
+            elif isinstance(i, (list, tuple, dict)):
+                raise TypeError('Function arguments can not be '
+                                'containers (received {0} for '
+                                'argument \'{1}\').'.format(i, name))
+            else:
+                return i
+
         argspec = getargspec(self.pyfn)
-        callargs = getcallargs(self.pyfn, *args, **kwargs)
-
-        # collect arguments, sorted in calling order. Note that arg_dict
-        # includes both positional and keyword args. The only variables
-        # not included explicitly are varargs, which are stored under the
-        # appropriate keyword as a tuple. Varargs must come first, if present.
-        arg_dict = OrderedDict()
-        for arg in argspec.args:
-            arg_dict[arg] = callargs[arg]
-        var_args = callargs.get(argspec.varargs, [])
-
-        # check for small ints
-        arg_dict, var_args = self._small_int_check(arg_dict, var_args)
+        tmp_args = tuple(check(n, a) for n, a in zip(argspec.args, args))
+        args = tmp_args + tuple(check(argspec.varargs, a)
+                                for a in args[len(argspec.args):])
+        kwargs = OrderedDict((k, check(k, v)) for k, v in kwargs.iteritems())
 
         # clear symbolic dictionaries
         self.s_vars.clear()
@@ -101,33 +91,49 @@ class Symbolic(object):
 
         # trace the function
         c = Context()
-        results = c.call(self.pyfn, tuple(arg_dict.values() + var_args))
+        results = c.call(self.pyfn, args, kwargs)
 
         # collect symbolic variables in s_vars
         self.s_vars.update(c.svars)
 
         # collect symbolic arguments in s_args
-        for name, arg in arg_dict.iteritems():
-            try:
-                self.s_args[name] = self.s_vars[id(arg)]
-                self.s_args[name].name = name
-            except KeyError:
-                raise KeyError('Unable to trace argument '
-                               '\'{0}\'.'.format(name))
-            except:
-                raise
+        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
 
-        # collect symbolic variable positional arguments in s_args
-        if argspec.varargs is not None:
-            va = argspec.varargs
-            self.s_args[va] = ()
-            for i, arg in enumerate(var_args):
+        for name, arg in callargs.iteritems():
+
+            # collect variable args
+            if name == argspec.varargs:
+                self.s_args[name] = ()
+                for i, a in enumerate(arg):
+                    try:
+                        self.s_args[name] += (self.s_vars[id(a)],)
+                        self.s_args[name][-1].name = '{0}_{1}'.format(name, i)
+                    except KeyError:
+                        raise KeyError('Unable to trace item {0} of variable '
+                                       'argument \'{1}\'.'.format(i, name))
+                    except:
+                        raise
+
+            # collect variable kwargs
+            elif name == argspec.keywords:
+                for n, a in arg.iteritems():
+                    try:
+                        self.s_args[n] = self.s_vars[id(a)]
+                        self.s_args[n].name = n
+                    except KeyError:
+                        raise KeyError('Unable to trace argument '
+                                       '\'{0}\'.'.format(n))
+                    except:
+                        raise
+
+            # collect positional args
+            else:
                 try:
-                    self.s_args[va] += (self.s_vars[id(arg)],)
-                    self.s_args[va][-1].name = '{0}_{1}'.format(va, i)
+                    self.s_args[name] = self.s_vars[id(arg)]
+                    self.s_args[name].name = name
                 except KeyError:
-                    raise KeyError('Unable to trace variable argument '
-                                   'at position {0}.'.format(i))
+                    raise KeyError('Unable to trace argument '
+                                   '\'{0}\'.'.format(name))
                 except:
                     raise
 
@@ -145,12 +151,10 @@ class Symbolic(object):
 
 
 class Function(Symbolic):
-    def __init__(self, pyfn):
-        super(Function, self).__init__(pyfn)
 
     def _compile_function(self, args, kwargs):
         argspec = getargspec(self.pyfn)
-        callargs = getcallargs(self.pyfn, *args, **kwargs)
+        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
 
         # trace the function
         self.trace(*args, **kwargs)
@@ -197,19 +201,21 @@ class Function(Symbolic):
         return fn
 
     def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
+
+    def call(self, *args, **kwargs):
         argspec = getargspec(self.pyfn)
-        callargs = getcallargs(self.pyfn, *args, **kwargs)
+        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
 
         # try to retrieve function from cache; otherwise compile
         fn = self.cache.get(len(callargs.get(argspec.varargs, ())),
                             self._compile_function(args, kwargs))
 
-        arg_dict = OrderedDict()
-        for arg in argspec.args:
-            arg_dict[arg] = callargs[arg]
-        var_args = list(callargs.get(argspec.varargs, ()))
+        pos_args = [callargs[arg] for arg in argspec.args]
+        pos_args.extend(callargs.get(argspec.varargs, ()))
+        kw_args = callargs.get(argspec.keywords, {})
 
-        return fn(*(arg_dict.values() + var_args))
+        return fn(*pos_args, **kw_args)
 
 
 class Gradient(object):
