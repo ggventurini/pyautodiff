@@ -34,6 +34,29 @@ def orderedcallargs(fn, *args, **kwargs):
     return o_callargs
 
 
+def as_seq(x, seq_type=None):
+    """
+    If x is not a sequence, returns it as one. The seq_type argument allows the
+    output type to be specified (defaults to list). If x is a sequence and
+    seq_type is provided, then x is converted to seq_type.
+
+    Arguments
+    ---------
+    x : seq or object
+
+    seq_type : output sequence type
+        If None, then if x is already a sequence, no change is made. If x
+        is not a sequence, a list is returned.
+    """
+    if x is None:
+        x = []
+    elif not isinstance(x, (list, tuple, set, frozenset)):
+        x = [x]
+    if seq_type is not None:
+        x = seq_type(x)
+    return x
+
+
 def itercode(code):
     """Return a generator of byte-offset, opcode, and argument
     from a byte-code-string
