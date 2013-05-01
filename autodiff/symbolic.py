@@ -158,7 +158,7 @@ class Symbolic(object):
             except:
                 raise
 
-    def get_symbolic_vars(self, args, kwargs):
+    def get_theano_vars(self, args, kwargs):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
@@ -195,12 +195,37 @@ class Symbolic(object):
         # ========== collect outputs
         outputs = OrderedDict(enumerate(self.s_results.values()))
 
-        symbolic_vars = {'inputs': inputs,
-                         'inputvars': inputvars,
-                         'outputs': outputs,
-                         'givens': givens}
+        theano_vars = {'inputs': inputs,
+                       'inputvars': inputvars,
+                       'outputs': outputs,
+                       'givens': givens}
 
-        return symbolic_vars
+        return theano_vars
+
+    def get_symbolic_arg(self, x):
+        """
+        Retrieve the symbolic version of x.
+
+        x : python object or string
+
+        If x is a string, it is matched to the names of the function arguments.
+        If x is an object, it must have been traced by the Symbolic class.
+        If x is a small int, raises an error.
+        """
+        if type(x) is int and -5 <= x <= 256:
+            raise ValueError('Small integer arguments can not be traced '
+                             'selectively. Either recast or redesign your '
+                             'function.')
+        elif isinstance(x, basestring):
+            if x in self.s_args:
+                return self.s_args[x]
+            else:
+                raise ValueError('Argument {0} has not been traced.'.format(x))
+        else:
+            if id(x) in self.s_vars:
+                return self.s_vars[id(x)]
+            else:
+                raise ValueError('Object {0} has not been traced.'.format(x))
 
 
 class Function(Symbolic):
@@ -209,11 +234,11 @@ class Function(Symbolic):
         return self.call(*args, **kwargs)
 
     def compile_function(self, args, kwargs):
-        symbolic_vars = self.get_symbolic_vars(args, kwargs)
+        theano_vars = self.get_theano_vars(args, kwargs)
 
-        inputs = symbolic_vars['inputs'].values()
-        outputs = symbolic_vars['inputs'].values()
-        givens = symbolic_vars['givens']
+        inputs = theano_vars['inputs'].values()
+        outputs = theano_vars['inputs'].values()
+        givens = theano_vars['givens']
 
         if len(outputs) == 1:
             outputs = outputs[0]
