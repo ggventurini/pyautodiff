@@ -236,7 +236,7 @@ class Function(Symbolic):
         theano_vars = self.get_theano_vars(args, kwargs)
 
         inputs = theano_vars['inputs'].values()
-        outputs = theano_vars['inputs'].values()
+        outputs = theano_vars['outputs'].values()
         givens = theano_vars['givens']
 
         if len(outputs) == 1:
