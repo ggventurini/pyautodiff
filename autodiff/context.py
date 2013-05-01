@@ -54,6 +54,7 @@ class LoadUnassigned(Exception):
     """Access to Unassigned value"""
 
 
+def is_small_int(i):
     return type(i) is int and -5 <= i <= 256
 
 
