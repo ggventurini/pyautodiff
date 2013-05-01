@@ -174,28 +174,23 @@ class Symbolic(object):
             defaults.update(zip(reversed(argspec.args),
                                 reversed(argspec.defaults)))
 
-        # ========== collect inputs, inputvars, givens
-        # inputs = inputvars wrapped in Param instances, since Params can not
-        # be used as Tensors (for example, to take grad wrt).
+        # ========== collect inputs, givens
         inputs, inputvars, givens = OrderedDict(), OrderedDict(), OrderedDict()
         for name, arg in self.s_args.iteritems():
             if name != argspec.varargs:
                 givens[arg] = arg.type(name=arg.name)
-                inputvars[name] = givens[arg]
                 inputs[name] = theano.Param(givens[arg],
                                             default=defaults.get(name, None),
                                             name=name)
             else:
                 for i, a in enumerate(arg):
                     givens[a] = a.type(name='{0}_{1}'.format(name, i))
-                    inputvars[i] = givens[a]
                     inputs[i] = givens[a]
 
         # ========== collect outputs
         outputs = OrderedDict(enumerate(self.s_results.values()))
 
         theano_vars = {'inputs': inputs,
-                       'inputvars': inputvars,
                        'outputs': outputs,
                        'givens': givens}
 
