@@ -34,7 +34,7 @@ class Symbolic(object):
     def cache(self):
         return self._cache
 
-    def trace(self, *args, **kwargs):
+    def trace(self, args=None, kwargs=None):
         """
         Given args and kwargs, call the Python function and get its
         symbolic representation.
@@ -56,6 +56,15 @@ class Symbolic(object):
             The dictionaries are cleared every time this method is run.
 
         """
+        if args is None:
+            args = ()
+        elif not isinstance(args, tuple):
+            raise TypeError('args must be a tuple')
+
+        if kwargs is None:
+            kwargs = dict()
+        elif not isinstance(kwargs, dict):
+            raise TypeError('args must be a dict')
 
         # check for small ints and collections
         def check(name, i):
@@ -157,7 +166,7 @@ class Function(Symbolic):
         callargs = orderedcallargs(self.pyfn, *args, **kwargs)
 
         # trace the function
-        self.trace(*args, **kwargs)
+        self.trace(args, kwargs)
 
         # collect givens
         givens = OrderedDict()
