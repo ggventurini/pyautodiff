@@ -78,8 +78,7 @@ def flat_from_doc(doc):
                 #    they be traversed also?  What about number keys
                 #    where to draw line?
                 raise NotImplementedError(
-                        'potential ambiguity in non-string keys',
-                        k)
+                    'potential ambiguity in non-string keys', k)
             rval.extend(flat_from_doc(v))
     else:
         rval.append(doc)
