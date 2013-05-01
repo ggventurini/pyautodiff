@@ -158,43 +158,63 @@ class Symbolic(object):
             except:
                 raise
 
+    def get_symbolic_vars(self, args, kwargs):
+        """
+        Returns a dict containing inputs, outputs and givens corresponding to
+        the Theano version of the pyfn.
+
+        """
+
+        argspec = getargspec(self.pyfn)
+
+        # trace the function
+        self.trace(*args, **kwargs)
+
+        defaults = dict()
+        if argspec.defaults:
+            defaults.update(zip(reversed(argspec.args),
+                                reversed(argspec.defaults)))
+
+        # ========== collect inputs, inputvars, givens
+        # inputs = inputvars wrapped in Param instances, since Params can not
+        # be used as Tensors (for example, to take grad wrt).
+        inputs, inputvars, givens = OrderedDict(), OrderedDict(), OrderedDict()
+        for name, arg in self.s_args.iteritems():
+            if name != argspec.varargs:
+                givens[arg] = arg.type(name=arg.name)
+                inputvars[name] = givens[arg]
+                inputs[name] = theano.Param(givens[arg],
+                                            default=defaults.get(name, None),
+                                            name=name)
+            else:
+                for i, a in enumerate(arg):
+                    givens[a] = a.type(name='{0}_{1}'.format(name, i))
+                    inputvars[i] = givens[a]
+                    inputs[i] = givens[a]
+
+        # ========== collect outputs
+        outputs = OrderedDict(enumerate(self.s_results.values()))
+
+        symbolic_vars = {'inputs': inputs,
+                         'inputvars': inputvars,
+                         'outputs': outputs,
+                         'givens': givens}
+
+        return symbolic_vars
+
 
 class Function(Symbolic):
 
-    def _compile_function(self, args, kwargs):
-        argspec = getargspec(self.pyfn)
-        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
+    def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
 
-        # trace the function
-        self.trace(args, kwargs)
+    def compile_function(self, args, kwargs):
+        symbolic_vars = self.get_symbolic_vars(args, kwargs)
 
-        # collect givens
-        givens = OrderedDict()
-        for name, arg in self.s_args.iteritems():
-            # check for the varargs tuple
-            if name != argspec.varargs:
-                givens[arg] = arg.type(name='{0}'.format(arg.name))
-            else:
-                givens.update(
-                    (v, v.type(name='{0}_{1}'.format(argspec.varargs, i)))
-                    for i, v in enumerate(arg))
+        inputs = symbolic_vars['inputs'].values()
+        outputs = symbolic_vars['inputs'].values()
+        givens = symbolic_vars['givens']
 
-        # collect inputs
-        defaults = dict()
-        if argspec.defaults:
-            default_slice = slice(-len(argspec.defaults),
-                                  -1 if argspec.varargs else None)
-            defaults.update(zip(argspec.args[default_slice],
-                                argspec.defaults))
-        inputs = [theano.Param(
-            givens[arg], default=defaults.get(name), name=name)
-            for name, arg in self.s_args.iteritems()
-            if name is not argspec.varargs]
-
-        inputs.extend(givens[a] for a in self.s_args.get(argspec.varargs, ()))
-
-        # collect outputs
-        outputs = self.s_results.values()
         if len(outputs) == 1:
             outputs = outputs[0]
 
@@ -205,12 +225,11 @@ class Function(Symbolic):
                              on_unused_input='ignore')
 
         # store in cache corresponding to the number of positional inputs
+        argspec = getargspec(self.pyfn)
+        callargs = orderedcallargs(self.pyfn, *args, **kwargs)
         self.cache[len(callargs.get(argspec.varargs, ()))] = fn
 
         return fn
-
-    def __call__(self, *args, **kwargs):
-        return self.call(*args, **kwargs)
 
     def call(self, *args, **kwargs):
         argspec = getargspec(self.pyfn)
@@ -218,7 +237,7 @@ class Function(Symbolic):
 
         # try to retrieve function from cache; otherwise compile
         fn = self.cache.get(len(callargs.get(argspec.varargs, ())),
-                            self._compile_function(args, kwargs))
+                            self.compile_function(args, kwargs))
 
         pos_args = [callargs[arg] for arg in argspec.args]
         pos_args.extend(callargs.get(argspec.varargs, ()))
