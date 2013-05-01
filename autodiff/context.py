@@ -558,6 +558,14 @@ class FrameVM(object):
                                         dtype=str(rval.dtype)))
             else:
                 raise NotImplementedError(func)
+
+        # ================ Types
+
+        elif type(func) == type:
+            rval = func(*args, **kwargs)
+
+        # ================ Everything Else
+
         else:
             logger.debug('stepping into %s' % str(func))
             vm = FrameVM(self.watcher, func)
