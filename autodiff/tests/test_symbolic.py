@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
-import theano
 
-from autodiff.symbolic import Symbolic, Function, Gradient
+from autodiff.symbolic import Function
 
 
 def checkfn(symF, *args, **kwargs):
@@ -11,6 +10,7 @@ def checkfn(symF, *args, **kwargs):
     return np.allclose(ad_result, py_result)
 
 #========= Tests
+
 
 class TestFunction(unittest.TestCase):
     def test_fn_signatures(self):
@@ -50,7 +50,6 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, 2, 3, 4))
         self.assertTrue(checkfn(f, 2, 3, 4, 5))
 
-
         # multiple args, one default
         def fn(x, y=2):
             return x * y
@@ -62,3 +61,34 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, y=4, x=5))
         self.assertTrue(checkfn(f, x=5))
 
+        # multiple args, all default
+        def fn(x=1, y=2):
+            return x * y
+        f = Function(fn)
+        self.assertTrue(checkfn(f))
+        self.assertTrue(checkfn(f, 1))
+        self.assertTrue(checkfn(f, 1, 2))
+        self.assertTrue(checkfn(f, y=2, x=1))
+        self.assertTrue(checkfn(f, x=5))
+        self.assertTrue(checkfn(f, y=5))
+
+        # multiple var args, all default
+        def fn(x=1, y=2, *z):
+            return x * y * sum(z)
+        f = Function(fn)
+        self.assertRaises(Exception, f)
+        self.assertRaises(Exception, f, 1)
+        self.assertRaises(Exception, f, 1, 2)
+        self.assertTrue(checkfn(f, 1, 2, 3))
+        self.assertTrue(checkfn(f, 1, 2, 3, 4))
+
+        # kwargs
+        def fn(**kwargs):
+            x = kwargs['x']
+            y = kwargs['y']
+            z = kwargs['z']
+            return x * y * z
+        f = Function(fn)
+        self.assertRaises(KeyError, f)
+        self.assertRaises(TypeError, f, 1)
+        self.assertTrue(checkfn(f, x=1, y=2, z=3))
