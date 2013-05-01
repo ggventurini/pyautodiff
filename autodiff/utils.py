@@ -1,13 +1,41 @@
 import gc
 import opcode
+import inspect
+
+from autodiff.compat import OrderedDict, getcallargs
 
 #import theano
 #from theano.sandbox.cuda import cuda_ndarray
 #cuda_ndarray = cuda_ndarray.cuda_ndarray
 
 
+def orderedcallargs(fn, *args, **kwargs):
+    """
+    Returns an OrderedDictionary containing the names and values of a
+    function's arguments. The arguments are ordered according to the function's
+    argspec:
+        1. named arguments
+        2. variable positional argument
+        3. variable keyword argument
+    """
+    callargs = getcallargs(fn, *args, **kwargs)
+    argspec = inspect.getargspec(fn)
+
+    o_callargs = OrderedDict()
+    for argname in argspec.args:
+        o_callargs[argname] = callargs[argname]
+
+    if argspec.varargs:
+        o_callargs[argspec.varargs] = callargs[argspec.varargs]
+
+    if argspec.keywords:
+        o_callargs[argspec.keywords] = callargs[argspec.keywords]
+
+    return o_callargs
+
+
 def itercode(code):
-    """Return a generator of byte-offset, opcode, and argument 
+    """Return a generator of byte-offset, opcode, and argument
     from a byte-code-string
     """
     i = 0
@@ -89,6 +117,7 @@ def doc_from_flat(doc, flat, pos):
 class post_collect(object):
     def __init__(self, f):
         self.f = f
+
     def __call__(self, *args, **kwargs):
         try:
             return self.f(*args, **kwargs)
@@ -97,4 +126,3 @@ class post_collect(object):
             #mem_info = cuda_ndarray.mem_info()
             #om = cuda_ndarray.outstanding_mallocs()
             #print 'Post-gc: %s %s' % (mem_info, om)
-
