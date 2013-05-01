@@ -472,8 +472,7 @@ class FrameVM(object):
                     self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
             else:
                 # no argument was shadowed (e.g. zeros())
-                if isinstance(rval, np.ndarray):
-                    self.add_shadow(rval)
+                self.add_shadow(rval)
 
         # ================ Array methods
 
@@ -510,8 +509,6 @@ class FrameVM(object):
                 self.watcher.shadow(rval, s_self.astype(dtype))
             elif func.__name__ == 'sort':
                 # sort is an inplace method
-                assert not args
-                assert not kwargs
                 rval = func() # returns None
                 # shadow the original array; it has been updated inplace
                 self.watcher.shadow(func.__self__, s_self.sort())
@@ -538,6 +535,9 @@ class FrameVM(object):
                 self.watcher.shadow(rval, s_self.astype(dtype))
             else:
                 raise NotImplementedError(func)
+
+        # ================ built-ins
+
         elif 'built-in' in str(func):
             # -- built-in ndarray methods should be caught above, not here.
             if func.__name__ in ('setdefault',):
@@ -701,7 +701,7 @@ class FrameVM(object):
         # print 'LOAD_GLOBAL', self.names[arg]
         tos = self._myglobals[self.func.func_code.co_names[arg]]
         self.push(tos)
-        if (isinstance(tos, np.ndarray) and id(tos) not in self.watcher):
+        if id(tos) not in self.watcher:
             self.add_shadow(self.stack[-1])
 
     def op_LOAD_ATTR(self, i, op, arg):
@@ -744,7 +744,9 @@ class FrameVM(object):
             logger.debug('attribute access %s' % attr)
             rval = getattr(tos, attr)
             self.push(rval)
-            if (isinstance(rval, np.ndarray) and id(rval) not in self.watcher):
+            # if (isinstance(rval, np.ndarray) and id(rval) not in self.watcher):
+                # self.add_shadow(rval)
+            if id(rval) not in self.watcher:
                 self.add_shadow(rval)
 
     def op_LOAD_CONST(self, i, op, arg):
@@ -800,7 +802,9 @@ class FrameVM(object):
             cell = closure[arg - len(co_cellvars)]
             thing = cellget(cell)
         self.push(thing)
-        if (isinstance(thing, np.ndarray) and id(thing) not in self.watcher):
+        # if (isinstance(thing, np.ndarray) and id(thing) not in self.watcher):
+            # self.add_shadow(thing)
+        if id(thing) not in self.watcher:
             self.add_shadow(thing)
 
     def op_LOAD_FAST(self, i, op, arg):
