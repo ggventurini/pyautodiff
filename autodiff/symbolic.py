@@ -167,7 +167,7 @@ class Symbolic(object):
         argspec = getargspec(self.pyfn)
 
         # trace the function
-        self.trace(*args, **kwargs)
+        self.trace(args, kwargs)
 
         defaults = dict()
         if argspec.defaults:
