@@ -9,11 +9,20 @@ from autodiff.compat import OrderedDict, getcallargs
 
 class Symbolic(object):
     def __init__(self, pyfn):
-        self._pyfn = pyfn
+        # make deepcopy of pyfn because we might change its defaults
+        self._pyfn = copy.deepcopy(pyfn)
+
         self.s_vars = OrderedDict()
         self.s_args = OrderedDict()
         self.s_results = OrderedDict()
         self._cache = dict()
+
+        # replace integer defaults in pyfn to avoid problems
+        if self._pyfn.func_defaults:
+            new_defaults = tuple([np.int_(d)
+                                  if type(d) is int and -5 <= d <= 256 else d
+                                  for d in self._pyfn.func_defaults])
+            self._pyfn.func_defaults = new_defaults
 
     @property
     def pyfn(self):
