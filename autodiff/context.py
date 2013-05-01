@@ -22,8 +22,7 @@ import types
 import numpy as np
 import theano
 
-from autodiff.utils import itercode
-from autodiff.compat import OrderedDict, getcallargs
+from autodiff.utils import itercode, orderedcallargs
 
 logger.setLevel(logging.INFO)
 
@@ -53,6 +52,9 @@ class Unassigned(object):
 
 class LoadUnassigned(Exception):
     """Access to Unassigned value"""
+
+
+    return type(i) is int and -5 <= i <= 256
 
 
 class FrameVM(object):
@@ -103,12 +105,14 @@ class FrameVM(object):
         elif isinstance(x, float):
             s_x = self.watcher.shared(
                 np.asarray(x).astype(self.watcher.floatX))
-        elif x.dtype == bool:
+        elif getattr(x, 'dtype', None) == bool:
             print >> sys.stderr, ('Warning: Theano has no bool, '
                                   'upgrading to int8')
             s_x = self.watcher.shared(x.astype('int8'))
-        else:
+        elif isinstance(x, np.ndarray):
             s_x = self.watcher.shared(x)
+        else:
+            return
         self.watcher.shadow(x, s_x)
 
     def ensure_shadow(self, x):
@@ -137,20 +141,16 @@ class FrameVM(object):
             return func(*args, **kwargs)
 
         func_code = self.func.func_code
-        co_varnames = self.func.func_code.co_varnames
 
         self._myglobals = {}
-        self._locals = [Unassigned] * len(co_varnames)
+        self._locals = []
 
         _locals = self._locals
         if hasattr(func, 'im_self'):
             _locals[0] = func.im_self
-            bind_offset = 1
             if id(func.im_self) in self.watcher:
                 raise NotImplementedError('bound method on shadowed var: %s' %
                                           func.__name__)
-        else:
-            bind_offset = 0
 
         for name in func_code.co_names:
             #print 'name', name
@@ -163,33 +163,40 @@ class FrameVM(object):
                     #print 'WARNING: name lookup failed', name
                     pass
 
-        # get function arguments, in order
+        # get function arguments
         argspec = inspect.getargspec(func)
 
         # match function arguments to passed parameters
-        callargs = getcallargs(func, *args, **kwargs)
+        callargs = orderedcallargs(func, *args, **kwargs)
 
-        # build map of arguments: {name : argument}
-        arg_dict = OrderedDict()
-        for arg in argspec.args:
-            arg_dict[arg] = callargs[arg]
-        var_args = callargs.get(argspec.varargs, ())
-        if var_args:
-            arg_dict[argspec.varargs] = callargs.get(argspec.varargs, ())
+        # named args => locals
+        self._locals.extend(callargs[arg] for arg in argspec.args)
 
-        # transfer arguments to correct place in locals
-        self._locals[bind_offset:len(arg_dict)+bind_offset] = arg_dict.values()
+        # *args => locals
+        if argspec.varargs:
+            self._locals.append(callargs[argspec.varargs])
+
+        # **kwargs => locals
+        if argspec.keywords:
+            self._locals.append(callargs[argspec.keywords])
+
+        # other vars => locals
+        no_unbound_args = len(func_code.co_varnames) - len(self._locals)
+        self._locals.extend([Unassigned] * no_unbound_args)
 
         # shadow arguments
-        for name, lval in callargs.iteritems():
-            if name is not argspec.varargs:
-                if (isinstance(lval, np.ndarray) and not id(lval) in self.watcher):
-                    self.add_shadow(lval)
-
-        # add varargs
-        for arg in var_args:
-            if (isinstance(arg, np.ndarray) and not id(arg) in self.watcher):
-                self.add_shadow(arg)
+        for name, val in callargs.iteritems():
+            if name == argspec.varargs:
+                for v in val:
+                    if not is_small_int(v) and id(v) not in self.watcher:
+                        self.add_shadow(v)
+            elif name == argspec.keywords:
+                for v in val.values():
+                    if not is_small_int(v) and id(v) not in self.watcher:
+                        self.add_shadow(v)
+            else:
+                if not is_small_int(val) and id(val) not in self.watcher:
+                    self.add_shadow(val)
 
         self.code_iter = itercode(func_code.co_code)
         jmp = None
