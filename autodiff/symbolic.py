@@ -11,7 +11,29 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
-    def __init__(self, pyfn, floatX=None, borrow=None):
+    def __init__(self, pyfn, borrow=None, force_floatX=False):
+        """
+        Arguments
+        ---------
+
+        pyfn : Python function
+            The function that will be traced. The will attempt to build
+            symbolic representations of any variables referenced in or created
+            by this function.
+
+        borrow : tuple of objects
+            If an object in this tuple is encountered while tracing the
+            function, then its symbolic representation will alias that object's
+            memory location. This means that *inplace* operations on the Python
+            (likely NumPy) object will affect the symbolic function.
+
+        force_floatX : bool
+            If True, floats and float NumPy ndarrays will be cast to the dtype
+            specified at theano.config.floatX when forming symbolic shared
+            variables, if they do not have it already. Objects in `borrowable`
+            are never cast.
+
+        """
         # make deepcopy of pyfn because we might change its defaults
         self._pyfn = copy.deepcopy(pyfn)
 
@@ -19,9 +41,7 @@ class Symbolic(object):
         self.s_args = OrderedDict()
         self.s_results = OrderedDict()
         self._cache = dict()
-        if floatX is None:
-            floatX = theano.config.floatX
-        self.floatX = floatX
+        self.force_floatX = force_floatX
         self.borrow = utils.as_seq(borrow)
 
         # replace integer defaults in pyfn to avoid problems
@@ -108,7 +128,7 @@ class Symbolic(object):
         self.s_results.clear()
 
         # trace the function
-        c = Context(floatX=self.floatX, borrowable=self.borrow)
+        c = Context(borrowable=self.borrow, force_floatX=self.force_floatX)
         results = c.call(self.pyfn, args, kwargs)
 
         # collect symbolic variables in s_vars
@@ -281,8 +301,10 @@ class Function(Symbolic):
 
 class Gradient(Function):
 
-    def __init__(self, pyfn, wrt=None, floatX=None):
-        super(Gradient, self).__init__(pyfn=pyfn, floatX=floatX)
+    def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
+        super(Gradient, self).__init__(pyfn=pyfn,
+                                       borrow=borrow,
+                                       force_floatX=force_floatX)
         self.wrt = utils.as_seq(wrt)
 
     def compile_function(self, args, kwargs):

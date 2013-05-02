@@ -104,8 +104,7 @@ class FrameVM(object):
                 raise Exception('cannot shadow low integer constants')
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
-            s_x = self.watcher.shared(
-                np.asarray(x).astype(self.watcher.floatX))
+            s_x = self.watcher.shared(np.asarray(x))
         elif getattr(x, 'dtype', None) == bool:
             print >> sys.stderr, ('Warning: Theano has no bool, '
                                   'upgrading to int8')
@@ -992,15 +991,27 @@ class FrameVM(object):
 
 
 class Context(object):
-    def __init__(self, device=None, borrowable=(), floatX=None):
+    def __init__(self, device=None, borrowable=(), force_floatX=False):
+        """
+        borrowable : tuple of objects
+            If an object in this tuple is encountered while tracing the
+            function, then its symbolic representation will alias that object's
+            memory location. This means that *inplace* operations on the Python
+            (likely NumPy) object will affect the symbolic function.
+
+        force_floatX : bool
+            If True, floats and float NumPy ndarrays will be cast to the dtype
+            specified at theano.config.floatX when forming symbolic shared
+            variables, if they do not have it already. Objects in `borrowable`
+            are never cast.
+
+        """
         self.svars = {}
         self.nogc = []  # ids that must not be reused
         # XXX: rethink to avoid actually holding on to all these intermediates.
         self.device = device
         self.borrowable_ids = [id(b) for b in borrowable]
-        if floatX is None:
-            floatX = theano.config.floatX
-        self.floatX = floatX
+        self.force_floatX = force_floatX
 
     def __iter__(self):
         return self.svars.__iter__()
@@ -1031,6 +1042,11 @@ class Context(object):
     def shared(self, obj, name=None, borrow=None):
         if borrow is None:
             borrow = (id(obj) in self.borrowable_ids)
+        if self.force_floatX and not borrow:
+            if (isinstance(obj, np.ndarray)
+                and 'float' in str(obj.dtype)
+                and str(obj.dtype) != theano.config.floatX):
+                obj = obj.astype(theano.config.floatX)
         if self.device == 'cpu':
             return theano.tensor._shared(obj, borrow=borrow)
         else:
