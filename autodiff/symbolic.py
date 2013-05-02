@@ -210,7 +210,7 @@ class Symbolic(object):
                                 reversed(argspec.defaults)))
 
         # ========== collect inputs, givens
-        inputs, inputvars, givens = OrderedDict(), OrderedDict(), OrderedDict()
+        inputs, givens = OrderedDict(), OrderedDict()
         for name, arg in self.s_args.iteritems():
             if name != argspec.varargs:
                 givens[arg] = arg.type(name=arg.name)
