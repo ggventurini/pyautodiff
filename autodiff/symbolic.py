@@ -1,6 +1,8 @@
+import __builtin__
 import copy
 import numpy as np
 import theano
+import theano.tensor as tt
 from inspect import getargspec
 
 from autodiff.context import Context
@@ -267,3 +269,45 @@ class Function(Symbolic):
         kw_args = callargs.get(argspec.keywords, {})
 
         return fn(*pos_args, **kw_args)
+
+
+class Gradient(Function):
+
+    def __init__(self, pyfn, wrt=None):
+        super(Gradient, self).__init__(pyfn=pyfn)
+        self.wrt = utils.as_seq(wrt)
+
+    def compile_function(self, args, kwargs):
+        theano_vars = self.get_theano_vars(args, kwargs)
+
+        inputs = theano_vars['inputs'].values()
+        outputs = theano_vars['outputs'].values()
+        givens = theano_vars['givens']
+
+        # get wrt variables. If none were specified, use inputs.
+        if len(self.wrt) == 0:
+            wrt = givens.keys()
+        else:
+            wrt = [self.get_symbolic_arg(w) for w in self.wrt]
+
+        grads = [tt.grad(o, wrt=wrt) for o in outputs]
+
+        if len(grads) == 1:
+            grads = grads[0]
+
+        if __builtin__.any(w.dtype[:3] == 'int' for w in wrt):
+            print ('WARNING: the gradient with respect to an '
+                   'int is defined as 0.')
+
+        # compile function
+        fn = theano.function(inputs=inputs,
+                             outputs=grads,
+                             givens=givens,
+                             on_unused_input='ignore')
+
+        # store in cache corresponding to the number of positional inputs
+        argspec = getargspec(self.pyfn)
+        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
+        self.cache[len(callargs.get(argspec.varargs, ()))] = fn
+
+        return fn

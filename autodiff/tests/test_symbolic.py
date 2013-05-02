@@ -1,13 +1,14 @@
 import unittest
 import numpy as np
 
-from autodiff.symbolic import Function
+from autodiff.symbolic import Function, Gradient
 
 
 def checkfn(symF, *args, **kwargs):
     py_result = symF.pyfn(*args, **kwargs)
     ad_result = symF(*args, **kwargs)
     return np.allclose(ad_result, py_result)
+
 
 #========= Tests
 
@@ -92,3 +93,40 @@ class TestFunction(unittest.TestCase):
         self.assertRaises(KeyError, f)
         self.assertRaises(TypeError, f, 1)
         self.assertTrue(checkfn(f, x=1, y=2, z=3))
+
+        # varargs and kwargs
+        def fn(a, *b, **kwargs):
+            x = kwargs['x']
+            y = kwargs['y']
+            z = kwargs['z']
+            return x * y * z
+        f = Function(fn)
+        self.assertRaises(TypeError, f)
+        self.assertRaises(KeyError, f, 1)
+        self.assertRaises(TypeError, f, x=1, y=2, z=3)
+        self.assertTrue(checkfn(f, 1, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+
+        # varargs and kwargs, use varargs
+        def fn(a, *b, **kwargs):
+            x = kwargs['x']
+            y = kwargs['y']
+            z = kwargs['z']
+            return x * y * z * b[0]
+        f = Function(fn)
+        self.assertTrue(checkfn(f, 1, 2, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+
+    def test_fn_constants(self):
+        # access constant array
+        def fn(x):
+            return np.dot(x, np.ones((3, 4)))
+        f = Function(fn)
+        self.assertTrue(checkfn(f, np.ones((2, 3))))
+
+
+class TestGradient(unittest.TestCase):
+    def test_simple_gradients(self):
+        g = Gradient(lambda x: x ** 2)
+        self.assertTrue(np.allclose(g(3), 0))
+        self.assertTrue(np.allclose(g(3.0), 6))
