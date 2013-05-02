@@ -992,12 +992,14 @@ class FrameVM(object):
 
 
 class Context(object):
-    def __init__(self, device=None, borrowable=(), floatX='float64'):
+    def __init__(self, device=None, borrowable=(), floatX=None):
         self.svars = {}
         self.nogc = []  # ids that must not be reused
         # XXX: rethink to avoid actually holding on to all these intermediates.
         self.device = device
         self.borrowable_ids = [id(b) for b in borrowable]
+        if floatX is None:
+            floatX = theano.config.floatX
         self.floatX = floatX
 
     def __iter__(self):
