@@ -544,7 +544,9 @@ class FrameVM(object):
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
                 if any(id(a) in self.watcher.svars for a in all_args_expanded):
-                    raise NotImplementedError()
+                    raise NotImplementedError(
+                        '{0} is not supported for symbolic '
+                        'variables.'.format(func.__))
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
                 assert not kwargs  # -- rand doesn't take kwargs right?
