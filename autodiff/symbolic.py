@@ -220,12 +220,16 @@ class Symbolic(object):
             if x in self.s_args:
                 return self.s_args[x]
             else:
-                raise ValueError('Argument {0} has not been traced.'.format(x))
+                raise ValueError('Requested the symbolic variable '
+                                 'shadowing object {0}, but it was '
+                                 'not traced.'.format(repr(x)))
         else:
             if id(x) in self.s_vars:
                 return self.s_vars[id(x)]
             else:
-                raise ValueError('Object {0} has not been traced.'.format(x))
+                raise ValueError('Requested the symbolic variable '
+                                 'shadowing object {0}, but it was '
+                                 'not traced.'.format(repr(x)))
 
 
 class Function(Symbolic):
