@@ -11,7 +11,7 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
-    def __init__(self, pyfn, floatX=None):
+    def __init__(self, pyfn, floatX=None, borrow=None):
         # make deepcopy of pyfn because we might change its defaults
         self._pyfn = copy.deepcopy(pyfn)
 
@@ -22,6 +22,7 @@ class Symbolic(object):
         if floatX is None:
             floatX = theano.config.floatX
         self.floatX = floatX
+        self.borrow = utils.as_seq(borrow)
 
         # replace integer defaults in pyfn to avoid problems
         if self._pyfn.func_defaults:
@@ -107,7 +108,7 @@ class Symbolic(object):
         self.s_results.clear()
 
         # trace the function
-        c = Context(floatX=self.floatX)
+        c = Context(floatX=self.floatX, borrowable=self.borrow)
         results = c.call(self.pyfn, args, kwargs)
 
         # collect symbolic variables in s_vars
