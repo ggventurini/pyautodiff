@@ -294,8 +294,9 @@ class Function(Symbolic):
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
 
         # try to retrieve function from cache; otherwise compile
-        fn = self.cache.get(len(callargs.get(argspec.varargs, ())),
-                            self.compile_function(args, kwargs))
+        fn = self.cache.get(len(callargs.get(argspec.varargs, ())))
+        if not fn:
+            fn = self.compile_function(args, kwargs)
 
         pos_args = [callargs[arg] for arg in argspec.args]
         pos_args.extend(callargs.get(argspec.varargs, ()))
