@@ -7,7 +7,6 @@ Automatic differentiation for NumPy (very new, experimental, unreliable, etc... 
 
 ---
 ### Dependencies:
-  * Python 2.7 (for now)
   * [NumPy](http://www.numpy.org/)
   * [Theano](http://deeplearning.net/software/theano/)
 
