@@ -23,7 +23,11 @@ class Symbolic(object):
             new_defaults = tuple([np.int_(d)
                                   if type(d) is int and -5 <= d <= 256 else d
                                   for d in self._pyfn.func_defaults])
+
             self._pyfn.func_defaults = new_defaults
+
+    def __call__(self, *args, **kwargs):
+        return self.get_theano_vars(args, kwargs)
 
     @property
     def pyfn(self):
