@@ -127,6 +127,36 @@ class TestFunction(unittest.TestCase):
 
 class TestGradient(unittest.TestCase):
     def test_simple_gradients(self):
+        # straightforward gradient
         g = Gradient(lambda x: x ** 2)
-        self.assertTrue(np.allclose(g(3), 0))
         self.assertTrue(np.allclose(g(3.0), 6))
+
+        # int args may result in 0 gradients
+        self.assertTrue(np.allclose(g(3), 0))
+
+        # gradient of two arguments
+        fn = lambda x, y: x * y
+        g = Gradient(fn)
+        self.assertTrue(np.allclose(g(3.0, 5.0), [5.0, 3.0]))
+
+    def test_wrt(self):
+        fn = lambda x, y: x * y
+
+        # function of two arguments, gradient of one
+        g = Gradient(fn, wrt='x')
+        self.assertTrue(np.allclose(g(3.0, 5.0), 5.0))
+
+        g = Gradient(fn, wrt='y')
+        self.assertTrue(np.allclose(g(3.0, 5.0), 3.0))
+
+        # test object tracking for wrt
+        a = 3.0
+        b = 5.0
+        g = Gradient(fn, wrt=[a, b])
+        self.assertTrue(np.allclose(g(a, b), [b, a]))
+
+        g = Gradient(fn, wrt=a)
+        self.assertTrue(np.allclose(g(a, b), b))
+
+        g = Gradient(fn, wrt=b)
+        self.assertTrue(np.allclose(g(a, b), a))
