@@ -63,7 +63,16 @@ g(a, b)  # [[ 0.2,  0.2,  0.2]
 
 ```
 
+Finally, classes may be used instead of decorators for more object-oriented work:
+```python
+from autodiff import Function, Gradient
+f = Function(lambda x : x ** 2)
+g = Gradient(lambda x : x ** 2, wrt='x')
+```
+
 ## Caveats
+* If you can do it in Theano, you can do it here. Simpler is better to avoid translation errors.
+* Any variables referenced (or created) in a compiled function become local to that function.
 * PyAutoDiff expects function arguments to have Theano equivalents. Most NumPy array types or floats are ok; lists, tuples, dicts, and strings are not (with the exception of `*args` and `**kwargs`).
 * Theano can only run float32 dtypes on the GPU (see the [documentation](http://deeplearning.net/software/theano/tutorial/using_gpu.html) for more information.)
 * Theano usually defines any gradient with respect to an integer dtype as 0.
