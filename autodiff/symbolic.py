@@ -46,10 +46,15 @@ class Symbolic(object):
 
         # replace integer defaults in pyfn to avoid problems
         if self._pyfn.func_defaults:
-            new_defaults = tuple([np.int_(d)
-                                  if type(d) is int and -5 <= d <= 256 else d
-                                  for d in self._pyfn.func_defaults])
-
+            a = getargspec(self._pyfn)
+            new_defaults = []
+            for n, d in zip(reversed(a.args), reversed(a.defaults)):
+                if (n not in self.keep_int
+                    and type(d) is int
+                    and -5 <= d <= 256):
+                    new_defaults.append(np.int_(d))
+                else:
+                    new_defaults.append(d)
             self._pyfn.func_defaults = new_defaults
 
     def __call__(self, *args, **kwargs):
