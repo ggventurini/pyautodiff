@@ -694,6 +694,8 @@ class FrameVM(object):
     def op_LOAD_GLOBAL(self, i, op, arg):
         # print 'LOAD_GLOBAL', self.names[arg]
         tos = self._myglobals[self.func.func_code.co_names[arg]]
+        if type(tos) is int:
+            tos = _int(tos)
         self.push(tos)
         if id(tos) not in self.watcher:
             self.add_shadow(self.stack[-1])
@@ -745,6 +747,8 @@ class FrameVM(object):
 
     def op_LOAD_CONST(self, i, op, arg):
         tos = self.func.func_code.co_consts[arg]
+        if type(tos) is int:
+            tos = _int(tos)
         self.push(tos)
         if isinstance(tos, float):
             if id(tos) not in self.watcher:
@@ -803,11 +807,12 @@ class FrameVM(object):
 
     def op_LOAD_FAST(self, i, op, arg):
         tos = self._locals[arg]
+
         try:
             self.push(tos)
         except LoadUnassigned:
             raise LoadUnassigned(self.func.func_code.co_varnames[arg])
-        if (isinstance(tos, np.ndarray) and id(tos) not in self.watcher):
+        if id(tos) not in self.watcher:
             self.add_shadow(tos)
 
     def op_MAKE_CLOSURE(self, i, op, arg):

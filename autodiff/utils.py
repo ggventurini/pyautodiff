@@ -1,6 +1,7 @@
 import gc
 import opcode
 import inspect
+import numpy as np
 
 from autodiff.compat import OrderedDict, getcallargs
 
@@ -9,15 +10,13 @@ from autodiff.compat import OrderedDict, getcallargs
 #cuda_ndarray = cuda_ndarray.cuda_ndarray
 
 
-class _int(int):
+def _int(i):
     """
     CPython caches small ints (-5 <= i <= 256), so they share ids and can not
-    be differentiated. This int class does not get cached, so two variables
+    be differentiated. NumPy int classes do not get cached, so two variables
     with the same _int value will have different ids.
-
     """
-    def __new__(cls, *args, **kwargs):
-        return int.__new__(cls, *args, **kwargs)
+    return np.int(i)
 
 
 def orderedcallargs(fn, *args, **kwargs):
