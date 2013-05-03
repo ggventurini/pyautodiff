@@ -23,6 +23,7 @@ import numpy as np
 import theano
 
 from autodiff.utils import itercode, orderedcallargs
+from autodiff.constant import Constant, _constants
 
 logger.setLevel(logging.INFO)
 
@@ -91,6 +92,8 @@ class FrameVM(object):
         return rval
 
     def add_shadow(self, x):
+        if id(x) in _constants:
+            return
         # -- We cannot safely set up shadow variables that are aliased to
         #    memory that is visible to the running program, unless that
         #    program can guarantee that all views of that memory are
@@ -119,7 +122,7 @@ class FrameVM(object):
             x = np.int_(x)
         if id(x) not in self.watcher:
             self.add_shadow(x)
-        return self.watcher.svars[id(x)]
+        return self.watcher.getvar(x)
 
     def call(self, args, kwargs):
         if not isinstance(args, tuple):
@@ -536,10 +539,11 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
-                # if any(id(a) in self.watcher.svars for a in all_args_expanded):
-                    # raise NotImplementedError(
-                        # '{0} can not be called with symbolic arguments '
-                        # 'because it has no Theano equivalent.'.format(func))
+                if any(id(a) in self.watcher.svars for a in all_args_expanded):
+                    raise NotImplementedError(
+                        '{0} can not be called with symbolic arguments '
+                        'because it has no Theano equivalent. Try wrapping '
+                        'the arguments with Constant().'.format(func))
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
                 assert not kwargs  # -- rand doesn't take kwargs right?
@@ -556,6 +560,11 @@ class FrameVM(object):
         # ================ Types
 
         elif type(func) == type:
+            rval = func(*args, **kwargs)
+
+        # ================ AutoDiff Constant
+
+        elif func is Constant:
             rval = func(*args, **kwargs)
 
         # ================ Everything Else
