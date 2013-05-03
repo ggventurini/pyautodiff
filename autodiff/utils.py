@@ -16,7 +16,7 @@ def _int(i):
     be differentiated. NumPy int classes do not get cached, so two variables
     with the same _int value will have different ids.
     """
-    return np.int(i)
+    return np.int_(i)
 
 
 def orderedcallargs(fn, *args, **kwargs):
