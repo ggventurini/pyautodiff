@@ -272,7 +272,6 @@ class Function(Symbolic):
             outputs = outputs[0]
 
         # compile function
-        print 'COMPILING'
         fn = theano.function(inputs=inputs,
                              outputs=outputs,
                              givens=givens,
