@@ -4,16 +4,15 @@
 ####Automatic differentiation for NumPy.
 
 ---
-PyAutoDiff automatically compiles NumPy code using [Theano](http://deeplearning.net/software/theano/)'s powerful symbolic engine, allowing users to take advantage of features like mathematical optimization, GPU acceleration, and automatic symbolic differentiation.
+PyAutoDiff automatically compiles NumPy code using [Theano](http://deeplearning.net/software/theano/)'s powerful symbolic engine, allowing users to take advantage of features like mathematical optimization, GPU acceleration, and automatic  differentiation.
 
 **This library is under active development. Features may break or change.**
-
 
 ## Quickstart
 ```python
 from autodiff import function, gradient
 ```
-The `@function` decorator instructs Theano to compile the decorated function. It is possible to run the compiled function on an available GPU if float32 dtypes are used.
+The `@function` decorator instructs PyAutoDiff to compile the decorated function in Theano. It is possible to run the compiled function on an available GPU if float32 dtypes are used.
 ```python
 @function
 def f(x):
@@ -23,7 +22,7 @@ f(10.0) # 100.0
 f(20.0) # 400.0 
 ```
 
-The `@gradient` decorator automatically calculates the gradient (or derivative) of any scalar-valued function with respect to its inputs. Use caution with integer arguments -- Theano usually defines any gradient with respect to an integer as 0!
+The `@gradient` decorator automatically calculates the gradient (or derivative) of any scalar-valued function with respect to its inputs. 
 
 ```python
 @gradient
@@ -50,43 +49,46 @@ g(3.0, 5.0) # 5.0
 PyAutoDiff supports most NumPy operations that have Theano equivalents, and is fully compatible with array calculations. Here is a more complex example: 
 ```python
 @gradient('y', 'z')
-def g(x, y, z=2):
+def g(x, y, z=0.2):
     tmp = np.dot(x, y) * z
     tmp[0, 1] = tmp[1, 1]
     return tmp.sum()
 
-a = np.array([1.0, 2.0])
+a = np.arange(4.).reshape(2, 2)
 b = np.arange(6.).reshape(2, 3)
 
-g(a, b)  # [[ 0.2,  0.2,  0.2]
-         #  [ 0.4,  0.4,  0.4]]     27.0
+g(a, b)  # [[ 0.4,  0.8,  0.4]
+         #  [ 0.8,  1.2,  0.8]]     64.0
 
 ```
 
-Finally, classes may be used instead of decorators for more object-oriented work:
+Classes may be used instead of decorators:
 ```python
 from autodiff import Function, Gradient
 f = Function(lambda x : x ** 2)
 g = Gradient(lambda x : x ** 2, wrt='x')
 ```
 
-## Caveats
-* If you can do it in Theano, you can do it here. Simpler is better to avoid translation errors.
-* Any variables referenced (or created) in a compiled function become local to that function.
-* PyAutoDiff expects function arguments to have Theano equivalents. Most NumPy array types or floats are ok; lists, tuples, dicts, and strings are not (with the exception of `*args` and `**kwargs`).
-* Theano can only run float32 dtypes on the GPU (see the [documentation](http://deeplearning.net/software/theano/tutorial/using_gpu.html) for more information.)
-* Theano usually defines any gradient with respect to an integer dtype as 0.
-* Small Python `int` types can not be traced due to CPython caching. PyAutoDiff tries to convert them to NumPy `int` types when possible. However, this can create problems with some Theano functions that require `int` arguments. For example:
-
+Note that compiling "locks" any control flow tools:
 ```python
 @function
-def this_works(x):
-    return x.sum(axis=1)
+def loop_mult(x, N):
+    y = 0
+    for i in range(N):
+        y += x
+    return y
 
-@function
-def this_fails(x, a):
-    return x.sum(axis=a)
+loop_mult(2, 4) # 8
+loop_mult(2, 5) # also 8! The loop is locked in the compiled function.
 ```
+
+---
+### Caveats
+Generally, PyAutoDiff supports any NumPy operation with a Theano equivalent. You will probably get unexpected results if you use more general Python operations like control flow tools (`for`, `if/else`, `try/except`, etc.) or iteraters without understanding how Theano handles them.
+
+When PyAutoDiff prepares to compile, it calls the Python function one time in order to find out what it does. With the exception of NumPy arrays and numbers, whatever happens on that first run is locked into the compiled function: the length of every `for` loop, the selected branch of every `if/else` statement, even the axis of every `np.sum(axis=my_var)`.
+
+As a rule of thumb: if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance it won't behave as you expect.
 
 ---
 ### Dependencies:
