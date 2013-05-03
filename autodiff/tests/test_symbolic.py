@@ -14,7 +14,7 @@ def checkfn(symF, *args, **kwargs):
 
 
 class TestFunction(unittest.TestCase):
-    def test_fn_signatures(self):
+    def test_sig_one_arg(self):
         # single arg, no default
         def fn(x):
             return x
@@ -24,6 +24,7 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, 2))
         self.assertTrue(checkfn(f, x=2))
 
+    def test_sig_mult_args(self):
         # multiple args, no default
         def fn(x, y):
             return x * y
@@ -34,6 +35,7 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, 2, 3))
         self.assertTrue(checkfn(f, y=4, x=5))
 
+    def test_sig_var_args(self):
         # var args, no default
         def fn(x, y, *z):
             return x * y * sum(z)
@@ -41,7 +43,7 @@ class TestFunction(unittest.TestCase):
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, 2)
         self.assertRaises(TypeError, f, a=2, b=2)
-        self.assertRaises(Exception, f, 2, 3)
+        self.assertTrue(checkfn(f, 2, 3))
         self.assertTrue(checkfn(f, 2, 3, 4))
         self.assertTrue(checkfn(f, 2, 3, 4, 5))
 
@@ -51,6 +53,7 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, 2, 3, 4))
         self.assertTrue(checkfn(f, 2, 3, 4, 5))
 
+    def test_sig_default_args(self):
         # multiple args, one default
         def fn(x, y=2):
             return x * y
@@ -73,16 +76,18 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, x=5))
         self.assertTrue(checkfn(f, y=5))
 
+    def test_sig_default_var_args(self):
         # multiple var args, all default
         def fn(x=1, y=2, *z):
             return x * y * sum(z)
         f = Function(fn)
-        self.assertRaises(Exception, f)
-        self.assertRaises(Exception, f, 1)
-        self.assertRaises(Exception, f, 1, 2)
+        self.assertTrue(checkfn(f))
+        self.assertTrue(checkfn(f, 1))
+        self.assertTrue(checkfn(f, 1, 2))
         self.assertTrue(checkfn(f, 1, 2, 3))
         self.assertTrue(checkfn(f, 1, 2, 3, 4))
 
+    def test_sig_kwargs(self):
         # kwargs
         def fn(**kwargs):
             x = kwargs['x']
@@ -94,6 +99,7 @@ class TestFunction(unittest.TestCase):
         self.assertRaises(TypeError, f, 1)
         self.assertTrue(checkfn(f, x=1, y=2, z=3))
 
+    def test_sig_varargs_kwargs(self):
         # varargs and kwargs
         def fn(a, *b, **kwargs):
             x = kwargs['x']
@@ -131,9 +137,6 @@ class TestGradient(unittest.TestCase):
         g = Gradient(lambda x: x ** 2)
         self.assertTrue(np.allclose(g(3.0), 6))
 
-        # int args may result in 0 gradients
-        self.assertTrue(np.allclose(g(3), 0))
-
         # gradient of two arguments
         fn = lambda x, y: x * y
         g = Gradient(fn)
@@ -160,3 +163,11 @@ class TestGradient(unittest.TestCase):
 
         g = Gradient(fn, wrt=b)
         self.assertTrue(np.allclose(g(a, b), a))
+
+
+
+# from autodiff import Function
+# f = Function(lambda x,a:x.sum(a))
+# f(np.ones((3,4)), 1)
+
+
