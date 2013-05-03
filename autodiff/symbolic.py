@@ -1,5 +1,4 @@
 import copy
-import numpy as np
 import theano
 import theano.tensor as tt
 from inspect import getargspec
@@ -41,14 +40,15 @@ class Symbolic(object):
         self.s_results = OrderedDict()
         self._cache = dict()
         self.force_floatX = force_floatX
-        self.borrow = utils.as_seq(borrow)
-        # replace integer defaults in pyfn to avoid problems
+        self.borrow = utils.as_seq(borrow, tuple)
+
+        # replace integer defaults in pyfn to avoid tracing problems
         if self._pyfn.func_defaults:
             a = getargspec(self._pyfn)
             new_defaults = []
             for n, d in zip(reversed(a.args), reversed(a.defaults)):
                 if type(d) is int and -5 <= d <= 256:
-                    new_defaults.append(np.int_(d))
+                    new_defaults.append(utils._int(d))
                 else:
                     new_defaults.append(d)
             self._pyfn.func_defaults = tuple(new_defaults)
