@@ -56,6 +56,12 @@ class Symbolic(object):
     def __call__(self, *args, **kwargs):
         return self.get_theano_vars(args, kwargs)
 
+    def reset(self):
+        self.s_vars.clear()
+        self.s_args.clear()
+        self.s_results.clear()
+        self.cache.clear()
+
     @property
     def pyfn(self):
         return self._pyfn
