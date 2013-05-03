@@ -536,10 +536,10 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
-                if any(id(a) in self.watcher.svars for a in all_args_expanded):
-                    raise NotImplementedError(
-                        '{0} can not be called with symbolic arguments '
-                        'because it has no Theano equivalent.'.format(func))
+                # if any(id(a) in self.watcher.svars for a in all_args_expanded):
+                    # raise NotImplementedError(
+                        # '{0} can not be called with symbolic arguments '
+                        # 'because it has no Theano equivalent.'.format(func))
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
                 assert not kwargs  # -- rand doesn't take kwargs right?
