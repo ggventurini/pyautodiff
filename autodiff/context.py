@@ -22,7 +22,7 @@ import types
 import numpy as np
 import theano
 
-from autodiff.utils import itercode, orderedcallargs
+from autodiff.utils import itercode, orderedcallargs, _int
 
 logger.setLevel(logging.INFO)
 
@@ -52,10 +52,6 @@ class Unassigned(object):
 
 class LoadUnassigned(Exception):
     """Access to Unassigned value"""
-
-
-def is_small_int(i):
-    return type(i) is int and -5 <= i <= 256
 
 
 class FrameVM(object):
@@ -98,10 +94,11 @@ class FrameVM(object):
         # -- We cannot safely set up shadow variables that are aliased to
         #    memory that is visible to the running program, unless that
         #    program can guarantee that all views of that memory are
-        #    immutable.
+        #    immutable. CPython caches small ints (-5 <= i <= 256), so
+        #    we wrap them in a non-cached _int() instance.
         if isinstance(x, int):
             if type(x) is int and -5 <= x <= 256:
-                raise Exception('cannot shadow low integer constants')
+                x = _int(x)
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
             s_x = self.watcher.shared(np.asarray(x))
@@ -116,14 +113,10 @@ class FrameVM(object):
         self.watcher.shadow(x, s_x)
 
     def ensure_shadow(self, x):
-        # CPython re-uses ids for low integers, so we can't shadow them
+        # small ints can not be shadowed due to CPython memory caching, so we
+        # wrap them in non-cached _ints.
         if type(x) is int and -5 <= x <= 256:
-            # It is admitedly a misnomer that ensure_shadow() does not in fact
-            # create an svars entry for id(x)...  not sure how to deal with
-            # that.
-            assert id(x) not in self.watcher
-            return theano.tensor.as_tensor_variable(x)
-
+            x = _int(x)
         if id(x) not in self.watcher:
             self.add_shadow(x)
         return self.watcher.svars[id(x)]
@@ -188,14 +181,14 @@ class FrameVM(object):
         for name, val in callargs.iteritems():
             if name == argspec.varargs:
                 for v in val:
-                    if not is_small_int(v) and id(v) not in self.watcher:
+                    if id(v) not in self.watcher:
                         self.add_shadow(v)
             elif name == argspec.keywords:
                 for v in val.values():
-                    if not is_small_int(v) and id(v) not in self.watcher:
+                    if id(v) not in self.watcher:
                         self.add_shadow(v)
             else:
-                if not is_small_int(val) and id(val) not in self.watcher:
+                if id(val) not in self.watcher:
                     self.add_shadow(val)
 
         self.code_iter = itercode(func_code.co_code)
@@ -545,8 +538,8 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
                 if any(id(a) in self.watcher.svars for a in all_args_expanded):
                     raise NotImplementedError(
-                        '{0} is not supported for symbolic '
-                        'variables.'.format(func.__))
+                        '{0} can not be called with symbolic arguments '
+                        'because it has no Theano equivalent.'.format(func))
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
                 assert not kwargs  # -- rand doesn't take kwargs right?

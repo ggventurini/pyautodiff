@@ -9,6 +9,17 @@ from autodiff.compat import OrderedDict, getcallargs
 #cuda_ndarray = cuda_ndarray.cuda_ndarray
 
 
+class _int(int):
+    """
+    CPython caches small ints (-5 <= i <= 256), so they share ids and can not
+    be differentiated. This int class does not get cached, so two variables
+    with the same _int value will have different ids.
+
+    """
+    def __new__(cls, *args, **kwargs):
+        return int.__new__(cls, *args, **kwargs)
+
+
 def orderedcallargs(fn, *args, **kwargs):
     """
     Returns an OrderedDictionary containing the names and values of a

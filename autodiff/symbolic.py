@@ -43,19 +43,16 @@ class Symbolic(object):
         self._cache = dict()
         self.force_floatX = force_floatX
         self.borrow = utils.as_seq(borrow)
-
         # replace integer defaults in pyfn to avoid problems
         if self._pyfn.func_defaults:
             a = getargspec(self._pyfn)
             new_defaults = []
             for n, d in zip(reversed(a.args), reversed(a.defaults)):
-                if (n not in self.keep_int
-                    and type(d) is int
-                    and -5 <= d <= 256):
+                if type(d) is int and -5 <= d <= 256:
                     new_defaults.append(np.int_(d))
                 else:
                     new_defaults.append(d)
-            self._pyfn.func_defaults = new_defaults
+            self._pyfn.func_defaults = tuple(new_defaults)
 
     def __call__(self, *args, **kwargs):
         return self.get_theano_vars(args, kwargs)
@@ -100,32 +97,31 @@ class Symbolic(object):
         elif not isinstance(kwargs, dict):
             raise TypeError('args must be a dict')
 
-        # check for small ints and collections
         def check(name, i):
-            # Check argument i (with name 'name') for small ints or
-            # collections.  If it is a small int, replace it with a numpy int.
-            # If a collection, raise a helpful error.
-            #
-            # This is required because:
-            #     1. PyAutoDiff can not shadow CPython ints because they are
-            #     cached objects that reuse ids.
-            #
-            #     2. Theano functions can not accept arguments that are
-            #     collections.
+            # check for collections/small ints
             if type(i) is int and -5 <= i <= 256:
-                return np.int_(i)
+                return utils._int(i)
             elif isinstance(i, (list, tuple, dict)):
-                raise TypeError('Function arguments can not be '
-                                'containers (received {0} for '
-                                'argument \'{1}\').'.format(i, name))
+                raise TypeError(
+                    'Function arguments can not be containers (received '
+                    '{0} for argument \'{1}\').'.format(i, name))
             else:
                 return i
 
         argspec = getargspec(self.pyfn)
-        tmp_args = tuple(check(n, a) for n, a in zip(argspec.args, args))
-        args = tmp_args + tuple(check(argspec.varargs, a)
-                                for a in args[len(argspec.args):])
-        kwargs = OrderedDict((k, check(k, v)) for k, v in kwargs.iteritems())
+
+        args = list(args)
+
+        for i, (n, a) in enumerate(zip(argspec.args, args)):
+            args[i] = check(n, a)
+
+        for i, a in enumerate(args[len(argspec.args):]):
+            args[len(argspec.args) + i] = check(argspec.varargs, a)
+
+        for k, v in kwargs.iteritems():
+            kwargs[k] = check(k, v)
+
+        args = tuple(args)
 
         # clear symbolic dictionaries
         self.s_vars.clear()
@@ -242,23 +238,23 @@ class Symbolic(object):
         If x is a small int, raises an error.
         """
         if type(x) is int and -5 <= x <= 256:
-            raise ValueError('Small integer arguments can not be traced '
-                             'selectively. Either recast or redesign your '
-                             'function.')
+            raise ValueError(
+                'Small integer arguments can not be traced selectively. '
+                'Either recast or redesign your function.')
         elif isinstance(x, basestring):
             if x in self.s_args:
                 return self.s_args[x]
             else:
-                raise ValueError('Requested the symbolic variable '
-                                 'shadowing object {0}, but it was '
-                                 'not traced.'.format(repr(x)))
+                raise ValueError(
+                    'Requested the symbolic variable shadowing object {0}'
+                    ', but it was not traced.'.format(repr(x)))
         else:
             if id(x) in self.s_vars:
                 return self.s_vars[id(x)]
             else:
-                raise ValueError('Requested the symbolic variable '
-                                 'shadowing object {0}, but it was '
-                                 'not traced.'.format(repr(x)))
+                raise ValueError(
+                    'Requested the symbolic variable shadowing object {0}'
+                    ', but it was not traced.'.format(repr(x)))
 
 
 class Function(Symbolic):
@@ -277,6 +273,7 @@ class Function(Symbolic):
             outputs = outputs[0]
 
         # compile function
+        print 'COMPILING'
         fn = theano.function(inputs=inputs,
                              outputs=outputs,
                              givens=givens,
