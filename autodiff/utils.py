@@ -1,22 +1,12 @@
 import gc
 import opcode
 import inspect
-import numpy as np
 
 from autodiff.compat import OrderedDict, getcallargs
 
 #import theano
 #from theano.sandbox.cuda import cuda_ndarray
 #cuda_ndarray = cuda_ndarray.cuda_ndarray
-
-
-def _int(i):
-    """
-    CPython caches small ints (-5 <= i <= 256), so they share ids and can not
-    be differentiated. NumPy int classes do not get cached, so two variables
-    with the same _int value will have different ids.
-    """
-    return np.int_(i)
 
 
 def orderedcallargs(fn, *args, **kwargs):
