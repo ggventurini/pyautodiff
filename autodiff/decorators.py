@@ -1,59 +1,59 @@
-import inspect
-
-import autodiff.utils as utils
 from autodiff.symbolic import Function, Gradient
 
 
-def _function(**kwargs):
-    def wrapper(fn):
-        return Function(fn, **kwargs)
-    return wrapper
-
-
-def function(*fn, **kwargs):
+def function(fn=None, **kwargs):
     """
     Wraps a function with an AutoDiff Function instance, converting it to a
     symbolic representation.
 
     The function is compiled the first time it is called.
+
+    Use:
+        @function
+        def python_function(...):
+            return do_something()
+
+        python_function(...) # calls compiled Function
+
+    Pass keywords to Function:
+
+        @function(force_floatX=True):
+            def python_function(x=1, y=2):
+                return do_something()
     """
-    if len(fn) == 1:
-        return Function(fn[0], **kwargs)
-    elif len(fn) > 1:
-        raise ValueError('function called with unsupported arguments.')
+    if callable(fn):
+        return Function(fn, **kwargs)
     else:
-        return _function(**kwargs)
+        def function_wrapper(pyfn):
+            return Function(pyfn, **kwargs)
+        return function_wrapper
 
 
-def _gradient(wrt, **kwargs):
-    def wrapper(fn):
-        return Gradient(fn, wrt=wrt, **kwargs)
-    return wrapper
-
-
-def gradient(*wrt, **kwargs):
+def gradient(fn=None, **kwargs):
     """
     Wraps a function with an AutoDiff Gradient instance, converting it to a
     symbolic representation that returns the derivative with respect to either
     all inputs or a subset (if specified).
 
     The function is compiled the first time it is called.
-    """
-    if wrt:
-        # decorator called with no args
-        if inspect.isfunction(wrt[0]):
-            return Gradient(wrt[0], **kwargs)
+    Use:
 
-        # decorator called with positional wrt args
-        else:
-            # check for keyword wrt args
-            kw_wrt = utils.as_seq(kwargs.pop('wrt', None), tuple)
-            return _gradient(wrt + kw_wrt, **kwargs)
+        @gradient
+        def python_function(...):
+            return do_something()
+
+        python_function(...) # returns the gradient of python_function
+
+    Pass keywords to Gradient:
+
+        @gradient(wrt = ['x', 'y'])
+        def python_function(x=1, y=2):
+            return do_something()
+
+    """
+    if callable(fn):
+        return Gradient(fn, **kwargs)
     else:
-        # decorator called with keyword wrt args
-        kw_wrt = kwargs.pop('wrt', None)
-        if kwargs:
-            raise ValueError(
-                'gradient called with unsupported '
-                'arguments: {0}'.format(' '.join(kwargs.keys())))
-        return _gradient(kw_wrt, **kwargs)
+        def gradient_wrapper(pyfn):
+            return Gradient(pyfn, **kwargs)
+        return gradient_wrapper
