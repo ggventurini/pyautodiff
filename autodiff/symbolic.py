@@ -1,10 +1,12 @@
 import copy
+import numpy as np
 import theano
 import theano.tensor as tt
 from inspect import getargspec
 
 from autodiff.context import Context
 from autodiff.compat import OrderedDict
+import autodiff.constant
 import autodiff.utils as utils
 
 
@@ -103,15 +105,13 @@ class Symbolic(object):
             raise TypeError('args must be a dict')
 
         def check(name, i):
-            # check for collections/small ints
             if type(i) is int and -5 <= i <= 256:
                 i = np.int_(i)
             elif isinstance(i, (list, tuple, dict)):
                 raise TypeError(
                     'Function arguments can not be containers (received '
                     '{0} for argument \'{1}\').'.format(i, name))
-            else:
-                return i
+            return i
 
         argspec = getargspec(self.pyfn)
 
@@ -134,6 +134,7 @@ class Symbolic(object):
         self.s_results.clear()
 
         # trace the function
+        autodiff.constant.clear_constants()
         c = Context(borrowable=self.borrow, force_floatX=self.force_floatX)
         results = c.call(self.pyfn, args, kwargs)
 
