@@ -206,30 +206,33 @@ class Symbolic(object):
         # trace the function
         self.trace(args, kwargs)
 
+        # get symbolic inputs corresponding to shared inputs in s_args
+        s_memo = OrderedDict(
+            (arg, arg.type(name=arg.name))
+            for arg in utils.flat_from_doc(self.s_args.values()))
+
+        # get new graph, replacing shared inputs with symbolic ones
+        graph = theano.gof.graph.clone_get_equiv(
+            theano.gof.graph.inputs(self.s_results.values()),
+            self.s_results.values(),
+            memo=s_memo.copy())
+
+        # get symbolic outputs
+        outputs = tuple([graph[o] for o in self.s_results.values()])
+
         defaults = dict()
         if argspec.defaults:
             defaults.update(zip(reversed(argspec.args),
                                 reversed(argspec.defaults)))
 
-        # ========== collect inputs, givens
-        inputs, givens = OrderedDict(), OrderedDict()
-        for name, arg in self.s_args.iteritems():
-            if name != argspec.varargs:
-                givens[arg] = arg.type(name=arg.name)
-                inputs[name] = theano.Param(givens[arg],
-                                            default=defaults.get(name, None),
-                                            name=name)
-            else:
-                for i, a in enumerate(arg):
-                    givens[a] = a.type(name='{0}_{1}'.format(name, i))
-                    inputs[i] = givens[a]
-
-        # ========== collect outputs
-        outputs = OrderedDict(enumerate(self.s_results.values()))
+        inputs = tuple([theano.Param(variable=i,
+                                     default=defaults.get(i.name, None),
+                                     name=i.name)
+                        for i in s_memo.values()])
 
         theano_vars = {'inputs': inputs,
                        'outputs': outputs,
-                       'givens': givens}
+                       'graph': graph}
 
         return theano_vars
 
@@ -271,9 +274,8 @@ class Function(Symbolic):
     def compile_function(self, args, kwargs):
         theano_vars = self.get_theano_vars(args, kwargs)
 
-        inputs = theano_vars['inputs'].values()
-        outputs = theano_vars['outputs'].values()
-        givens = theano_vars['givens']
+        inputs = theano_vars['inputs']
+        outputs = theano_vars['outputs']
 
         if len(outputs) == 1:
             outputs = outputs[0]
@@ -281,7 +283,6 @@ class Function(Symbolic):
         # compile function
         fn = theano.function(inputs=inputs,
                              outputs=outputs,
-                             givens=givens,
                              on_unused_input='ignore')
 
         # store in cache corresponding to the number of positional inputs
@@ -318,15 +319,15 @@ class Gradient(Function):
     def compile_function(self, args, kwargs):
         theano_vars = self.get_theano_vars(args, kwargs)
 
-        inputs = theano_vars['inputs'].values()
-        outputs = theano_vars['outputs'].values()
-        givens = theano_vars['givens']
+        inputs = theano_vars['inputs']
+        outputs = theano_vars['outputs']
+        graph = theano_vars['graph']
 
         # get wrt variables. If none were specified, use inputs.
         if len(self.wrt) == 0:
-            wrt = givens.keys()
+            wrt = [i.variable for i in inputs]
         else:
-            wrt = [self.get_symbolic_arg(w) for w in self.wrt]
+            wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
 
         grads = [tt.grad(o, wrt=wrt) for o in outputs]
 
@@ -336,7 +337,6 @@ class Gradient(Function):
         # compile function
         fn = theano.function(inputs=inputs,
                              outputs=grads,
-                             givens=givens,
                              on_unused_input='ignore')
 
         # store in cache corresponding to the number of positional inputs
