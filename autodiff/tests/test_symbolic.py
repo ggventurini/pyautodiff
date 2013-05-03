@@ -163,11 +163,3 @@ class TestGradient(unittest.TestCase):
 
         g = Gradient(fn, wrt=b)
         self.assertTrue(np.allclose(g(a, b), a))
-
-
-
-# from autodiff import Function
-# f = Function(lambda x,a:x.sum(a))
-# f(np.ones((3,4)), 1)
-
-

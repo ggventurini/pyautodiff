@@ -374,4 +374,3 @@ class IndexSlice(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x[1:, x > .5], [2]))
         self.assertTrue(checkfn(lambda x: x[x > .5, 1:], [2]))
         self.assertTrue(checkfn(lambda x: x[[2, 3], 1:], [2]))
-
