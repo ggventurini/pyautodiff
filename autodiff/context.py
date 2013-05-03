@@ -22,7 +22,7 @@ import types
 import numpy as np
 import theano
 
-from autodiff.utils import itercode, orderedcallargs, _int
+from autodiff.utils import itercode, orderedcallargs
 
 logger.setLevel(logging.INFO)
 
@@ -98,7 +98,7 @@ class FrameVM(object):
         #    we wrap them in a non-cached _int() instance.
         if isinstance(x, int):
             if type(x) is int and -5 <= x <= 256:
-                x = _int(x)
+                x = np.int_(x)
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
             s_x = self.watcher.shared(np.asarray(x))
@@ -116,7 +116,7 @@ class FrameVM(object):
         # small ints can not be shadowed due to CPython memory caching, so we
         # wrap them in non-cached _ints.
         if type(x) is int and -5 <= x <= 256:
-            x = _int(x)
+            x = np.int_(x)
         if id(x) not in self.watcher:
             self.add_shadow(x)
         return self.watcher.svars[id(x)]
@@ -694,8 +694,8 @@ class FrameVM(object):
     def op_LOAD_GLOBAL(self, i, op, arg):
         # print 'LOAD_GLOBAL', self.names[arg]
         tos = self._myglobals[self.func.func_code.co_names[arg]]
-        if type(tos) is int:
-            tos = _int(tos)
+        if type(tos) is int and -5 <= tos <= 256:
+            tos = np.int_(tos)
         self.push(tos)
         if id(tos) not in self.watcher:
             self.add_shadow(self.stack[-1])
@@ -747,8 +747,8 @@ class FrameVM(object):
 
     def op_LOAD_CONST(self, i, op, arg):
         tos = self.func.func_code.co_consts[arg]
-        if type(tos) is int:
-            tos = _int(tos)
+        if type(tos) is int and -5 <= tos <= 256:
+            tos = np.int_(tos)
         self.push(tos)
         if isinstance(tos, float):
             if id(tos) not in self.watcher:

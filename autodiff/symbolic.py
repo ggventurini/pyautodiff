@@ -48,7 +48,7 @@ class Symbolic(object):
             new_defaults = []
             for n, d in zip(reversed(a.args), reversed(a.defaults)):
                 if type(d) is int and -5 <= d <= 256:
-                    new_defaults.append(utils._int(d))
+                    new_defaults.append(np.int_(d))
                 else:
                     new_defaults.append(d)
             self._pyfn.func_defaults = tuple(new_defaults)
@@ -105,7 +105,7 @@ class Symbolic(object):
         def check(name, i):
             # check for collections/small ints
             if type(i) is int and -5 <= i <= 256:
-                return utils._int(i)
+                i = np.int_(i)
             elif isinstance(i, (list, tuple, dict)):
                 raise TypeError(
                     'Function arguments can not be containers (received '
