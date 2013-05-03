@@ -1,4 +1,3 @@
-import __builtin__
 import copy
 import numpy as np
 import theano
@@ -327,10 +326,6 @@ class Gradient(Function):
 
         if len(grads) == 1:
             grads = grads[0]
-
-        if __builtin__.any(w.dtype[:3] == 'int' for w in wrt):
-            print ('WARNING: the gradient with respect to an '
-                   'int is defined as 0.')
 
         # compile function
         fn = theano.function(inputs=inputs,
