@@ -53,6 +53,7 @@ class Symbolic(object):
         self.force_floatX = force_floatX
         self.borrow = utils.as_seq(borrow, tuple)
         self.vector_args = vector_args
+        self.argspec = getargspec(self._pyfn)
 
         # replace integer defaults in pyfn to avoid tracing problems
         if self._pyfn.func_defaults:
@@ -123,15 +124,13 @@ class Symbolic(object):
                     '{0} for argument \'{1}\').'.format(i, name))
             return i
 
-        argspec = getargspec(self.pyfn)
-
         args = list(args)
 
-        for i, (n, a) in enumerate(zip(argspec.args, args)):
+        for i, (n, a) in enumerate(zip(self.argspec.args, args)):
             args[i] = check(n, a)
 
-        for i, a in enumerate(args[len(argspec.args):]):
-            args[len(argspec.args) + i] = check(argspec.varargs, a)
+        for i, a in enumerate(args[len(self.argspec.args):]):
+            args[len(self.argspec.args) + i] = check(self.argspec.varargs, a)
 
         for k, v in kwargs.iteritems():
             kwargs[k] = check(k, v)
@@ -157,7 +156,7 @@ class Symbolic(object):
         for name, arg in callargs.iteritems():
 
             # collect variable args
-            if name == argspec.varargs:
+            if name == self.argspec.varargs:
                 self.s_args[name] = ()
                 for i, a in enumerate(arg):
                     try:
@@ -170,7 +169,7 @@ class Symbolic(object):
                         raise
 
             # collect variable kwargs
-            elif name == argspec.keywords:
+            elif name == self.argspec.keywords:
                 for n, a in arg.iteritems():
                     try:
                         self.s_args[n] = self.s_vars[id(a)]
@@ -224,8 +223,6 @@ class Symbolic(object):
 
         """
 
-        argspec = getargspec(self.pyfn)
-
         # trace the function
         self.trace(args, kwargs)
 
@@ -264,9 +261,9 @@ class Symbolic(object):
             inputs = s_vector
         else:
             defaults = dict()
-            if argspec.defaults:
-                defaults.update(zip(reversed(argspec.args),
-                                    reversed(argspec.defaults)))
+            if self.argspec.defaults:
+                defaults.update(zip(reversed(self.argspec.args),
+                                    reversed(self.argspec.defaults)))
             inputs = tuple([theano.Param(variable=i,
                                          default=defaults.get(i.name, None),
                                          name=i.name)
@@ -328,24 +325,22 @@ class Function(Symbolic):
                              on_unused_input='ignore')
 
         # store in cache corresponding to the number of positional inputs
-        argspec = getargspec(self.pyfn)
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        self.cache[len(callargs.get(argspec.varargs, ()))] = fn
+        self.cache[len(callargs.get(self.argspec.varargs, ()))] = fn
 
         return fn
 
     def call(self, *args, **kwargs):
-        argspec = getargspec(self.pyfn)
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
 
         # try to retrieve function from cache; otherwise compile
-        fn = self.cache.get(len(callargs.get(argspec.varargs, ())))
+        fn = self.cache.get(len(callargs.get(self.argspec.varargs, ())))
         if not fn:
             fn = self.compile_function(args, kwargs)
 
-        pos_args = [callargs[arg] for arg in argspec.args]
-        pos_args.extend(callargs.get(argspec.varargs, ()))
-        kw_args = callargs.get(argspec.keywords, {})
+        pos_args = [callargs[arg] for arg in self.argspec.args]
+        pos_args.extend(callargs.get(self.argspec.varargs, ()))
+        kw_args = callargs.get(self.argspec.keywords, {})
 
         return fn(*pos_args, **kw_args)
 
@@ -382,8 +377,7 @@ class Gradient(Function):
                              on_unused_input='ignore')
 
         # store in cache corresponding to the number of positional inputs
-        argspec = getargspec(self.pyfn)
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        self.cache[len(callargs.get(argspec.varargs, ()))] = fn
+        self.cache[len(callargs.get(self.argspec.varargs, ()))] = fn
 
         return fn
