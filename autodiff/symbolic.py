@@ -11,7 +11,11 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
-    def __init__(self, pyfn, borrow=None, force_floatX=False):
+    def __init__(self,
+                 pyfn,
+                 borrow=None,
+                 force_floatX=False,
+                 vector_args=False):
         """
         Arguments
         ---------
@@ -33,6 +37,11 @@ class Symbolic(object):
             variables, if they do not have it already. Objects in `borrowable`
             are never cast.
 
+        vector_args : bool
+            If True, compiled functions will accept a single vector containing
+            the concatenated elements of all flattened inputs. This is useful
+            for working with certain optimizers, for example.
+
         """
         # make deepcopy of pyfn because we might change its defaults
         self._pyfn = copy.deepcopy(pyfn)
@@ -43,6 +52,7 @@ class Symbolic(object):
         self._cache = dict()
         self.force_floatX = force_floatX
         self.borrow = utils.as_seq(borrow, tuple)
+        self.vector_args = vector_args
 
         # replace integer defaults in pyfn to avoid tracing problems
         if self._pyfn.func_defaults:
@@ -194,6 +204,19 @@ class Symbolic(object):
             except:
                 raise
 
+    def vector_from_args(self, args):
+        return np.concatenate([np.asarray(a).flat for a in args])
+
+    def args_from_vector(self, vector, orig_args):
+        args = []
+        last_idx = 0
+        for a in orig_args:
+            args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
+            last_idx += a.size
+        return args
+
+        return tuple(vector[i:j].reshape(s) for i, j, s in iterator)
+
     def get_theano_vars(self, args, kwargs):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
@@ -207,9 +230,26 @@ class Symbolic(object):
         self.trace(args, kwargs)
 
         # get symbolic inputs corresponding to shared inputs in s_args
-        s_memo = OrderedDict(
-            (arg, arg.type(name=arg.name))
-            for arg in utils.flat_from_doc(self.s_args.values()))
+        s_memo = OrderedDict()
+        sym_args = self.s_args.values()
+        flat_args = utils.flat_from_doc(sym_args)
+
+        if self.vector_args:
+            # create a symbolic vector, then split it up into symbolic input
+            # args
+            s_vector = tt.vector(name='theta')
+            i = 0
+            for s_a, f_a in zip(sym_args, flat_args):
+                if f_a.shape:
+                    vector_idx = s_vector[i: i + f_a.size].reshape(f_a.shape)
+                else:
+                    vector_idx = s_vector[i]
+                s_memo[s_a] = tt.patternbroadcast(
+                    vector_idx.astype(str(f_a.dtype)),
+                    broadcastable=s_a.broadcastable)
+                i += f_a.size
+        else:
+            s_memo.update((arg, arg.type(name=arg.name)) for arg in flat_args)
 
         # get new graph, replacing shared inputs with symbolic ones
         graph = theano.gof.graph.clone_get_equiv(
@@ -220,15 +260,17 @@ class Symbolic(object):
         # get symbolic outputs
         outputs = tuple([graph[o] for o in self.s_results.values()])
 
-        defaults = dict()
-        if argspec.defaults:
-            defaults.update(zip(reversed(argspec.args),
-                                reversed(argspec.defaults)))
-
-        inputs = tuple([theano.Param(variable=i,
-                                     default=defaults.get(i.name, None),
-                                     name=i.name)
-                        for i in s_memo.values()])
+        if self.vector_args:
+            inputs = s_vector
+        else:
+            defaults = dict()
+            if argspec.defaults:
+                defaults.update(zip(reversed(argspec.args),
+                                    reversed(argspec.defaults)))
+            inputs = tuple([theano.Param(variable=i,
+                                         default=defaults.get(i.name, None),
+                                         name=i.name)
+                            for i in s_memo.values()])
 
         theano_vars = {'inputs': inputs,
                        'outputs': outputs,
