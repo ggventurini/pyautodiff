@@ -83,6 +83,12 @@ class Symbolic(object):
     def cache(self):
         return self._cache
 
+    def cache_id(self, args, kwargs):
+        """
+        Generates a unique id for caching a function
+        """
+        raise NotImplementedError
+
     def trace(self, args=None, kwargs=None):
         """
         Given args and kwargs, call the Python function and get its
@@ -310,6 +316,14 @@ class Function(Symbolic):
     def __call__(self, *args, **kwargs):
         return self.call(*args, **kwargs)
 
+    def cache_id(self, args=None, kwargs=None):
+        if args is None:
+            args = ()
+        if kwargs is None:
+            kwargs = {}
+        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
+        return len(callargs.get(self.argspec.varargs, ()))
+
     def compile_function(self, args, kwargs):
         theano_vars = self.get_theano_vars(args, kwargs)
 
@@ -324,9 +338,8 @@ class Function(Symbolic):
                              outputs=outputs,
                              on_unused_input='ignore')
 
-        # store in cache corresponding to the number of positional inputs
-        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        self.cache[len(callargs.get(self.argspec.varargs, ()))] = fn
+        # store in cache
+        self.cache[self.cache_id(args, kwargs)] = fn
 
         return fn
 
@@ -334,7 +347,7 @@ class Function(Symbolic):
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
 
         # try to retrieve function from cache; otherwise compile
-        fn = self.cache.get(len(callargs.get(self.argspec.varargs, ())))
+        fn = self.cache.get(self.cache_id(args, kwargs))
         if not fn:
             fn = self.compile_function(args, kwargs)
 
@@ -376,8 +389,7 @@ class Gradient(Function):
                              outputs=grads,
                              on_unused_input='ignore')
 
-        # store in cache corresponding to the number of positional inputs
-        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        self.cache[len(callargs.get(self.argspec.varargs, ()))] = fn
+        # store in cache
+        self.cache[self.cache_id(args, kwargs)] = fn
 
         return fn
