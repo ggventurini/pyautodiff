@@ -279,6 +279,20 @@ class Symbolic(object):
 
         return theano_vars
 
+    def get_theano_args(self, args, kwargs):
+        """
+        Theano can't accept variable arguments; if varargs are present, expand
+        them.
+        """
+        if self.argspec.varargs:
+            callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
+            pos_args = [callargs[arg] for arg in self.argspec.args]
+            pos_args.extend(callargs.get(self.argspec.varargs, ()))
+            # kw_args = callargs.get(self.argspec.keywords, {})
+        else:
+            pos_args = args
+        return pos_args, kwargs
+
     def get_symbolic_arg(self, x):
         """
         Retrieve the symbolic version of x.
@@ -342,17 +356,12 @@ class Function(Symbolic):
         return fn
 
     def call(self, *args, **kwargs):
-        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-
         # try to retrieve function from cache; otherwise compile
         fn = self.cache.get(self.cache_id(args, kwargs))
         if not fn:
             fn = self.compile_function(args, kwargs)
 
-        pos_args = [callargs[arg] for arg in self.argspec.args]
-        pos_args.extend(callargs.get(self.argspec.varargs, ()))
-        kw_args = callargs.get(self.argspec.keywords, {})
-
+        pos_args, kw_args = self.get_theano_args(args, kwargs)
         return fn(*pos_args, **kw_args)
 
 
