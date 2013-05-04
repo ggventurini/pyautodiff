@@ -220,8 +220,6 @@ class Symbolic(object):
             last_idx += a.size
         return args
 
-        return tuple(vector[i:j].reshape(s) for i, j, s in iterator)
-
     def get_theano_vars(self, args, kwargs):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
