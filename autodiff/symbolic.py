@@ -11,11 +11,7 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
-    def __init__(self,
-                 pyfn,
-                 borrow=None,
-                 force_floatX=False,
-                 vector_args=False):
+    def __init__(self, pyfn, borrow=None, force_floatX=False):
         """
         Arguments
         ---------
@@ -37,11 +33,6 @@ class Symbolic(object):
             variables, if they do not have it already. Objects in `borrowable`
             are never cast.
 
-        vector_args : bool
-            If True, compiled functions will accept a single vector containing
-            the concatenated elements of all flattened inputs. This is useful
-            for working with certain optimizers, for example.
-
         """
         # make deepcopy of pyfn because we might change its defaults
         self._pyfn = copy.deepcopy(pyfn)
@@ -52,7 +43,6 @@ class Symbolic(object):
         self._cache = dict()
         self.force_floatX = force_floatX
         self.borrow = utils.as_seq(borrow, tuple)
-        self.vector_args = vector_args
         self.argspec = getargspec(self._pyfn)
 
         # replace integer defaults in pyfn to avoid tracing problems
@@ -209,17 +199,6 @@ class Symbolic(object):
             except:
                 raise
 
-    def vector_from_args(self, args):
-        return np.concatenate([np.asarray(a).flat for a in args])
-
-    def args_from_vector(self, vector, orig_args):
-        args = []
-        last_idx = 0
-        for a in orig_args:
-            args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
-            last_idx += a.size
-        return args
-
     def get_theano_vars(self, args, kwargs):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
@@ -231,26 +210,8 @@ class Symbolic(object):
         self.trace(args, kwargs)
 
         # get symbolic inputs corresponding to shared inputs in s_args
-        s_memo = OrderedDict()
-        sym_args = self.s_args.values()
-        flat_args = utils.flat_from_doc(sym_args)
-
-        if self.vector_args:
-            # create a symbolic vector, then split it up into symbolic input
-            # args
-            s_vector = tt.vector(name='theta')
-            i = 0
-            for s_a, f_a in zip(sym_args, flat_args):
-                if f_a.shape:
-                    vector_idx = s_vector[i: i + f_a.size].reshape(f_a.shape)
-                else:
-                    vector_idx = s_vector[i]
-                s_memo[s_a] = tt.patternbroadcast(
-                    vector_idx.astype(str(f_a.dtype)),
-                    broadcastable=s_a.broadcastable)
-                i += f_a.size
-        else:
-            s_memo.update((arg, arg.type(name=arg.name)) for arg in flat_args)
+        s_memo = OrderedDict((arg, arg.type(name=arg.name))
+            for arg in utils.flat_from_doc(self.s_args.values()))
 
         # get new graph, replacing shared inputs with symbolic ones
         graph = theano.gof.graph.clone_get_equiv(
@@ -261,17 +222,14 @@ class Symbolic(object):
         # get symbolic outputs
         outputs = tuple([graph[o] for o in self.s_results.values()])
 
-        if self.vector_args:
-            inputs = s_vector
-        else:
-            defaults = dict()
-            if self.argspec.defaults:
-                defaults.update(zip(reversed(self.argspec.args),
-                                    reversed(self.argspec.defaults)))
-            inputs = tuple([theano.Param(variable=i,
-                                         default=defaults.get(i.name, None),
-                                         name=i.name)
-                            for i in s_memo.values()])
+        defaults = dict()
+        if self.argspec.defaults:
+            defaults.update(zip(reversed(self.argspec.args),
+                                reversed(self.argspec.defaults)))
+        inputs = tuple([theano.Param(variable=i,
+                                     default=defaults.get(i.name, None),
+                                     name=i.name)
+                        for i in s_memo.values()])
 
         theano_vars = {'inputs': inputs,
                        'outputs': outputs,
@@ -355,6 +313,52 @@ class Function(Symbolic):
 
         return fn
 
+    def call(self, *args, **kwargs):
+        # try to retrieve function from cache; otherwise compile
+        fn = self.cache.get(self.cache_id(args, kwargs))
+        if not fn:
+            fn = self.compile_function(args, kwargs)
+
+        pos_args, kw_args = self.get_theano_args(args, kwargs)
+        return fn(*pos_args, **kw_args)
+
+
+class Gradient(Function):
+
+    def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
+        super(Gradient, self).__init__(pyfn=pyfn,
+                                       borrow=borrow,
+                                       force_floatX=force_floatX)
+        self.wrt = utils.as_seq(wrt)
+
+    def compile_function(self, args, kwargs):
+        theano_vars = self.get_theano_vars(args, kwargs)
+
+        inputs = theano_vars['inputs']
+        outputs = theano_vars['outputs']
+        graph = theano_vars['graph']
+
+        # get wrt variables. If none were specified, use inputs.
+        if len(self.wrt) == 0:
+            wrt = [i.variable for i in inputs]
+        else:
+            wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
+
+        grads = [tt.grad(o, wrt=wrt) for o in outputs]
+
+        if len(grads) == 1:
+            grads = grads[0]
+
+        # compile function
+        fn = theano.function(inputs=inputs,
+                             outputs=grads,
+                             on_unused_input='ignore')
+
+        # store in cache
+        self.cache[self.cache_id(args, kwargs)] = fn
+
+        return fn
+
 
 class HessianVector(Function):
 
@@ -415,25 +419,12 @@ class HessianVector(Function):
 
         return wrapper(fn)
 
-    def call(self, *args, **kwargs):
-        # try to retrieve function from cache; otherwise compile
-        fn = self.cache.get(self.cache_id(args, kwargs))
-        if not fn:
-            fn = self.compile_function(args, kwargs)
 
-        pos_args, kw_args = self.get_theano_args(args, kwargs)
-        return fn(*pos_args, **kw_args)
-
-
-class Gradient(Function):
-
-    def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
-        super(Gradient, self).__init__(pyfn=pyfn,
-                                       borrow=borrow,
-                                       force_floatX=force_floatX)
-        self.wrt = utils.as_seq(wrt)
-
+class VectorArgs(Function):
     def compile_function(self, args, kwargs):
+        kwargs = kwargs.copy()
+        kwargs.pop('_vectors', None)
+
         theano_vars = self.get_theano_vars(args, kwargs)
 
         inputs = theano_vars['inputs']
@@ -448,15 +439,107 @@ class Gradient(Function):
 
         grads = [tt.grad(o, wrt=wrt) for o in outputs]
 
-        if len(grads) == 1:
-            grads = grads[0]
+        sym_vecs = [tt.TensorType(broadcastable=[False]*w.ndim)() for w in wrt]
+        hess_vec = tt.Rop(grads, wrt, sym_vecs)
+        inputs.extend(sym_vecs)
+
+        if len(hess_vec) == 1:
+            hess_vec = hess_vec[0]
 
         # compile function
         fn = theano.function(inputs=inputs,
-                             outputs=grads,
+                             outputs=hess_vec,
                              on_unused_input='ignore')
 
         # store in cache
         self.cache[self.cache_id(args, kwargs)] = fn
 
-        return fn
+        def wrapper(*args, **kwargs):
+            if '_vectors' in kwargs:
+                vectors = kwargs.pop('_vectors')
+            else:
+                raise ValueError(
+                    'Vectors must be passed the keyword \'_vectors\'.')
+            vectors = utils.as_seq(vectors, tuple)
+
+            if len(vectors) != len(self.wrt):
+                raise ValueError('Expected {0} items in _vectors; received '
+                                 '{1}.'.format(len(self.wrt), len(vectors)))
+
+            all_args = args + vectors
+
+            return fn(*all_args, **kwargs)
+
+        return wrapper(fn)
+
+    def get_theano_vars(self, args, kwargs):
+        """
+        Returns a dict containing inputs, outputs and givens corresponding to
+        the Theano version of the pyfn.
+
+        """
+
+        # trace the function
+        self.trace(args, kwargs)
+
+        # get symbolic inputs corresponding to shared inputs in s_args
+        s_memo = OrderedDict()
+        sym_args = self.s_args.values()
+        flat_args = utils.flat_from_doc(sym_args)
+
+        if self.vector_args:
+            # create a symbolic vector, then split it up into symbolic input
+            # args
+            s_vector = tt.vector(name='theta')
+            i = 0
+            for s_a, f_a in zip(sym_args, flat_args):
+                if f_a.shape:
+                    vector_idx = s_vector[i: i + f_a.size].reshape(f_a.shape)
+                else:
+                    vector_idx = s_vector[i]
+                s_memo[s_a] = tt.patternbroadcast(
+                    vector_idx.astype(str(f_a.dtype)),
+                    broadcastable=s_a.broadcastable)
+                i += f_a.size
+        else:
+            s_memo.update((arg, arg.type(name=arg.name)) for arg in flat_args)
+
+        # get new graph, replacing shared inputs with symbolic ones
+        graph = theano.gof.graph.clone_get_equiv(
+            theano.gof.graph.inputs(self.s_results.values()),
+            self.s_results.values(),
+            memo=s_memo.copy())
+
+        # get symbolic outputs
+        outputs = tuple([graph[o] for o in self.s_results.values()])
+
+        if self.vector_args:
+            inputs = s_vector
+        else:
+            defaults = dict()
+            if self.argspec.defaults:
+                defaults.update(zip(reversed(self.argspec.args),
+                                    reversed(self.argspec.defaults)))
+            inputs = tuple([theano.Param(variable=i,
+                                         default=defaults.get(i.name, None),
+                                         name=i.name)
+                            for i in s_memo.values()])
+
+        theano_vars = {'inputs': inputs,
+                       'outputs': outputs,
+                       'graph': graph}
+
+        return theano_vars
+
+    def vector_from_args(self, args):
+        return np.concatenate([np.asarray(a).flat for a in args])
+
+    def args_from_vector(self, vector, orig_args):
+        args = []
+        last_idx = 0
+        for a in orig_args:
+            args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
+            last_idx += a.size
+        return args
+
+
