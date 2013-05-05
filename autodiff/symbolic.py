@@ -355,6 +355,66 @@ class Function(Symbolic):
 
         return fn
 
+
+class HessianVector(Function):
+
+    def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
+        super(Gradient, self).__init__(pyfn=pyfn,
+                                       borrow=borrow,
+                                       force_floatX=force_floatX)
+        self.wrt = utils.as_seq(wrt)
+
+    def compile_function(self, args, kwargs):
+        kwargs = kwargs.copy()
+        kwargs.pop('_vectors', None)
+
+        theano_vars = self.get_theano_vars(args, kwargs)
+
+        inputs = theano_vars['inputs']
+        outputs = theano_vars['outputs']
+        graph = theano_vars['graph']
+
+        # get wrt variables. If none were specified, use inputs.
+        if len(self.wrt) == 0:
+            wrt = [i.variable for i in inputs]
+        else:
+            wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
+
+        grads = [tt.grad(o, wrt=wrt) for o in outputs]
+
+        sym_vecs = [tt.TensorType(broadcastable=[False]*w.ndim)() for w in wrt]
+        hess_vec = tt.Rop(grads, wrt, sym_vecs)
+        inputs.extend(sym_vecs)
+
+        if len(hess_vec) == 1:
+            hess_vec = hess_vec[0]
+
+        # compile function
+        fn = theano.function(inputs=inputs,
+                             outputs=hess_vec,
+                             on_unused_input='ignore')
+
+        # store in cache
+        self.cache[self.cache_id(args, kwargs)] = fn
+
+        def wrapper(*args, **kwargs):
+            if '_vectors' in kwargs:
+                vectors = kwargs.pop('_vectors')
+            else:
+                raise ValueError(
+                    'Vectors must be passed the keyword \'_vectors\'.')
+            vectors = utils.as_seq(vectors, tuple)
+
+            if len(vectors) != len(self.wrt):
+                raise ValueError('Expected {0} items in _vectors; received '
+                                 '{1}.'.format(len(self.wrt), len(vectors)))
+
+            all_args = args + vectors
+
+            return fn(*all_args, **kwargs)
+
+        return wrapper(fn)
+
     def call(self, *args, **kwargs):
         # try to retrieve function from cache; otherwise compile
         fn = self.cache.get(self.cache_id(args, kwargs))
