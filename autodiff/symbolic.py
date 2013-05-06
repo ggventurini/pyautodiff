@@ -296,7 +296,9 @@ class Function(Symbolic):
         if kwargs is None:
             kwargs = {}
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        return len(callargs.get(self.argspec.varargs, ()))
+        varargs = [len(callargs.get(self.argspec.varargs, ()))]
+        dim = [np.asarray(a).ndim for a in callargs.values()]
+        return tuple(varargs + dim)
 
     def compile_function(self, args, kwargs):
         theano_vars = self.get_theano_vars(args, kwargs)
@@ -312,8 +314,9 @@ class Function(Symbolic):
                              outputs=outputs,
                              on_unused_input='ignore')
 
-        # store in cache
-        self.cache[self.cache_id(args, kwargs)] = fn
+        # store in cache if it has a valid id
+        if self.cache_id(args, kwargs):
+            self.cache[self.cache_id(args, kwargs)] = fn
 
         return fn
 
@@ -367,13 +370,14 @@ class Gradient(Function):
                              outputs=grads,
                              on_unused_input='ignore')
 
-        # store in cache
-        self.cache[self.cache_id(args, kwargs)] = fn
+        # store in cache if it has a valid id
+        if self.cache_id(args, kwargs):
+            self.cache[self.cache_id(args, kwargs)] = fn
 
         return fn
 
 
-class HessianVector(Function):
+class HessianVector(Gradient):
     """
     Build a symbolic Theano Hessian-vector product from a scalar-valued NumPy
     function.
@@ -385,12 +389,6 @@ class HessianVector(Function):
     The vectors must be passed to the resulting function with the keyword
     '_vectors'.
     """
-
-    def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
-        super(HessianVector, self).__init__(pyfn=pyfn,
-                                            borrow=borrow,
-                                            force_floatX=force_floatX)
-        self.wrt = utils.as_seq(wrt)
 
     def compile_function(self, args, kwargs):
         kwargs = kwargs.copy()
@@ -427,8 +425,9 @@ class HessianVector(Function):
                              outputs=hess_vec,
                              on_unused_input='ignore')
 
-        # store in cache
-        self.cache[self.cache_id(args, kwargs)] = fn
+        # store in cache if it has a valid id
+        if self.cache_id(args, kwargs):
+            self.cache[self.cache_id(args, kwargs)] = fn
 
         return fn
 
@@ -454,14 +453,6 @@ class HessianVector(Function):
 
         pos_args, kw_args = self.get_theano_args(args, kwargs)
         return fn(*(pos_args + vectors), **kw_args)
-
-    def cache_id(self, args=None, kwargs=None):
-        if args is None:
-            args = ()
-        if kwargs is None:
-            kwargs = {}
-        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        return len(callargs.get(self.argspec.varargs, ()))
 
 
 class VectorArg(Function):
@@ -545,8 +536,9 @@ class VectorArg(Function):
         fn = theano.function(inputs=vector_inputs,
                              outputs=vector_outputs)
 
-        # store in cache
-        self.cache[self.cache_id(args, kwargs)] = fn
+        # store in cache if it has a valid id
+        if self.cache_id(args, kwargs):
+            self.cache[self.cache_id(args, kwargs)] = fn
 
         return fn
 
