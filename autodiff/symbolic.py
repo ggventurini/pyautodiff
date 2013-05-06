@@ -421,7 +421,7 @@ class HessianVector(Function):
         return wrapper(fn)
 
 
-class VectorArgs(Function):
+class VectorArg(Function):
     def __init__(self,
                  pyfn,
                  init_args,
@@ -434,7 +434,7 @@ class VectorArgs(Function):
             raise ValueError('At least one of \'compile_fn\', '
                              '\'compile_grad\', or \'compile_hv\' '
                              'must be True.')
-        super(VectorArgs, self).__init__(pyfn, borrow, force_floatX)
+        super(VectorArg, self).__init__(pyfn, borrow, force_floatX)
 
         self.compile_fn = compile_fn
         self.compile_grad = compile_grad
@@ -446,7 +446,7 @@ class VectorArgs(Function):
     def compile_function(self, args, kwargs):
         if len(kwargs) > 0:
             raise ValueError(
-                'VectorArgs does not support keyword arguments.')
+                'VectorArg does not support keyword arguments.')
 
         kwargs = dict()
 
