@@ -173,7 +173,7 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x.argsort(1), [2]))
         self.assertTrue(checkfn(lambda x: x.argsort(axis=1), [2]))
         self.assertTrue(checkfn(
-                          lambda x, a: x.argsort(a), [2], 0))
+            lambda x, a: x.argsort(a), [2], 0))
 
     def test_clip(self):
         def fn(x, a, b):
@@ -345,6 +345,7 @@ class NumberMethodsAttributes(unittest.TestCase):
     """
 
     def test_reduce_method(self):
+        self.assertTrue(checkfn(lambda x: np.dot(x, x).sum(), [1]))
         self.assertTrue(checkfn(lambda x: np.dot(x, x).mean(), [1]))
 
 
