@@ -459,7 +459,7 @@ class VectorArgs(Function):
             grad = tt.grad(outputs, wrt=inputs)
 
         if self.compile_hv:
-            sym_vec = tt.vector()
+            sym_vec = tt.vector('hv_vector', dtype=grad.dtype)
             hess_vec = tt.Rop(grad, inputs, sym_vec)
 
         vector_inputs = [inputs]
