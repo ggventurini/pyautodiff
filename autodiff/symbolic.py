@@ -210,7 +210,8 @@ class Symbolic(object):
         self.trace(args, kwargs)
 
         # get symbolic inputs corresponding to shared inputs in s_args
-        s_memo = OrderedDict((arg, arg.type(name=arg.name))
+        s_memo = OrderedDict(
+            (arg, arg.type(name=arg.name))
             for arg in utils.flat_from_doc(self.s_args.values()))
 
         # get new graph, replacing shared inputs with symbolic ones
@@ -443,12 +444,13 @@ class VectorArgs(Function):
         hess_vec = tt.Rop(grads, wrt, sym_vecs)
         inputs.extend(sym_vecs)
 
+        if len(outputs) == 1:
         if len(hess_vec) == 1:
             hess_vec = hess_vec[0]
 
         # compile function
         fn = theano.function(inputs=inputs,
-                             outputs=hess_vec,
+                             outputs=outputs,
                              on_unused_input='ignore')
 
         # store in cache
@@ -476,7 +478,6 @@ class VectorArgs(Function):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
-
         """
 
         # trace the function
@@ -484,25 +485,21 @@ class VectorArgs(Function):
 
         # get symbolic inputs corresponding to shared inputs in s_args
         s_memo = OrderedDict()
-        sym_args = self.s_args.values()
-        flat_args = utils.flat_from_doc(sym_args)
+        sym_args = utils.flat_from_doc(self.s_args.values())
 
-        if self.vector_args:
-            # create a symbolic vector, then split it up into symbolic input
-            # args
-            s_vector = tt.vector(name='theta')
-            i = 0
-            for s_a, f_a in zip(sym_args, flat_args):
-                if f_a.shape:
-                    vector_idx = s_vector[i: i + f_a.size].reshape(f_a.shape)
-                else:
-                    vector_idx = s_vector[i]
-                s_memo[s_a] = tt.patternbroadcast(
-                    vector_idx.astype(str(f_a.dtype)),
-                    broadcastable=s_a.broadcastable)
-                i += f_a.size
-        else:
-            s_memo.update((arg, arg.type(name=arg.name)) for arg in flat_args)
+        # create a symbolic vector, then split it up into symbolic input
+        # args
+        inputs = tt.vector(name='theta')
+        i = 0
+        for a in sym_args:
+            if a.shape:
+                vector_arg = inputs[i: i + a.size].reshape(a.shape)
+            else:
+                vector_arg = inputs[i]
+            s_memo[a] = tt.patternbroadcast(
+                vector_arg.astype(str(a.dtype)),
+                broadcastable=a.broadcastable)
+            i += a.size
 
         # get new graph, replacing shared inputs with symbolic ones
         graph = theano.gof.graph.clone_get_equiv(
@@ -512,18 +509,6 @@ class VectorArgs(Function):
 
         # get symbolic outputs
         outputs = tuple([graph[o] for o in self.s_results.values()])
-
-        if self.vector_args:
-            inputs = s_vector
-        else:
-            defaults = dict()
-            if self.argspec.defaults:
-                defaults.update(zip(reversed(self.argspec.args),
-                                    reversed(self.argspec.defaults)))
-            inputs = tuple([theano.Param(variable=i,
-                                         default=defaults.get(i.name, None),
-                                         name=i.name)
-                            for i in s_memo.values()])
 
         theano_vars = {'inputs': inputs,
                        'outputs': outputs,
@@ -541,5 +526,3 @@ class VectorArgs(Function):
             args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
             last_idx += a.size
         return args
-
-
