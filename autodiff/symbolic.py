@@ -425,7 +425,6 @@ class VectorArgs(Function):
     def __init__(self,
                  pyfn,
                  init_args,
-                 init_kwargs,
                  compile_fn=False,
                  compile_grad=False,
                  compile_hv=False,
@@ -441,11 +440,15 @@ class VectorArgs(Function):
         self.compile_grad = compile_grad
         self.compile_hv = compile_hv
 
-        self.compile_function(init_args, init_kwargs)
+        self.inputs_dtype = self.vector_from_args(init_args).dtype
+        self.compile_function(init_args, {})
 
     def compile_function(self, args, kwargs):
-        kwargs = kwargs.copy()
-        kwargs.pop('_vectors', None)
+        if len(kwargs) > 0:
+            raise ValueError(
+                'VectorArgs does not support keyword arguments.')
+
+        kwargs = dict()
 
         theano_vars = self.get_theano_vars(args, kwargs)
 
@@ -497,7 +500,7 @@ class VectorArgs(Function):
 
         # create a symbolic vector, then split it up into symbolic input
         # args
-        inputs = tt.vector(name='theta')
+        inputs = tt.vector(name='theta', dtype=self.inputs_dtype)
         i = 0
         for a in sym_args:
             if a.shape:
