@@ -252,7 +252,7 @@ class Symbolic(object):
             pos_args = args
         return pos_args, kwargs
 
-    def get_symbolic_arg(self, x):
+    def get_sym_arg(self, x):
         """
         Retrieve the symbolic version of x.
 
@@ -355,7 +355,7 @@ class Gradient(Function):
         if len(self.wrt) == 0:
             wrt = [i.variable for i in inputs]
         else:
-            wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
+            wrt = [graph[self.get_sym_arg(w)] for w in self.wrt]
 
         grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
 
@@ -409,7 +409,7 @@ class HessianVector(Function):
         if len(self.wrt) == 0:
             wrt = [i.variable for i in inputs]
         else:
-            wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
+            wrt = [graph[self.get_sym_arg(w)] for w in self.wrt]
 
         grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
 
