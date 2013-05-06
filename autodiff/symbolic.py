@@ -440,7 +440,7 @@ class VectorArgs(Function):
         self.compile_grad = compile_grad
         self.compile_hv = compile_hv
 
-        self.inputs_dtype = self.vector_from_args(init_args).dtype
+        self.init_args = init_args
         self.compile_function(init_args, {})
 
     def compile_function(self, args, kwargs):
@@ -501,7 +501,8 @@ class VectorArgs(Function):
 
         # create a symbolic vector, then split it up into symbolic input
         # args
-        inputs = tt.vector(name='theta', dtype=self.inputs_dtype)
+        inputs_dtype = self.vector_from_args(self.init_args).dtype
+        inputs = tt.vector(name='theta', dtype=inputs_dtype)
         i = 0
         for sa, ra in zip(sym_args, real_args):
             if sa.shape:
@@ -531,10 +532,10 @@ class VectorArgs(Function):
     def vector_from_args(self, args):
         return np.concatenate([np.asarray(a).flat for a in args])
 
-    def args_from_vector(self, vector, orig_args):
+    def args_from_vector(self, vector):
         args = []
         last_idx = 0
-        for a in orig_args:
+        for a in self.init_args:
             args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
             last_idx += a.size
         return args
