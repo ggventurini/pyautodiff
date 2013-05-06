@@ -283,6 +283,9 @@ class Symbolic(object):
 
 
 class Function(Symbolic):
+    """
+    Build a symbolic Theano function from a NumPy function.
+    """
 
     def __call__(self, *args, **kwargs):
         return self.call(*args, **kwargs)
@@ -325,6 +328,12 @@ class Function(Symbolic):
 
 
 class Gradient(Function):
+    """
+    Build a symbolic Theano gradient from a scalar-valued NumPy function.
+
+    The resulting function returns the gradient of the NumPy function with
+    respect to (optionally specified) variables.
+    """
 
     def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
         super(Gradient, self).__init__(pyfn=pyfn,
@@ -362,6 +371,17 @@ class Gradient(Function):
 
 
 class HessianVector(Function):
+    """
+    Build a symbolic Theano Hessian-vector product from a scalar-valued NumPy
+    function.
+
+    The resulting function returns the Hessian-vector product of the NumPy
+    function with respect to (optionally specified) variables and a vector
+    or tuple of vectors (for multiple wrt variables).
+
+    The vectors must be passed to the resulting function with the keyword
+    '_vectors'.
+    """
 
     def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
         super(Gradient, self).__init__(pyfn=pyfn,
@@ -422,6 +442,26 @@ class HessianVector(Function):
 
 
 class VectorArg(Function):
+    """
+    Many function optimizers do not support multiple arguments; they pass a
+    single vector containing all parameter values.
+
+    This class builds symbolic function, gradient, and Hessian-vector product
+    functions from arbitrary NumPy functions, all of which accept a single
+    vector argument. To compile gradient and Hessian-vector products, the NumPy
+    function must return a scalar. The Hessian-vector product functions will
+    take an additional vector argument.
+
+    Users can specify any combination of 'compile_fn', 'compile_grad', or
+    'compile_hv' at instantiation, and the VectorArg will return the
+    appropriate values, in that order. At least one 'compile' keyword must be
+    True.
+
+    Also, VectorArg classes must be provided 'init_args', an initial set of
+    function arguments. The shape and dtype of these initial arguments is used
+    to build the resulting function.
+
+    """
     def __init__(self,
                  pyfn,
                  init_args,
