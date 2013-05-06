@@ -339,6 +339,15 @@ class ArrayMethodsAttributes(unittest.TestCase):
                           lambda x, a: x.var(a), [2], 0)
 
 
+class NumberMethodsAttributes(unittest.TestCase):
+    """
+    Test for coverage of NumPy number methods and attributes
+    """
+
+    def test_reduce_method(self):
+        self.assertTrue(checkfn(lambda x: np.dot(x, x).mean(), [1]))
+
+
 class IndexSlice(unittest.TestCase):
     """
     Test for coverage of operators
