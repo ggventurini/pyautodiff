@@ -430,23 +430,38 @@ class HessianVector(Function):
         # store in cache
         self.cache[self.cache_id(args, kwargs)] = fn
 
-        def wrapper(*args, **kwargs):
-            if '_vectors' in kwargs:
-                vectors = kwargs.pop('_vectors')
-            else:
-                raise ValueError(
-                    'Vectors must be passed the keyword \'_vectors\'.')
-            vectors = utils.as_seq(vectors, tuple)
+        return fn
 
-            if len(vectors) != len(self.wrt):
-                raise ValueError('Expected {0} items in _vectors; received '
-                                 '{1}.'.format(len(self.wrt), len(vectors)))
+    def call(self, *args, **kwargs):
+        if '_vectors' in kwargs:
+            vectors = kwargs.pop('_vectors')
+        else:
+            raise ValueError(
+                'Vectors must be passed the keyword \'_vectors\'.')
+        vectors = utils.as_seq(vectors, tuple)
 
-            all_args = args + vectors
+        # try to retrieve function from cache; otherwise compile
+        fn = self.cache.get(self.cache_id(args, kwargs))
+        if not fn:
+            fn = self.compile_function(args, kwargs)
 
-            return fn(*all_args, **kwargs)
+        if len(self.wrt) > 0 and len(vectors) != len(self.wrt):
+            raise ValueError('Expected {0} items in _vectors; received '
+                             '{1}.'.format(len(self.wrt), len(vectors)))
+        elif len(self.wrt) == 0 and len(vectors) != len(self.s_args):
+            raise ValueError('Expected {0} items in _vectors; received '
+                             '{1}.'.format(len(self.s_args), len(vectors)))
 
-        return wrapper(fn)
+        pos_args, kw_args = self.get_theano_args(args, kwargs)
+        return fn(*(pos_args + vectors), **kw_args)
+
+    def cache_id(self, args=None, kwargs=None):
+        if args is None:
+            args = ()
+        if kwargs is None:
+            kwargs = {}
+        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
+        return len(callargs.get(self.argspec.varargs, ()))
 
 
 class VectorArg(Function):
