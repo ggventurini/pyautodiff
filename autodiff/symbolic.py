@@ -543,3 +543,9 @@ class VectorArgs(Function):
     def call(self, *args):
         fn = self.cache.get(self.cache_id(args))
         return fn(*args)
+
+    def cache_id(self, args, kwargs):
+        """
+        Generates a unique id for caching a function
+        """
+        return 'fn'
