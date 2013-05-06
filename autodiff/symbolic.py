@@ -452,10 +452,12 @@ class VectorArgs(Function):
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
 
-        grad = tt.grad(outputs, wrt=inputs)
+        if self.compile_grad or self.compile_hv:
+            grad = tt.grad(outputs, wrt=inputs)
 
-        sym_vec = tt.vector()
-        hess_vec = tt.Rop(grad, inputs, sym_vec)
+        if self.compile_hv:
+            sym_vec = tt.vector()
+            hess_vec = tt.Rop(grad, inputs, sym_vec)
 
         vector_inputs = [inputs]
         vector_outputs = []
