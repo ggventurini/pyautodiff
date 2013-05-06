@@ -497,20 +497,21 @@ class VectorArgs(Function):
         # get symbolic inputs corresponding to shared inputs in s_args
         s_memo = OrderedDict()
         sym_args = utils.flat_from_doc(self.s_args.values())
+        real_args = utils.flat_from_doc(args)
 
         # create a symbolic vector, then split it up into symbolic input
         # args
         inputs = tt.vector(name='theta', dtype=self.inputs_dtype)
         i = 0
-        for a in sym_args:
-            if a.shape:
-                vector_arg = inputs[i: i + a.size].reshape(a.shape)
+        for sa, ra in zip(sym_args, real_args):
+            if sa.shape:
+                vector_arg = inputs[i: i + ra.size].reshape(ra.shape)
             else:
                 vector_arg = inputs[i]
-            s_memo[a] = tt.patternbroadcast(
-                vector_arg.astype(str(a.dtype)),
-                broadcastable=a.broadcastable)
-            i += a.size
+            s_memo[sa] = tt.patternbroadcast(
+                vector_arg.astype(str(sa.dtype)),
+                broadcastable=sa.broadcastable)
+            i += ra.size
 
         # get new graph, replacing shared inputs with symbolic ones
         graph = theano.gof.graph.clone_get_equiv(
