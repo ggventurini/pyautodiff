@@ -357,7 +357,7 @@ class Gradient(Function):
         else:
             wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
 
-        grads = [tt.grad(o, wrt=wrt) for o in outputs]
+        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
 
         if len(grads) == 1:
             grads = grads[0]
@@ -411,11 +411,13 @@ class HessianVector(Function):
         else:
             wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
 
-        grads = [tt.grad(o, wrt=wrt) for o in outputs]
+        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
 
-        sym_vecs = [tt.TensorType(broadcastable=[False]*w.ndim)() for w in wrt]
+        sym_vecs = tuple(tt.TensorType(dtype=w.dtype,
+                                       broadcastable=[False]*w.ndim)()
+                         for w in wrt)
         hess_vec = tt.Rop(grads, wrt, sym_vecs)
-        inputs.extend(sym_vecs)
+        inputs += sym_vecs
 
         if len(hess_vec) == 1:
             hess_vec = hess_vec[0]
