@@ -348,6 +348,9 @@ class Gradient(Function):
         outputs = theano_vars['outputs']
         graph = theano_vars['graph']
 
+        if np.any([o.ndim != 0 for o in outputs]):
+            raise TypeError('Gradient requires scalar outputs.')
+
         # get wrt variables. If none were specified, use inputs.
         if len(self.wrt) == 0:
             wrt = [i.variable for i in inputs]
@@ -398,6 +401,9 @@ class HessianVector(Function):
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
         graph = theano_vars['graph']
+
+        if np.any([o.ndim != 0 for o in outputs]):
+            raise TypeError('HessianVector requires scalar outputs.')
 
         # get wrt variables. If none were specified, use inputs.
         if len(self.wrt) == 0:
@@ -496,6 +502,8 @@ class VectorArg(Function):
         outputs = theano_vars['outputs']
 
         if self.compile_grad or self.compile_hv:
+            if outputs.ndim != 0:
+                raise TypeError('Gradient requires scalar outputs.')
             grad = tt.grad(outputs, wrt=inputs)
 
         if self.compile_hv:

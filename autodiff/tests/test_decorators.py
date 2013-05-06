@@ -15,10 +15,13 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(np.allclose(fn(3), 3))
         self.assertTrue(0 in fn._cache)
 
+
+class TestGradient(unittest.TestCase):
     def test_basic_grad(self):
         @gradient
         def fn(x):
             return x
+        self.assertRaises(TypeError, fn, np.ones(1))
         self.assertTrue(np.allclose(fn(3), 1.0))
         self.assertTrue(0 in fn._cache)
 
