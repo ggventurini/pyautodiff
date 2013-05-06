@@ -422,6 +422,27 @@ class HessianVector(Function):
 
 
 class VectorArgs(Function):
+    def __init__(self,
+                 pyfn,
+                 init_args,
+                 init_kwargs,
+                 compile_fn=False,
+                 compile_grad=False,
+                 compile_hv=False,
+                 borrow=None,
+                 force_floatX=False):
+        if not (compile_fn or compile_grad or compile_hv):
+            raise ValueError('At least one of \'compile_fn\', '
+                             '\'compile_grad\', or \'compile_hv\' '
+                             'must be True.')
+        super(VectorArgs, self).__init__(pyfn, borrow, force_floatX)
+
+        self.compile_fn = compile_fn
+        self.compile_grad = compile_grad
+        self.compile_hv = compile_hv
+
+        self.compile_function(init_args, init_kwargs)
+
     def compile_function(self, args, kwargs):
         kwargs = kwargs.copy()
         kwargs.pop('_vectors', None)
@@ -430,49 +451,34 @@ class VectorArgs(Function):
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
-        graph = theano_vars['graph']
 
-        # get wrt variables. If none were specified, use inputs.
-        if len(self.wrt) == 0:
-            wrt = [i.variable for i in inputs]
-        else:
-            wrt = [graph[self.get_symbolic_arg(w)] for w in self.wrt]
+        grad = tt.grad(outputs, wrt=inputs)
 
-        grads = [tt.grad(o, wrt=wrt) for o in outputs]
+        sym_vec = tt.vector()
+        hess_vec = tt.Rop(grad, inputs, sym_vec)
 
-        sym_vecs = [tt.TensorType(broadcastable=[False]*w.ndim)() for w in wrt]
-        hess_vec = tt.Rop(grads, wrt, sym_vecs)
-        inputs.extend(sym_vecs)
+        vector_inputs = [inputs]
+        vector_outputs = []
 
-        if len(outputs) == 1:
-        if len(hess_vec) == 1:
-            hess_vec = hess_vec[0]
+        if self.compile_fn:
+            vector_outputs.append(outputs)
+        if self.compile_grad:
+            vector_outputs.append(grad)
+        if self.compile_hv:
+            vector_inputs.append(sym_vec)
+            vector_outputs.append(hess_vec)
+
+        if len(vector_outputs) == 1:
+            vector_outputs = vector_outputs[0]
 
         # compile function
-        fn = theano.function(inputs=inputs,
-                             outputs=outputs,
-                             on_unused_input='ignore')
+        fn = theano.function(inputs=vector_inputs,
+                             outputs=vector_outputs)
 
         # store in cache
         self.cache[self.cache_id(args, kwargs)] = fn
 
-        def wrapper(*args, **kwargs):
-            if '_vectors' in kwargs:
-                vectors = kwargs.pop('_vectors')
-            else:
-                raise ValueError(
-                    'Vectors must be passed the keyword \'_vectors\'.')
-            vectors = utils.as_seq(vectors, tuple)
-
-            if len(vectors) != len(self.wrt):
-                raise ValueError('Expected {0} items in _vectors; received '
-                                 '{1}.'.format(len(self.wrt), len(vectors)))
-
-            all_args = args + vectors
-
-            return fn(*all_args, **kwargs)
-
-        return wrapper(fn)
+        return fn
 
     def get_theano_vars(self, args, kwargs):
         """
@@ -508,7 +514,7 @@ class VectorArgs(Function):
             memo=s_memo.copy())
 
         # get symbolic outputs
-        outputs = tuple([graph[o] for o in self.s_results.values()])
+        outputs = graph[self.s_results.values()[0]]
 
         theano_vars = {'inputs': inputs,
                        'outputs': outputs,
@@ -526,3 +532,7 @@ class VectorArgs(Function):
             args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
             last_idx += a.size
         return args
+
+    def call(self, *args):
+        fn = self.cache.get(self.cache_id(args))
+        return fn(*args)
