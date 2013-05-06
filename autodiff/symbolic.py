@@ -384,9 +384,9 @@ class HessianVector(Function):
     """
 
     def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
-        super(Gradient, self).__init__(pyfn=pyfn,
-                                       borrow=borrow,
-                                       force_floatX=force_floatX)
+        super(HessianVector, self).__init__(pyfn=pyfn,
+                                            borrow=borrow,
+                                            force_floatX=force_floatX)
         self.wrt = utils.as_seq(wrt)
 
     def compile_function(self, args, kwargs):
