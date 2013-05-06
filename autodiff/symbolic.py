@@ -1,7 +1,7 @@
-import copy
 import numpy as np
 import theano
 import theano.tensor as tt
+import types
 from inspect import getargspec
 
 from autodiff.context import Context
@@ -35,7 +35,11 @@ class Symbolic(object):
 
         """
         # make deepcopy of pyfn because we might change its defaults
-        self._pyfn = copy.deepcopy(pyfn)
+        self._pyfn = types.FunctionType(pyfn.func_code,
+                                        pyfn.func_globals,
+                                        pyfn.func_name,
+                                        pyfn.func_defaults,
+                                        pyfn.func_closure)
 
         self.s_vars = OrderedDict()
         self.s_args = OrderedDict()
@@ -54,7 +58,7 @@ class Symbolic(object):
                     new_defaults.append(np.int_(d))
                 else:
                     new_defaults.append(d)
-            self._pyfn.func_defaults = tuple(new_defaults)
+            self._pyfn.func_defaults = tuple(reversed(new_defaults))
 
     def __call__(self, *args, **kwargs):
         return self.get_theano_vars(args, kwargs)
