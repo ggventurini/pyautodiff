@@ -544,6 +544,10 @@ class VectorArg(Function):
         # trace the function
         self.trace(args, kwargs)
 
+        if len(self.s_results) > 1:
+            raise ValueError(
+                'VectorArg functions should return a single output.')
+
         # get symbolic inputs corresponding to shared inputs in s_args
         s_memo = OrderedDict()
         sym_args = utils.flat_from_doc(self.s_args.values())
