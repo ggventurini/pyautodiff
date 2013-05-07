@@ -77,7 +77,7 @@ class Symbolic(object):
     def cache(self):
         return self._cache
 
-    def cache_id(self, args, kwargs):
+    def cache_id(self, args=None, kwargs=None):
         """
         Generates a unique id for caching a function
         """
@@ -609,7 +609,7 @@ class VectorArg(Function):
         fn = self.cache.get(self.cache_id(args))
         return fn(*args)
 
-    def cache_id(self, args, kwargs):
+    def cache_id(self, args=None, kwargs=None):
         """
         Generates a unique id for caching a function
         """
