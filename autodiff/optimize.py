@@ -9,9 +9,11 @@ from autodiff.symbolic import VectorArg
 import autodiff.utils as utils
 
 
+__all__ = ['fmin_cg', 'fmin_l_bfgs_b']
+
+
 def fmin_cg(fn,
             args,
-            return_info=False,
             **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's nonlinear conjugate
@@ -24,20 +26,18 @@ def fmin_cg(fn,
     fprime = VectorArg(fn, init_args=args, compile_grad=True)
     x0 = f.vector_from_args(args)
 
-    x_opt, f_opt, info = scipy.optimize.fmin_cg(
+    x_opt = scipy.optimize.fmin_cg(
         f=f,
         x0=x0,
         fprime=fprime,
+        full_output=False,
         **scipy_kwargs)
 
     x_reshaped = f.args_from_vector(x_opt)
     if len(x_reshaped) == 1:
         x_reshaped = x_reshaped[0]
 
-    if return_info:
-        return x_reshaped, {'f_opt': f_opt}
-    else:
-        return x_reshaped
+    return x_reshaped
 
 
 def fmin_l_bfgs_b(fn,
