@@ -1,11 +1,13 @@
-
+import unittest
 import numpy as np
 import theano
 
 from autodiff.context import Context
 
+# These are the original tests from PyAutoDiff v 0.0.1, here for reference.
 
-##############################################################################
+
+######################################################################
 # numeric routines for testing
 
 
@@ -32,7 +34,7 @@ def repeat_double(x, N):
     return x
 
 
-##############################################################################
+######################################################################
 # helper context-using routines
 
 
@@ -50,58 +52,59 @@ def recalculate_fn(ctxt, rval, ival):
     vx = sx.type()
     return theano.function([vx], sy, givens={sx:vx})
 
-
 ##############################################################################
 # tests
 
+class TestContest(unittest.TestCase):
+    def test_recalculate(self):
+        x = np.zeros(3)
+        c = Context()
+        assert compute_stuff(x) == 12
+        y = c.call(compute_stuff, (x,))
+        assert y == 12
 
-def test_recalculate():
-    x = np.zeros(3)
-    c = Context()
-    assert compute_stuff(x) == 12
-    y = c.call(compute_stuff, (x,))
-    assert y == 12
-
-    f = recalculate_fn(c, y, x)
-    assert f(x) == 12
-    assert f(x + 1) != 12
-
-
-def test_grad():
-    x = np.zeros(3)
-
-    c = Context()
-    y = c.call(compute_stuff, (x,))
-    assert id(x) in c.svars
-    assert id(y) in c.svars
-    dy_dx_fn = grad_fn(c, y, x)
-
-    assert np.all(dy_dx_fn(x + 0) == 8)
-    assert np.all(dy_dx_fn(x + 1) == 16)
-    assert np.all(dy_dx_fn(x + 2) == 24)
+        f = recalculate_fn(c, y, x)
+        assert f(x) == 12
+        assert f(x + 1) != 12
 
 
-def test_loop():
-    # test that non-data-dependent loops are unrolled properly
+    def test_grad(self):
+        x = np.zeros(3)
 
-    x = np.zeros(3)
-    c = Context()
-    y = c.call(repeat_double, (x, 4))
+        c = Context()
+        y = c.call(compute_stuff, (x,))
+        assert id(x) in c.svars
+        assert id(y) in c.svars
+        dy_dx_fn = grad_fn(c, y, x)
 
-    f = recalculate_fn(c, y, x)
-    y2 = f(x + 1)
-    assert np.all(y == 0)
-    assert np.all(y2 == 16)
+        assert np.all(dy_dx_fn(x + 0) == 8)
+        assert np.all(dy_dx_fn(x + 1) == 16)
+        assert np.all(dy_dx_fn(x + 2) == 24)
 
 
-def test_low_integer_constants():
-    one = 2 - 1
-    # CPython re-uses ids of low integer constants
-    # which kind of plays hell with the id-tracking done in the Context object
-    assert one is 1
-    # the current implementation crashes here because the addition creates a
-    # shadow for the constant `1`, which then gets picked up by the axis
-    # argument, and causes Theano to barf because axis can't be a symbolic
-    # variable.
-    r = Context().call(lambda x: (1 + x).sum(axis=1), (np.ones((2, 3)),))
-    assert np.allclose(r, [6, 6])
+    def test_loop(self):
+        # test that non-data-dependent loops are unrolled properly
+
+        x = np.zeros(3)
+        c = Context()
+        y = c.call(repeat_double, (x, 4))
+
+        f = recalculate_fn(c, y, x)
+        y2 = f(x + 1)
+        assert np.all(y == 0)
+        assert np.all(y2 == 16)
+
+
+    def test_low_integer_constants(self):
+        # NOTE: this should work now (May 2013)
+        one = 2 - 1
+        # CPython re-uses ids of low integer constants
+        # which kind of plays hell with the id-tracking done in the Context object
+        assert one is 1
+        # the current implementation crashes here because the addition creates
+        # a shadow for the constant `1`, which then gets picked up by the axis
+        # argument, and causes Theano to barf because axis can't be a symbolic
+        # variable.
+        r = Context().call(lambda x: (1 + x).sum(axis=1),
+                           (np.ones((2, 3)),))
+        assert np.allclose(r, [6, 6])
