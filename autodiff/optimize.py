@@ -40,6 +40,36 @@ def fmin_cg(fn,
     return x_reshaped
 
 
+def fmin_ncg(fn,
+             args,
+             **scipy_kwargs):
+    """
+    Minimize a scalar valued function using SciPy's Newton-CG algorithm. The
+    initial parameter guess is 'args'.
+
+    """
+
+    args = utils.as_seq(args, tuple)
+    f = VectorArg(fn, init_args=args, compile_fn=True)
+    fprime = VectorArg(fn, init_args=args, compile_grad=True)
+    fhess_p = VectorArg(fn, init_args=args, compile_hv=True)
+    x0 = f.vector_from_args(args)
+
+    x_opt = scipy.optimize.fmin_ncg(
+        f=f,
+        x0=x0,
+        fprime=fprime,
+        fhess_p=fhess_p,
+        full_output=False,
+        **scipy_kwargs)
+
+    x_reshaped = f.args_from_vector(x_opt)
+    if len(x_reshaped) == 1:
+        x_reshaped = x_reshaped[0]
+
+    return x_reshaped
+
+
 def fmin_l_bfgs_b(fn,
                   args,
                   scalar_bounds=None,
