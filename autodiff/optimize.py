@@ -12,9 +12,7 @@ import autodiff.utils as utils
 __all__ = ['fmin_cg', 'fmin_ncg', 'fmin_l_bfgs_b']
 
 
-def fmin_cg(fn,
-            init_args,
-            **scipy_kwargs):
+def fmin_cg(fn, init_args, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's nonlinear conjugate
     gradient algorithm. The initial parameter guess is 'init_args'.
@@ -40,9 +38,7 @@ def fmin_cg(fn,
     return x_reshaped
 
 
-def fmin_ncg(fn,
-             init_args,
-             **scipy_kwargs):
+def fmin_ncg(fn, init_args, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's Newton-CG algorithm. The
     initial parameter guess is 'init_args'.
