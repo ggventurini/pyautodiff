@@ -69,6 +69,11 @@ class TestConstant(unittest.TestCase):
         self.assertTrue(check(f, np.ones((3, 4))))
 
         def f(x):
+            a = Constant(1)
+            return x.sum(a)
+        self.assertTrue(check(f, np.ones((3, 4))))
+
+        def f(x):
             a = 1
             return x.sum(Constant(a))
         self.assertTrue(check(f, np.ones((3, 4))))
