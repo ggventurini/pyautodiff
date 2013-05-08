@@ -11,7 +11,7 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
-    def __init__(self, pyfn, borrow=None, force_floatX=False):
+    def __init__(self, pyfn, borrow=None, force_floatX=False, use_cache=True):
         """
         Arguments
         ---------
@@ -47,6 +47,7 @@ class Symbolic(object):
         self._cache = dict()
         self.force_floatX = force_floatX
         self.borrow = utils.as_seq(borrow, tuple)
+        self.use_cache = use_cache
         self.argspec = getargspec(self._pyfn)
 
         # replace integer defaults in pyfn to avoid tracing problems
@@ -81,7 +82,8 @@ class Symbolic(object):
         """
         Generates a unique id for caching a function
         """
-        raise NotImplementedError
+        if self.use_cache:
+            raise NotImplementedError
 
     def trace(self, args=None, kwargs=None):
         """
@@ -295,14 +297,15 @@ class Function(Symbolic):
         return self.call(*args, **kwargs)
 
     def cache_id(self, args=None, kwargs=None):
-        if args is None:
-            args = ()
-        if kwargs is None:
-            kwargs = {}
-        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-        varargs = [len(callargs.get(self.argspec.varargs, ()))]
-        dim = [np.asarray(a).ndim for a in callargs.values()]
-        return tuple(varargs + dim)
+        if self.use_cache:
+            if args is None:
+                args = ()
+            if kwargs is None:
+                kwargs = {}
+            callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
+            varargs = [len(callargs.get(self.argspec.varargs, ()))]
+            dim = [np.asarray(a).ndim for a in callargs.values()]
+            return tuple(varargs + dim)
 
     def compile_function(self, args, kwargs):
         theano_vars = self.get_theano_vars(args, kwargs)
@@ -613,4 +616,5 @@ class VectorArg(Function):
         """
         Generates a unique id for caching a function
         """
-        return 'fn'
+        if self.use_cache:
+            return 'fn'

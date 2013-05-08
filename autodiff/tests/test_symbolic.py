@@ -130,6 +130,27 @@ class TestFunction(unittest.TestCase):
         f = Function(fn)
         self.assertTrue(checkfn(f, np.ones((2, 3))))
 
+    def test_caching(self):
+        def fn(x, switch):
+            if switch > 0:
+                return x * 1
+            else:
+                return x * 0
+
+        f_cached = Function(fn, use_cache=True)
+        c_result_1 = f_cached(1, 1)
+        c_result_2 = f_cached(1, -1)
+
+        self.assertTrue(np.allclose(c_result_1, 1))
+        self.assertTrue(np.allclose(c_result_2, 1))
+
+        f_uncached = Function(fn, use_cache=False)
+        uc_result_1 = f_uncached(1, 1)
+        uc_result_2 = f_uncached(1, -1)
+
+        self.assertTrue(np.allclose(uc_result_1, 1))
+        self.assertTrue(np.allclose(uc_result_2, 0))
+
 
 class TestGradient(unittest.TestCase):
     def test_simple_gradients(self):
