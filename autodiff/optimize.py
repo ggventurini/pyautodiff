@@ -8,23 +8,20 @@ import scipy
 from autodiff.symbolic import VectorArg
 import autodiff.utils as utils
 
+__all__ = ['fmin_cg', 'fmin_ncg', 'fmin_l_bfgs_b']
 
-__all__ = ['fmin_cg', 'fmin_l_bfgs_b']
 
-
-def fmin_cg(fn,
-            args,
-            **scipy_kwargs):
+def fmin_cg(fn, init_args, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's nonlinear conjugate
-    gradient algorithm. The initial parameter guess is 'args'.
+    gradient algorithm. The initial parameter guess is 'init_args'.
 
     """
 
-    args = utils.as_seq(args, tuple)
-    f = VectorArg(fn, init_args=args, compile_fn=True)
-    fprime = VectorArg(fn, init_args=args, compile_grad=True)
-    x0 = f.vector_from_args(args)
+    init_args = utils.as_seq(init_args, tuple)
+    f = VectorArg(fn, init_args=init_args, compile_fn=True)
+    fprime = VectorArg(fn, init_args=init_args, compile_grad=True)
+    x0 = f.vector_from_args(init_args)
 
     x_opt = scipy.optimize.fmin_cg(
         f=f,
@@ -40,20 +37,18 @@ def fmin_cg(fn,
     return x_reshaped
 
 
-def fmin_ncg(fn,
-             args,
-             **scipy_kwargs):
+def fmin_ncg(fn, init_args, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's Newton-CG algorithm. The
-    initial parameter guess is 'args'.
+    initial parameter guess is 'init_args'.
 
     """
 
-    args = utils.as_seq(args, tuple)
-    f = VectorArg(fn, init_args=args, compile_fn=True)
-    fprime = VectorArg(fn, init_args=args, compile_grad=True)
-    fhess_p = VectorArg(fn, init_args=args, compile_hv=True)
-    x0 = f.vector_from_args(args)
+    init_args = utils.as_seq(init_args, tuple)
+    f = VectorArg(fn, init_args=init_args, compile_fn=True)
+    fprime = VectorArg(fn, init_args=init_args, compile_grad=True)
+    fhess_p = VectorArg(fn, init_args=init_args, compile_hv=True)
+    x0 = f.vector_from_args(init_args)
 
     x_opt = scipy.optimize.fmin_ncg(
         f=f,
@@ -71,19 +66,22 @@ def fmin_ncg(fn,
 
 
 def fmin_l_bfgs_b(fn,
-                  args,
+                  init_args,
                   scalar_bounds=None,
                   return_info=False,
                   **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's L-BFGS-B algorithm. The
-    initial parameter guess is 'args'.
+    initial parameter guess is 'init_args'.
 
     """
 
-    args = utils.as_seq(args, tuple)
-    f_df = VectorArg(fn, init_args=args, compile_fn=True, compile_grad=True)
-    x0 = f_df.vector_from_args(args)
+    init_args = utils.as_seq(init_args, tuple)
+    f_df = VectorArg(fn,
+                     init_args=init_args,
+                     compile_fn=True,
+                     compile_grad=True)
+    x0 = f_df.vector_from_args(init_args)
 
     if 'approx_grad' in scipy_kwargs:
         raise TypeError('duplicate argument: approx_grad')
