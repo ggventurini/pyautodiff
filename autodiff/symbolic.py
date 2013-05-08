@@ -570,7 +570,7 @@ class VectorArg(Function):
         inputs = tt.vector(name='theta', dtype=inputs_dtype)
         i = 0
         for sa, ra in zip(sym_args, real_args):
-            if sa.shape:
+            if sa.ndim > 0:
                 vector_arg = inputs[i: i + ra.size].reshape(ra.shape)
             else:
                 vector_arg = inputs[i]
