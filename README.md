@@ -12,7 +12,7 @@ PyAutoDiff automatically compiles NumPy code using [Theano](http://deeplearning.
 
 ####Decorators
 
-PyAutoDiff provides simple decorators for compiling NumPy functions or their derivatives.
+PyAutoDiff provides simple decorators for compiling arbitrary NumPy functions and their derivatives. For most users, these will be the primary interface to autodiff.
 ```python
 from autodiff import function, gradient
 
@@ -163,7 +163,7 @@ When PyAutoDiff prepares to compile, it calls the Python function one time in or
 
 In the current version of PyAutoDiff, there **is** a way to avoid this problem, but at the cost of significantly more expensive calculations. If an autodiff class is instantiated with keyword `use_cache=False`, then it will not cache its compiled functions. Therefore, it will reevaluate all control flow statements at every call. However, it will call the NumPy function, compile a Theano function, and call the Theano function every time -- meaning functions will take at least twice as long to run and possibly more. This should only be used as a last resort if more clever designs are simply not possible.
 
-As a rule of thumb: if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance it won't behave as you expect.
+**As a rule of thumb: if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance it won't behave as you expect.**
 
 Here is an example of compilation "locking" a control flow, and how to set `use_cache` to avoid it:
 ```python
