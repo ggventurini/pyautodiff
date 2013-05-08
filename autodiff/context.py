@@ -11,7 +11,7 @@ This file demonstrates two applications of this technique:
 import __builtin__
 import ctypes
 import inspect
-import logging; logger = logging.getLogger(__name__)
+import logging
 import opcode
 #import os
 import sys
@@ -25,6 +25,7 @@ import theano
 from autodiff.utils import itercode, orderedcallargs
 from autodiff.constant import Constant, _constants
 
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # from theano.tensor.shared_randomstreams import RandomStreams
@@ -411,7 +412,7 @@ class FrameVM(object):
         s_args = []
         for a in args:
             if isinstance(a, tuple):
-                s_args.append([self.watcher.getvar(ai) for ai in a])
+                s_args.append([self.watcher.getvar(ax) for ax in a])
             else:
                 s_args.append(self.watcher.getvar(a))
         s_kwargs = dict([(kw, self.watcher.getvar(val))
@@ -428,15 +429,13 @@ class FrameVM(object):
                 self.watcher.shadow(rval, s_rval)
 
         # ================ NumPy and builtin functions
-        elif (
-                (getattr(func, '__module__', None)
-                    and func.__module__.startswith('numpy'))
-                or isinstance(func, np.ufunc)
-                or str(func) == '<built-in function abs>'
-                or str(func) == '<built-in function max>'
-                or str(func) == '<built-in function min>'
-                or str(func) == '<built-in function sum>'
-                ):
+        elif ((getattr(func, '__module__', None)
+                and func.__module__.startswith('numpy'))
+              or isinstance(func, np.ufunc)
+              or str(func) == '<built-in function abs>'
+              or str(func) == '<built-in function max>'
+              or str(func) == '<built-in function min>'
+              or str(func) == '<built-in function sum>'):
             rval = func(*args, **kwargs)
             if any(id(a) in self.watcher for a in all_args_expanded):
                 if func.__name__ == 'sum':
@@ -505,7 +504,7 @@ class FrameVM(object):
                 self.watcher.shadow(rval, s_self.astype(dtype))
             elif func.__name__ == 'sort':
                 # sort is an inplace method
-                rval = func() # returns None
+                rval = func()  # returns None
                 # shadow the original array; it has been updated inplace
                 self.watcher.shadow(func.__self__, s_self.sort())
             else:
@@ -584,20 +583,29 @@ class FrameVM(object):
         opname = opcode.cmp_op[arg]
         right = self.pop()
         left = self.pop()
-        if 0: pass
-        elif opname == '==': self.push(left == right)
-        elif opname == '!=': self.push(left != right)
-        elif opname == '>': self.push(left > right)
-        elif opname == '<': self.push(left < right)
-        elif opname == '>=': self.push(left >= right)
-        elif opname == '<=': self.push(left <= right)
-        elif opname == 'is': self.push(left is right)
-        elif opname == 'in': self.push(left in right)
+        if 0:
+            pass
+        elif opname == '==':
+            self.push(left == right)
+        elif opname == '!=':
+            self.push(left != right)
+        elif opname == '>':
+            self.push(left > right)
+        elif opname == '<':
+            self.push(left < right)
+        elif opname == '>=':
+            self.push(left >= right)
+        elif opname == '<=':
+            self.push(left <= right)
+        elif opname == 'is':
+            self.push(left is right)
+        elif opname == 'in':
+            self.push(left in right)
         else:
             raise NotImplementedError('comparison: %s' % opname)
 
         if any(id(a) in self.watcher for a in [left, right]):
-            sargs = [self.watcher.getvar(a) for a in [left, right]]
+            sargs = [self.watcher.getvar(ai) for ai in [left, right]]
             tos = self.stack[-1]
             if 0:
                 pass
@@ -723,8 +731,8 @@ class FrameVM(object):
 
         if isinstance(tos, np.ndarray):
             if id(tos) not in self.watcher:
-                raise NotImplementedError('how did this var get here?',
-                        (id(tos), tos))
+                raise NotImplementedError(
+                    'how did this var get here?', (id(tos), tos))
 
         if id(tos) in self.watcher:
             s_tos = self.watcher.svars[id(tos)]
@@ -750,7 +758,8 @@ class FrameVM(object):
             logger.debug('attribute access %s' % attr)
             rval = getattr(tos, attr)
             self.push(rval)
-            # if (isinstance(rval, np.ndarray) and id(rval) not in self.watcher):
+            # if (isinstance(rval, np.ndarray)
+                # and id(rval) not in self.watcher):
                 # self.add_shadow(rval)
             if id(rval) not in self.watcher:
                 self.add_shadow(rval)
@@ -839,13 +848,13 @@ class FrameVM(object):
             argdefs = ()
         if w_closure:
             fn = types.FunctionType(func_code,
-                    self.func.func_globals,
-                    argdefs=argdefs,
-                    closure=cells,)
+                                    self.func.func_globals,
+                                    argdefs=argdefs,
+                                    closure=cells,)
         else:
             fn = types.FunctionType(func_code,
-                    self.func.func_globals,
-                    argdefs=argdefs)
+                                    self.func.func_globals,
+                                    argdefs=argdefs)
         # print 'made FN', fn, fn.func_closure
         self.push(fn)
 
@@ -890,7 +899,7 @@ class FrameVM(object):
         self.push(new_tos)
         watcher = self.watcher
         if any(id(t) in watcher for t in [TOS, TOS1]):
-            s  = watcher.getvar(TOS)
+            s = watcher.getvar(TOS)
             s1 = watcher.getvar(TOS1)
             s_rval = s1[s:]
             self.watcher.shadow(new_tos, s_rval)
@@ -902,7 +911,7 @@ class FrameVM(object):
         self.push(new_tos)
         watcher = self.watcher
         if any(id(t) in watcher for t in [TOS, TOS1]):
-            s  = watcher.getvar(TOS)
+            s = watcher.getvar(TOS)
             s1 = watcher.getvar(TOS1)
             s_rval = s1[:s]
             self.watcher.shadow(new_tos, s_rval)
@@ -915,7 +924,7 @@ class FrameVM(object):
 
         watcher = self.watcher
         if any(id(t) in watcher for t in [TOS, TOS1, TOS2]):
-            s  = watcher.getvar(TOS)
+            s = watcher.getvar(TOS)
             s1 = watcher.getvar(TOS1)
             s2 = watcher.getvar(TOS2)
             s_rval = s2[s1:s]
@@ -1054,8 +1063,8 @@ class Context(object):
             borrow = (id(obj) in self.borrowable_ids)
         if self.force_floatX and not borrow:
             if (isinstance(obj, np.ndarray)
-                and 'float' in str(obj.dtype)
-                and str(obj.dtype) != theano.config.floatX):
+               and 'float' in str(obj.dtype)
+               and str(obj.dtype) != theano.config.floatX):
                 obj = obj.astype(theano.config.floatX)
         if self.device == 'cpu':
             return theano.tensor._shared(obj, borrow=borrow)
@@ -1064,4 +1073,3 @@ class Context(object):
 
     def getvar(self, var):
         return self.svars.get(id(var), var)
-
