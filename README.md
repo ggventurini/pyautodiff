@@ -161,19 +161,27 @@ Generally, PyAutoDiff supports any NumPy operation with a Theano equivalent. You
 
 When PyAutoDiff prepares to compile, it calls the Python function one time in order to find out what it does. With the exception of NumPy arrays and numbers, whatever happens on that first run is locked into the compiled function: the length of every `for` loop, the selected branch of every `if/else` statement, even the axis of every `np.sum(axis=my_var)`.
 
+In the current version of PyAutoDiff, there **is** a way to avoid this problem, but at the cost of significantly more expensive calculations. If an autodiff class is instantiated with keyword `use_cache=False`, then it will not cache its compiled functions. Therefore, it will reevaluate all control flow statements at every call. However, it will call the NumPy function, compile a Theano function, and call the Theano function every time -- meaning functions will take at least twice as long to run and possibly more. This should only be used as a last resort if more clever designs are simply not possible.
+
 As a rule of thumb: if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance it won't behave as you expect.
 
-Here is an example of compilation "locking" control flow:
+Here is an example of compilation "locking" a control flow, and how to set `use_cache` to avoid it:
 ```python
-@function
+from autodiff import Constant, function
+
 def loop_mult(x, N):
     y = 0
-    for i in range(N):
+    for i in range(Constant(N)):
         y += x
     return y
 
-print loop_mult(2, 4) # 8
-print loop_mult(2, 5) # also 8! The loop is locked in the compiled function.
+f = Function(loop_mult)
+print f(2, 4) # 8
+print f(2, 5) # also 8! The loop is locked in the compiled function.
+
+g = Function(loop_mult, use_cache=False)
+print g(2, 4) # 8
+print g(2, 5) # 10, but a much slower calculation than the cached version.
 ```
 
 ## Dependencies
