@@ -22,7 +22,8 @@ import types
 import numpy as np
 import theano
 
-from autodiff.utils import itercode, orderedcallargs, _int
+from autodiff.utils import itercode, orderedcallargs
+from autodiff.constant import Constant, _constants
 
 logger.setLevel(logging.INFO)
 
@@ -91,6 +92,8 @@ class FrameVM(object):
         return rval
 
     def add_shadow(self, x):
+        if id(x) in _constants:
+            return
         # -- We cannot safely set up shadow variables that are aliased to
         #    memory that is visible to the running program, unless that
         #    program can guarantee that all views of that memory are
@@ -98,7 +101,7 @@ class FrameVM(object):
         #    we wrap them in a non-cached _int() instance.
         if isinstance(x, int):
             if type(x) is int and -5 <= x <= 256:
-                x = _int(x)
+                x = np.int_(x)
             s_x = self.watcher.shared(np.asarray(x))
         elif isinstance(x, float):
             s_x = self.watcher.shared(np.asarray(x))
@@ -116,10 +119,10 @@ class FrameVM(object):
         # small ints can not be shadowed due to CPython memory caching, so we
         # wrap them in non-cached _ints.
         if type(x) is int and -5 <= x <= 256:
-            x = _int(x)
+            x = np.int_(x)
         if id(x) not in self.watcher:
             self.add_shadow(x)
-        return self.watcher.svars[id(x)]
+        return self.watcher.getvar(x)
 
     def call(self, args, kwargs):
         if not isinstance(args, tuple):
@@ -468,7 +471,8 @@ class FrameVM(object):
 
         # ================ Array methods
 
-        elif isinstance(getattr(func, '__self__', None), np.ndarray):
+        elif isinstance(getattr(func, '__self__', None),
+                        (np.ndarray, np.number)):
             assert id(func.__self__) in self.watcher
             s_self = self.watcher.svars[id(func.__self__)]
 
@@ -512,21 +516,21 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
 
-        elif isinstance(getattr(func, '__self__', None), np.number):
-            assert id(func.__self__) in self.watcher
-            s_self = self.watcher.svars[id(func.__self__)]
-            if 0:
-                pass
-            elif func.__name__ == 'astype':
-                rval = func(*args, **kwargs)
-                assert not kwargs
-                assert list(args) == s_args
-                dtype = str(args[0])
-                if dtype == 'bool':
-                    dtype == 'int8'
-                self.watcher.shadow(rval, s_self.astype(dtype))
-            else:
-                raise NotImplementedError(func)
+        # elif isinstance(getattr(func, '__self__', None), np.number):
+            # assert id(func.__self__) in self.watcher
+            # s_self = self.watcher.svars[id(func.__self__)]
+            # if 0:
+                # pass
+            # elif func.__name__ == 'astype':
+                # rval = func(*args, **kwargs)
+                # assert not kwargs
+                # assert list(args) == s_args
+                # dtype = str(args[0])
+                # if dtype == 'bool':
+                    # dtype == 'int8'
+                # self.watcher.shadow(rval, s_self.astype(dtype))
+            # else:
+                # raise NotImplementedError(func)
 
         # ================ built-ins
 
@@ -536,10 +540,11 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
-                # if any(id(a) in self.watcher.svars for a in all_args_expanded):
-                    # raise NotImplementedError(
-                        # '{0} can not be called with symbolic arguments '
-                        # 'because it has no Theano equivalent.'.format(func))
+                if any(id(a) in self.watcher.svars for a in all_args_expanded):
+                    raise NotImplementedError(
+                        '{0} can not be called with symbolic arguments '
+                        'because it has no Theano equivalent. Try wrapping '
+                        'the arguments with Constant().'.format(func))
             elif 'method rand of mtrand.RandomState' in str(func):
                 rval = func(*args, **kwargs)
                 assert not kwargs  # -- rand doesn't take kwargs right?
@@ -556,6 +561,11 @@ class FrameVM(object):
         # ================ Types
 
         elif type(func) == type:
+            rval = func(*args, **kwargs)
+
+        # ================ AutoDiff Constant
+
+        elif func is Constant:
             rval = func(*args, **kwargs)
 
         # ================ Everything Else
@@ -694,8 +704,8 @@ class FrameVM(object):
     def op_LOAD_GLOBAL(self, i, op, arg):
         # print 'LOAD_GLOBAL', self.names[arg]
         tos = self._myglobals[self.func.func_code.co_names[arg]]
-        if type(tos) is int:
-            tos = _int(tos)
+        if type(tos) is int and -5 <= tos <= 256:
+            tos = np.int_(tos)
         self.push(tos)
         if id(tos) not in self.watcher:
             self.add_shadow(self.stack[-1])
@@ -747,8 +757,8 @@ class FrameVM(object):
 
     def op_LOAD_CONST(self, i, op, arg):
         tos = self.func.func_code.co_consts[arg]
-        if type(tos) is int:
-            tos = _int(tos)
+        if type(tos) is int and -5 <= tos <= 256:
+            tos = np.int_(tos)
         self.push(tos)
         if isinstance(tos, float):
             if id(tos) not in self.watcher:
