@@ -9,7 +9,7 @@ from autodiff.symbolic import VectorArg
 import autodiff.utils as utils
 
 
-__all__ = ['fmin_cg', 'fmin_l_bfgs_b']
+__all__ = ['fmin_cg', 'fmin_ncg', 'fmin_l_bfgs_b']
 
 
 def fmin_cg(fn,
