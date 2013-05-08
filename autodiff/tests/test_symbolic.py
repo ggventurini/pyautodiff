@@ -123,6 +123,45 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(checkfn(f, 1, 2, x=1, y=2, z=3))
         self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
 
+    def test_nested_fn_call(self):
+        def f(x, y):
+            return x + y
+
+        def g(x):
+            return f(x, x + 1) - x ** 2
+
+        h = Function(g)
+        self.assertTrue(checkfn(h, 10))
+
+    def test_nested_fn_def(self):
+
+        def g(x):
+            def f(x, y):
+                return x + y
+            return f(x, x + 1) - x ** 2
+
+        h = Function(g)
+        self.assertTrue(checkfn(h, 10))
+
+    def test_nested_fn_kwargs_call(self):
+        def f(x, y):
+            return x + y
+
+        def g(x):
+            return f(y=x, x=x+1) - x ** 2
+
+        h = Function(g)
+        self.assertTrue(checkfn(h, 10))
+
+    def test_nested_fn_kwargs_def(self):
+        def g(x):
+            def f(x, y):
+                return x + y
+            return f(y=x, x=x+1) - x ** 2
+
+        h = Function(g)
+        self.assertTrue(checkfn(h, 10))
+
     def test_fn_constants(self):
         # access constant array
         def fn(x):
