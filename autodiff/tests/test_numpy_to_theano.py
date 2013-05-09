@@ -65,6 +65,10 @@ class NumpyFns(unittest.TestCase):
             return np.any(x > .5)
         self.assertTrue(checkfn(fn, [2]))
 
+    def test_arange(self):
+        self.assertTrue(checkfn(lambda: np.arange(3), []))
+        self.assertTrue(checkfn(lambda: np.arange(np.float32(3.)), []))
+
     def test_abs(self):
         def fn1(x):
             return np.abs(x)

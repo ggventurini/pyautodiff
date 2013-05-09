@@ -458,6 +458,13 @@ class FrameVM(object):
                 elif func.__name__ == 'reshape':
                     self.watcher.shadow(
                         rval, theano.tensor.reshape(*s_args, **s_kwargs))
+                elif func.__name__ in ['float', 'float16', 'float32',
+                                       'float64', 'float128', 'float_']
+                elif func.__name__ == 'arange2':
+                    if 'dtype' not in s_kwargs:
+                        s_kwargs['dtype'] = rval.dtype
+                    self.watcher.shadow(
+                        rval, theano.tensor.arange(*s_args, **s_kwargs))
                 else:
                     try:
                         theano_fn = getattr(theano.tensor, func.__name__)
@@ -1046,7 +1053,7 @@ class Context(object):
         if isinstance(rval, np.ndarray):
             if str(rval.dtype) == 'bool':
                 assert sval.dtype == 'int8', (rval.dtype, sval.dtype)
-            else:
+            elif not self.force_floatX:
                 assert str(rval.dtype) == sval.dtype, (rval, sval)
             assert rval.ndim == sval.ndim, (rval, sval)
 
