@@ -152,6 +152,9 @@ class NumpyFns(unittest.TestCase):
             return np.zeros_like(x)
         self.assertTrue(checkfn(fn, [2]))
 
+    def test_astype(self):
+        self.assertTrue(checkfn(lambda x: x.astype(np.float32), [2]))
+
 
 class ArrayMethodsAttributes(unittest.TestCase):
     """

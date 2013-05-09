@@ -503,7 +503,13 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
                 assert not kwargs
                 assert list(args) == s_args
-                dtype = str(args[0])
+                dtype = args[0]
+                if not isinstance(dtype, str):
+                    # catch numpy dtype objects like np.float32
+                    try:
+                        dtype = dtype.__name__
+                    except:
+                        raise NotImplementedError
                 if dtype == 'bool':
                     dtype == 'int8'
                 self.watcher.shadow(rval, s_self.astype(dtype))
