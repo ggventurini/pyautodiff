@@ -77,52 +77,6 @@ print g(5.0) # 10.0
 
 ```
 
-#### Constants
-
-PyAutoDiff tries to replace every variable used in a function with a symbolic Theano version. This can cause problems, in particular when variables (usually `ints`) are used as arguments to other functions or methods. To resolve this, use a `Constant()` modifier, which instructs PyAutoDiff not to try and build a symbolic version of that variable.
-
-The following function will compile, because the `axis` argument (1) is loaded as a constant.
-```python
-from autodiff import Constant, function
-m = np.ones((3, 4))
-
-@function
-def fn(x):
-    return x.sum(1)
-    
-print fn(m)
-```
-However, these next two examples won't work, because the `axis` argument is now a variable, and Theano's `sum` method doesn't accept variable axes.
-```python
-@function
-def bad_fn1(x):
-    a = 1
-    return x.sum(a)
-
-print bad_fn1(m) # error
-
-@function
-def bad_fn2(x, a):
-    return x.sum(a)
-    
-print bad_fn2(m, 1) # error
-```
-By calling `Constant()` appropriately, we can avoid assigning a symbolic variable. These two functions will compile.
-```python
-@function
-def good_fn1(x):
-    a = Constant(1)
-    return x.sum(a)
-    
-print good_fn1(m)
-    
-@function
-def good_fn2(x, a):
-    return x.sum(Constant(a))
-    
-print good_fn2(m, 1)
-```
-
 
 ## Concepts
 
@@ -134,9 +88,46 @@ The `Function` class and `@function` decorator use Theano to compile the target 
 
 The `Gradient` class and `@gradient` decorator compile functions which return the gradient of the the target function. The target function must be scalar-valued. A `wrt` keyword may be passed to the class or decorator to indicate which variables should be differentiated; otherwise all arguments are used.
 
+
 #### Constants
 
-PyAutoDiff attempts to shadow every numeric variable in a function with a Theano symbolic variable. This creates problems, for example, with `range()` and the `axis` argument of many Theano reductions, because they raise errors for symbolic arguments. PyAutoDiff provides a `Constant()` function that instructs it not to shadow a certain variable, meaning it can be used without problem (see above for examples).
+PyAutoDiff replaces many variables with symbolic Theano versions. This can cause problems, because some Theano functions do not support symbolic inputs. To resolve this, autodiff provides a `Constant()` modifier, which instructs PyAutoDiff not to try and build a symbolic version of that variable. 
+
+Most of the time, users will not have to call Constant() -- it is only necessary in certain cases.
+
+For example, the following functions will compile, because the `axis` argument `1` is loaded as a constant, even when bound to a variable `a`.
+```python
+from autodiff import Constant, function
+m = np.ones((3, 4))
+
+@function
+def fn_1(x):
+    return x.sum(axis=1)
+    
+@function
+def fn_2(x):
+    a = 1
+    return x.sum(axis=a)
+    
+print fn_1(m)
+```
+However, function arguments are always assumed to be symbolic. The following function will fail because the `axis` argument is the symbolic variable `a` and `tensor.sum` does not accept symbolic arguments:
+```python
+@function
+def bad_fn(x, a):
+    return x.sum(axis=a)
+
+print bad_fn(m, 1) # error
+```
+
+By calling `Constant()` appropriately, we can avoid assigning a symbolic variable. This function will compile, because the axis argument is treated as the constant `1`:
+```python
+@function
+def good_fn(x, a):
+    return x.sum(axis=Constant(a))
+    
+print good_fn1(m)
+```
 
 #### Hessian-vector products
 
@@ -167,11 +158,11 @@ In the current version of PyAutoDiff, there **is** a way to avoid this problem, 
 
 Here is an example of compilation "locking" a control flow, and how to set `use_cache` to avoid it:
 ```python
-from autodiff import Constant, function
+from autodiff import function
 
 def loop_mult(x, N):
     y = 0
-    for i in range(Constant(N)):
+    for i in range(N):
         y += x
     return y
 
