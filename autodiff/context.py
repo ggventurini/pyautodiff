@@ -110,7 +110,7 @@ class FrameVM(object):
             print >> sys.stderr, ('Warning: Theano has no bool, '
                                   'upgrading to int8')
             s_x = self.watcher.shared(x.astype('int8'))
-        elif isinstance(x, np.ndarray):
+        elif isinstance(x, (np.ndarray, np.number)):
             s_x = self.watcher.shared(x)
         else:
             return
@@ -988,6 +988,8 @@ class FrameVM(object):
 
     def op_RETURN_VALUE(self, i, op, arg):
         self.rval = self.pop()
+        if id(self.rval) not in self.watcher:
+            self.add_shadow(self.rval)
 
     def op_ROT_TWO(self, i, op, arg):
         a = self.stack[-1]
@@ -1074,10 +1076,20 @@ class Context(object):
                and 'float' in str(obj.dtype)
                and str(obj.dtype) != theano.config.floatX):
                 obj = obj.astype(theano.config.floatX)
+
+        # not all objects have shared constructors with a borrow keyword
+        # for example theano.shared(np.float32(1)) works but
+        # theano.shared(np.float32(1), borrow=[False|True]) fails
         if self.device == 'cpu':
-            return theano.tensor._shared(obj, borrow=borrow)
+            try:
+                return theano.tensor._shared(obj, borrow=borrow)
+            except:
+                return theano.tensor._shared(obj)
         else:
-            return theano.shared(obj, borrow=borrow)
+            try:
+                return theano.shared(obj, borrow=borrow)
+            except:
+                return theano.shared(obj)
 
     def getvar(self, var):
         return self.svars.get(id(var), var)
