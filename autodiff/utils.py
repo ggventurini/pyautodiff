@@ -34,6 +34,16 @@ def orderedcallargs(fn, *args, **kwargs):
     return o_callargs
 
 
+def expandedcallargs(fn, *args, **kwargs):
+    """
+    Returns a tuple of all function args and kwargs, expanded so that varargs
+    and kwargs are not nested. The args are ordered by their position in the
+    function signature. Note that any **kwargs passed to the function can not
+    have their order guaranteed since they are transformed to Python dicts.
+    """
+    return tuple(flat_from_doc(orderedcallargs(fn, *args, **kwargs).values()))
+
+
 def as_seq(x, seq_type=None):
     """
     If x is not a sequence, returns it as one. The seq_type argument allows the
