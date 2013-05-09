@@ -535,22 +535,6 @@ class FrameVM(object):
                 rval = func(*args, **kwargs)
                 self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
 
-        # elif isinstance(getattr(func, '__self__', None), np.number):
-            # assert id(func.__self__) in self.watcher
-            # s_self = self.watcher.svars[id(func.__self__)]
-            # if 0:
-                # pass
-            # elif func.__name__ == 'astype':
-                # rval = func(*args, **kwargs)
-                # assert not kwargs
-                # assert list(args) == s_args
-                # dtype = str(args[0])
-                # if dtype == 'bool':
-                    # dtype == 'int8'
-                # self.watcher.shadow(rval, s_self.astype(dtype))
-            # else:
-                # raise NotImplementedError(func)
-
         # ================ built-ins
 
         elif 'built-in' in str(func):
