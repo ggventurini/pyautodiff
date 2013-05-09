@@ -14,6 +14,13 @@ def checkfn(symF, *args, **kwargs):
 
 
 class TestFunction(unittest.TestCase):
+    def test_sig_no_arg(self):
+        # single arg, no default
+        def fn():
+            return np.ones((3, 4)) + 2
+        f = Function(fn)
+        self.assertTrue(checkfn(f))
+
     def test_sig_one_arg(self):
         # single arg, no default
         def fn(x):
