@@ -29,6 +29,35 @@ def checkfn(fn, var_ndim, *args):
     return np.allclose(py_result, sym_result)
 
 
+class Python(unittest.TestCase):
+    def test_range(self):
+        def f(x):
+            for i in range(3):
+                x += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+
+        def f(x):
+            a = 3
+            for i in range(a):
+                x += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+
+        def f(x):
+            a = x[0] + 10
+            for i in range(int(a)):
+                x += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+
+        def f(x, a):
+            for i in range(a):
+                x += 5
+            return x
+        self.assertTrue(checkfn(f, [1], 3))
+
+
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
         for d in range(3):
