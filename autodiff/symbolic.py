@@ -115,7 +115,7 @@ class Symbolic(object):
         if kwargs is None:
             kwargs = dict()
         elif not isinstance(kwargs, dict):
-            raise TypeError('args must be a dict')
+            raise TypeError('kwargs must be a dict')
 
         def check(name, i):
             if type(i) is int and -5 <= i <= 256:
