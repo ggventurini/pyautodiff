@@ -49,14 +49,13 @@ from autodiff.optimize import fmin_l_bfgs_b
 
 #--- A trivial least-squares minimization problem
 
-y = np.arange(3.0)
 def fn(x):
+    y = np.arange(3.0)
     return ((x - y) ** 2).mean()
     
 x_opt = fmin_l_bfgs_b(fn, init_args=np.zeros(3))
 
 print x_opt # [0.0, 1.0, 2.0]
-print y     # [0.0, 1.0, 2.0]
 
 ```
 
