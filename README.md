@@ -161,7 +161,7 @@ from autodiff import function
 
 def loop_mult(x, N):
     y = 0
-    for i in range(N):
+    for i in range(Constant(N)):
         y += x
     return y
 
