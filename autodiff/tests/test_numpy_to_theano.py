@@ -158,6 +158,11 @@ class NumpyFns(unittest.TestCase):
     def test_astype(self):
         self.assertTrue(checkfn(lambda x: x.astype(np.float32), [2]))
 
+    def test_cast(self):
+        self.assertTrue(checkfn(lambda x: np.float32(x), [2]))
+        self.assertTrue(checkfn(lambda x: np.float64(x), [2]))
+        self.assertTrue(checkfn(lambda x: np.int8(x), [2]))
+        self.assertTrue(checkfn(lambda x: np.bool_(x), [2]))
 
 class ArrayMethodsAttributes(unittest.TestCase):
     """
