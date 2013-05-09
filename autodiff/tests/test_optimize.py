@@ -14,6 +14,12 @@ def l2_loss(p):
     return loss
 
 
+def simple_loss_multiple_args(p, q):
+    p_err = ((p - np.arange(2.))**2).sum()
+    q_err = ((q - np.arange(3.))**2).sum()
+    return p_err + q_err
+
+
 def subtensor_loss(x):
     if np.any(x < -100):
         return float('inf')
@@ -26,7 +32,7 @@ def subtensor_loss(x):
     return rval
 
 
-class TestMinimizers(unittest.TestCase):
+class TestOptimizers(unittest.TestCase):
     def test_subtensor(self):
         x0 = np.zeros(2)
         ans = [-3, 4]
@@ -56,3 +62,32 @@ class TestMinimizers(unittest.TestCase):
 
         opt = fmin_ncg(l2_loss, x0)
         self.assertTrue(np.allclose(opt, ans))
+
+    def test_simple_loss_multiple_args(self):
+        x0 = np.zeros(2), np.zeros(3)
+        ans = np.arange(2.), np.arange(3.)
+
+        opt = fmin_l_bfgs_b(simple_loss_multiple_args, x0)
+        self.assertTrue(np.allclose(opt[0], ans[0]))
+        self.assertTrue(np.allclose(opt[1], ans[1]))
+
+        opt = fmin_cg(simple_loss_multiple_args, x0)
+        self.assertTrue(np.allclose(opt[0], ans[0]))
+        self.assertTrue(np.allclose(opt[1], ans[1]))
+
+        opt = fmin_ncg(simple_loss_multiple_args, x0)
+        self.assertTrue(np.allclose(opt[0], ans[0]))
+        self.assertTrue(np.allclose(opt[1], ans[1]))
+
+x0 = np.zeros(2), np.zeros(3)
+ans = np.arange(2.), np.arange(3.)
+
+opt = fmin_l_bfgs_b(simple_loss_multiple_args, x0)
+
+from autodiff import function
+
+@function
+def f():
+    return np.arange(2.)
+
+
