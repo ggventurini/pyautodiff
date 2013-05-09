@@ -458,13 +458,11 @@ class FrameVM(object):
                 elif func.__name__ == 'reshape':
                     self.watcher.shadow(
                         rval, theano.tensor.reshape(*s_args, **s_kwargs))
-                elif func.__name__ in ['float', 'float16', 'float32',
-                                       'float64', 'float128', 'float_']
-                elif func.__name__ == 'arange2':
-                    if 'dtype' not in s_kwargs:
-                        s_kwargs['dtype'] = rval.dtype
-                    self.watcher.shadow(
-                        rval, theano.tensor.arange(*s_args, **s_kwargs))
+                elif func.__name__ in theano.tensor.basic._cast_mapping.keys():
+                    # handle cast functions
+                    rval = func(*args, **kwargs)
+                    sval = theano.tensor.cast(*s_args, dtype=func.__name__)
+                    self.watcher.shadow(rval, sval)
                 else:
                     try:
                         theano_fn = getattr(theano.tensor, func.__name__)
