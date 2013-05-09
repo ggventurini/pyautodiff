@@ -58,11 +58,16 @@ class TestConstant(unittest.TestCase):
         def f(x):
             a = 1
             return x.sum(a)
-        self.assertRaises(TypeError, check, f, np.ones((3, 4)))
+        self.assertTrue(check(f, np.ones((3, 4))))
 
         def f(x, a):
             return x.sum(a)
         self.assertRaises(TypeError, check, f, np.ones((3, 4)), 1)
+
+        def f(x):
+            a = np.int_(1)
+            return x.sum(a)
+        self.assertRaises(TypeError, check, f, np.ones((3, 4)))
 
         def f(x):
             return x.sum(Constant(1))
@@ -78,6 +83,29 @@ class TestConstant(unittest.TestCase):
             return x.sum(Constant(a))
         self.assertTrue(check(f, np.ones((3, 4))))
 
+        def f(x):
+            a = np.int_(1)
+            return x.sum(Constant(a))
+        self.assertTrue(check(f, np.ones((3, 4))))
+
         def f(x, a):
             return x.sum(Constant(a))
         self.assertTrue(check(f, np.ones((3, 4)), 1))
+
+    def test_closure_sum(self):
+        a = 1
+
+        def f(x):
+            return x.sum(a)
+        self.assertTrue(check(f, np.ones((3, 4))))
+
+    def test_float_range(self):
+        import theano
+        old_floatX = theano.config.floatX
+        theano.config.floatX = 'float32'
+
+        def f():
+            return np.arange(5.0)
+        self.assertTrue(check(f))
+
+        theano.config.floatX = old_floatX

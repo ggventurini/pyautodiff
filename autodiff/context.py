@@ -776,10 +776,10 @@ class FrameVM(object):
         if type(tos) is int and -5 <= tos <= 256:
             tos = np.int_(tos)
         self.push(tos)
-        if isinstance(tos, float):
-            if id(tos) not in self.watcher:
-                var = theano.tensor.as_tensor_variable(tos)
-                self.watcher.svars[id(tos)] = var
+        # if isinstance(tos, float):
+            # if id(tos) not in self.watcher:
+                # var = theano.tensor.as_tensor_variable(tos)
+                # self.watcher.svars[id(tos)] = var
         if (isinstance(tos, np.ndarray) and id(tos) not in self.watcher):
             raise NotImplementedError()
 
@@ -838,8 +838,9 @@ class FrameVM(object):
             self.push(tos)
         except LoadUnassigned:
             raise LoadUnassigned(self.func.func_code.co_varnames[arg])
-        if id(tos) not in self.watcher:
-            self.add_shadow(tos)
+        if not isinstance(tos, (int, float)):
+            if id(tos) not in self.watcher:
+                self.add_shadow(tos)
 
     def op_MAKE_CLOSURE(self, i, op, arg):
         return self.op_MAKE_FUNCTION(i, op, arg, w_closure=True)
