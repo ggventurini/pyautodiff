@@ -67,6 +67,9 @@ class NumpyFns(unittest.TestCase):
 
     def test_arange(self):
         self.assertTrue(checkfn(lambda: np.arange(3), []))
+        # numpy arange doesn't return an array with the same dtype as its
+        # argument, but theano arange does. In Context, the numpy arange
+        # should be cast to match the theano one.
         self.assertTrue(checkfn(lambda: np.arange(np.float32(3.)), []))
 
     def test_abs(self):

@@ -458,6 +458,12 @@ class FrameVM(object):
                 elif func.__name__ == 'reshape':
                     self.watcher.shadow(
                         rval, theano.tensor.reshape(*s_args, **s_kwargs))
+                elif func.__name__ == 'arange':
+                    # tensor.arange takes the dtype of its input but
+                    # numpy.arange does not. Since we are compiling the Theano
+                    # graph, recast the numpy value to match the symbolic dtype
+                    sval = theano.tensor.arange(*s_args, **s_kwargs)
+                    rval = rval.astype(sval.dtype)
                 elif func.__name__ in theano.tensor.basic._cast_mapping.keys():
                     # handle cast functions
                     rval = func(*args, **kwargs)
