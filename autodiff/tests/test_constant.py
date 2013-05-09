@@ -98,3 +98,14 @@ class TestConstant(unittest.TestCase):
         def f(x):
             return x.sum(a)
         self.assertTrue(check(f, np.ones((3, 4))))
+
+    def test_float_range(self):
+        import theano
+        old_floatX = theano.config.floatX
+        theano.config.floatX = 'float32'
+
+        def f():
+            return np.arange(5.0)
+        self.assertTrue(check(f))
+
+        theano.config.floatX = old_floatX
