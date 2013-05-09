@@ -11,7 +11,7 @@ import autodiff.utils as utils
 __all__ = ['fmin_cg', 'fmin_ncg', 'fmin_l_bfgs_b']
 
 
-def fmin_cg(fn, init_args, **scipy_kwargs):
+def fmin_cg(fn, init_args, init_kwargs=None, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's nonlinear conjugate
     gradient algorithm. The initial parameter guess is 'init_args'.
@@ -19,7 +19,14 @@ def fmin_cg(fn, init_args, **scipy_kwargs):
     """
 
     init_args = utils.as_seq(init_args, tuple)
-    f = VectorArg(fn, init_args=init_args, compile_fn=True)
+
+    if init_kwargs is None:
+        init_kwargs = dict()
+
+    f = VectorArg(fn,
+                  init_args=init_args,
+                  init_kwargs=init_kwargs,
+                  compile_fn=True)
     fprime = VectorArg(fn, init_args=init_args, compile_grad=True)
     x0 = f.vector_from_args(init_args)
 
@@ -45,9 +52,23 @@ def fmin_ncg(fn, init_args, **scipy_kwargs):
     """
 
     init_args = utils.as_seq(init_args, tuple)
-    f = VectorArg(fn, init_args=init_args, compile_fn=True)
-    fprime = VectorArg(fn, init_args=init_args, compile_grad=True)
-    fhess_p = VectorArg(fn, init_args=init_args, compile_hv=True)
+    if init_kwargs is None:
+        init_kwargs = dict()
+
+    f = VectorArg(fn,
+                  init_args=init_args,
+                  init_kwargs=init_kwargs,
+                  compile_fn=True)
+
+    fprime = VectorArg(fn,
+                       init_args=init_args,
+                       init_kwargs=init_kwargs,
+                       compile_grad=True)
+
+    fhess_p = VectorArg(fn,
+                        init_args=init_args,
+                        init_kwargs=init_kwargs,
+                        compile_hv=True)
     x0 = f.vector_from_args(init_args)
 
     x_opt = scipy.optimize.fmin_ncg(
@@ -79,6 +100,7 @@ def fmin_l_bfgs_b(fn,
     init_args = utils.as_seq(init_args, tuple)
     f_df = VectorArg(fn,
                      init_args=init_args,
+                     init_kwargs=init_kwargs,
                      compile_fn=True,
                      compile_grad=True)
     x0 = f_df.vector_from_args(init_args)
@@ -108,3 +130,5 @@ def fmin_l_bfgs_b(fn,
         return x_reshaped, {'f_opt': f_opt, 'info': info}
     else:
         return x_reshaped
+
+def fmin_sgd()

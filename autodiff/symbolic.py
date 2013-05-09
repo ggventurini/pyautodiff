@@ -480,12 +480,15 @@ class VectorArg(Function):
 
     Also, VectorArg classes must be provided 'init_args', an initial set of
     function arguments. The shape and dtype of these initial arguments is used
-    to build the resulting function.
+    to build the resulting function. 'init_kwargs' may also be passed, and are
+    stored as positional arguments in the order specified by the function
+    signature.
 
     """
     def __init__(self,
                  pyfn,
                  init_args,
+                 init_kwargs=None,
                  compile_fn=False,
                  compile_grad=False,
                  compile_hv=False,
@@ -501,17 +504,20 @@ class VectorArg(Function):
         self.compile_grad = compile_grad
         self.compile_hv = compile_hv
 
+        if init_kwargs is None:
+            init_kwargs = dict()
         self.init_args = init_args
-        self.compile_function(init_args, {})
+        self.init_kwargs = init_kwargs
+        self.all_init_args = utils.expandedcallargs(self.pyfn,
+                                                    *init_args,
+                                                    **init_kwargs)
+
+        self.compile_function(init_args, init_kwargs)
 
     def compile_function(self, args, kwargs):
-        if len(kwargs) > 0:
-            raise ValueError(
-                'VectorArg does not support keyword arguments.')
-
-        kwargs = dict()
 
         theano_vars = self.get_theano_vars(args, kwargs)
+        import ipdb; ipdb.set_trace()
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -569,7 +575,7 @@ class VectorArg(Function):
 
         # create a symbolic vector, then split it up into symbolic input
         # args
-        inputs_dtype = self.vector_from_args(self.init_args).dtype
+        inputs_dtype = self.vector_from_args(self.all_init_args).dtype
         inputs = tt.vector(name='theta', dtype=inputs_dtype)
         i = 0
         for sa, ra in zip(sym_args, real_args):
@@ -597,15 +603,19 @@ class VectorArg(Function):
 
         return theano_vars
 
-    def vector_from_args(self, args):
-        return np.concatenate([np.asarray(a).flat for a in args])
+    def vector_from_args(self, args, kwargs=None):
+        if kwargs is None:
+            kwargs = dict()
+        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+        return np.concatenate([np.asarray(a).flat for a in all_args])
 
     def args_from_vector(self, vector):
         args = []
         last_idx = 0
-        for a in self.init_args:
+        for a in self.all_init_args:
             args.append(vector[last_idx:last_idx+a.size].reshape(a.shape))
             last_idx += a.size
+
         return args
 
     def call(self, *args):
