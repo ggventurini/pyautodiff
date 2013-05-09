@@ -503,7 +503,6 @@ class VectorArg(Function):
         self.compile_fn = compile_fn
         self.compile_grad = compile_grad
         self.compile_hv = compile_hv
-
         if init_kwargs is None:
             init_kwargs = dict()
         self.init_args = init_args
@@ -517,7 +516,6 @@ class VectorArg(Function):
     def compile_function(self, args, kwargs):
 
         theano_vars = self.get_theano_vars(args, kwargs)
-        import ipdb; ipdb.set_trace()
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -571,7 +569,7 @@ class VectorArg(Function):
         # get symbolic inputs corresponding to shared inputs in s_args
         s_memo = OrderedDict()
         sym_args = utils.flat_from_doc(self.s_args.values())
-        real_args = utils.flat_from_doc(args)
+        real_args = utils.flat_from_doc(self.all_init_args)
 
         # create a symbolic vector, then split it up into symbolic input
         # args
@@ -603,7 +601,9 @@ class VectorArg(Function):
 
         return theano_vars
 
-    def vector_from_args(self, args, kwargs=None):
+    def vector_from_args(self, args=None, kwargs=None):
+        if args is None:
+            args = ()
         if kwargs is None:
             kwargs = dict()
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
@@ -618,9 +618,9 @@ class VectorArg(Function):
 
         return args
 
-    def call(self, *args):
-        fn = self.cache.get(self.cache_id(args))
-        return fn(*args)
+    def call(self, *args, **kwargs):
+        fn = self.cache.get(self.cache_id(args, kwargs))
+        return fn(*args, **kwargs)
 
     def cache_id(self, args=None, kwargs=None):
         """

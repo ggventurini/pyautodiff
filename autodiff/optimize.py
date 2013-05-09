@@ -11,7 +11,7 @@ import autodiff.utils as utils
 __all__ = ['fmin_cg', 'fmin_ncg', 'fmin_l_bfgs_b']
 
 
-def fmin_cg(fn, init_args, init_kwargs=None, **scipy_kwargs):
+def fmin_cg(fn, init_args=None, init_kwargs=None, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's nonlinear conjugate
     gradient algorithm. The initial parameter guess is 'init_args'.
@@ -19,16 +19,19 @@ def fmin_cg(fn, init_args, init_kwargs=None, **scipy_kwargs):
     """
 
     init_args = utils.as_seq(init_args, tuple)
-
-    if init_kwargs is None:
-        init_kwargs = dict()
+    init_kwargs = utils.as_seq(init_kwargs, dict)
 
     f = VectorArg(fn,
                   init_args=init_args,
                   init_kwargs=init_kwargs,
                   compile_fn=True)
-    fprime = VectorArg(fn, init_args=init_args, compile_grad=True)
-    x0 = f.vector_from_args(init_args)
+
+    fprime = VectorArg(fn,
+                       init_args=init_args,
+                       init_kwargs=init_kwargs,
+                       compile_grad=True)
+
+    x0 = f.vector_from_args(init_args, init_kwargs)
 
     x_opt = scipy.optimize.fmin_cg(
         f=f,
@@ -44,7 +47,7 @@ def fmin_cg(fn, init_args, init_kwargs=None, **scipy_kwargs):
     return x_reshaped
 
 
-def fmin_ncg(fn, init_args, **scipy_kwargs):
+def fmin_ncg(fn, init_args=None, init_kwargs=None, **scipy_kwargs):
     """
     Minimize a scalar valued function using SciPy's Newton-CG algorithm. The
     initial parameter guess is 'init_args'.
@@ -52,8 +55,7 @@ def fmin_ncg(fn, init_args, **scipy_kwargs):
     """
 
     init_args = utils.as_seq(init_args, tuple)
-    if init_kwargs is None:
-        init_kwargs = dict()
+    init_kwargs = utils.as_seq(init_kwargs, dict)
 
     f = VectorArg(fn,
                   init_args=init_args,
@@ -69,7 +71,8 @@ def fmin_ncg(fn, init_args, **scipy_kwargs):
                         init_args=init_args,
                         init_kwargs=init_kwargs,
                         compile_hv=True)
-    x0 = f.vector_from_args(init_args)
+
+    x0 = f.vector_from_args(init_args, init_kwargs)
 
     x_opt = scipy.optimize.fmin_ncg(
         f=f,
@@ -87,7 +90,8 @@ def fmin_ncg(fn, init_args, **scipy_kwargs):
 
 
 def fmin_l_bfgs_b(fn,
-                  init_args,
+                  init_args=None,
+                  init_kwargs=None,
                   scalar_bounds=None,
                   return_info=False,
                   **scipy_kwargs):
@@ -98,12 +102,15 @@ def fmin_l_bfgs_b(fn,
     """
 
     init_args = utils.as_seq(init_args, tuple)
+    init_kwargs = utils.as_seq(init_kwargs, dict)
+
     f_df = VectorArg(fn,
                      init_args=init_args,
                      init_kwargs=init_kwargs,
                      compile_fn=True,
                      compile_grad=True)
-    x0 = f_df.vector_from_args(init_args)
+
+    x0 = f_df.vector_from_args(init_args, init_kwargs)
 
     if 'approx_grad' in scipy_kwargs:
         raise TypeError('duplicate argument: approx_grad')
@@ -131,4 +138,4 @@ def fmin_l_bfgs_b(fn,
     else:
         return x_reshaped
 
-def fmin_sgd()
+# def fmin_sgd()

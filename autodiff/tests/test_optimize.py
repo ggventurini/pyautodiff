@@ -64,30 +64,33 @@ class TestOptimizers(unittest.TestCase):
         self.assertTrue(np.allclose(opt, ans))
 
     def test_simple_loss_multiple_args(self):
+        # test that args and kwargs are both handled by optimizers
         x0 = np.zeros(2), np.zeros(3)
         ans = np.arange(2.), np.arange(3.)
 
         opt = fmin_l_bfgs_b(simple_loss_multiple_args, x0)
+        opt = fmin_l_bfgs_b(simple_loss_multiple_args,
+                            init_kwargs=dict(p=x0[0], q=x0[1]))
+        opt = fmin_l_bfgs_b(simple_loss_multiple_args,
+                            init_args=x0[0],
+                            init_kwargs=dict(q=x0[1]))
         self.assertTrue(np.allclose(opt[0], ans[0]))
         self.assertTrue(np.allclose(opt[1], ans[1]))
 
         opt = fmin_cg(simple_loss_multiple_args, x0)
+        opt = fmin_cg(simple_loss_multiple_args,
+                      init_kwargs=dict(p=x0[0], q=x0[1]))
+        opt = fmin_cg(simple_loss_multiple_args,
+                      init_args=x0[0],
+                      init_kwargs=dict(q=x0[1]))
         self.assertTrue(np.allclose(opt[0], ans[0]))
         self.assertTrue(np.allclose(opt[1], ans[1]))
 
         opt = fmin_ncg(simple_loss_multiple_args, x0)
+        opt = fmin_ncg(simple_loss_multiple_args,
+                       init_kwargs=dict(p=x0[0], q=x0[1]))
+        opt = fmin_ncg(simple_loss_multiple_args,
+                       init_args=x0[0],
+                       init_kwargs=dict(q=x0[1]))
         self.assertTrue(np.allclose(opt[0], ans[0]))
         self.assertTrue(np.allclose(opt[1], ans[1]))
-
-x0 = np.zeros(2), np.zeros(3)
-ans = np.arange(2.), np.arange(3.)
-
-opt = fmin_l_bfgs_b(simple_loss_multiple_args, x0)
-
-from autodiff import function
-
-@function
-def f():
-    return np.arange(2.)
-
-

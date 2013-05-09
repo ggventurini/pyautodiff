@@ -59,11 +59,16 @@ def as_seq(x, seq_type=None):
         is not a sequence, a list is returned.
     """
     if x is None:
+        # None represents an empty sequence
         x = []
-    elif not isinstance(x, (list, tuple, set, frozenset)):
+    elif not isinstance(x, (list, tuple, set, frozenset, dict)):
+        # if x is not already a sequence (including dict), then make it one
         x = [x]
-    if seq_type is not None:
+
+    if seq_type is not None and not isinstance(x, seq_type):
+        # if necessary, convert x to the sequence type
         x = seq_type(x)
+
     return x
 
 
