@@ -41,12 +41,14 @@ class Symbolic(object):
                                         pyfn.func_defaults,
                                         pyfn.func_closure)
 
+        self.context = Context(borrowable=utils.as_seq(borrow, tuple),
+                               force_floatX=force_floatX)
+        self._context_init_svars = self.context.svars.copy()
+
         self.s_vars = OrderedDict()
         self.s_args = OrderedDict()
         self.s_results = OrderedDict()
         self._cache = dict()
-        self.force_floatX = force_floatX
-        self.borrow = utils.as_seq(borrow, tuple)
         self.use_cache = use_cache
         self.argspec = getargspec(self._pyfn)
 
@@ -64,11 +66,15 @@ class Symbolic(object):
     def __call__(self, *args, **kwargs):
         return self.get_theano_vars(args, kwargs)
 
-    def reset(self):
+    def reset(self, reset_cache=False):
         self.s_vars.clear()
         self.s_args.clear()
         self.s_results.clear()
-        self.cache.clear()
+        self.context.svars.clear()
+        self.context.svars.update(self._context_init_svars)
+
+        if reset_cache:
+            self.cache.clear()
 
     @property
     def pyfn(self):
@@ -139,18 +145,18 @@ class Symbolic(object):
 
         args = tuple(args)
 
-        # clear symbolic dictionaries
-        self.s_vars.clear()
-        self.s_args.clear()
-        self.s_results.clear()
+        # clear previous results and context
+        self.reset(reset_cache=False)
 
         # trace the function
         autodiff.constant.clear_constants()
-        c = Context(borrowable=self.borrow, force_floatX=self.force_floatX)
-        results = c.call(self.pyfn, args, kwargs)
+
+        # call the Context
+        results = self.context.call(self.pyfn, args, kwargs)
 
         # collect symbolic variables in s_vars
-        self.s_vars.update(c.svars)
+        self.s_vars.update(self.context.svars)
+        self.context.svars.clear()
 
         # collect symbolic arguments in s_args
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
