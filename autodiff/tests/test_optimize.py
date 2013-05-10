@@ -94,3 +94,30 @@ class TestOptimizers(unittest.TestCase):
                        init_kwargs=dict(q=x0[1]))
         self.assertTrue(np.allclose(opt[0], ans[0]))
         self.assertTrue(np.allclose(opt[1], ans[1]))
+
+
+class TestSVM(unittest.TestCase):
+    """
+    adopted from pyautodiff v0.0.1 tests.
+
+    should correspond to examples/svm.py
+    """
+    def test_svm(self):
+        rng = np.random.RandomState(1)
+
+        # -- create some fake data
+        x = rng.rand(10, 5)
+        y = 2 * (rng.rand(10) > 0.5) - 1
+        l2_regularization = 1e-4
+
+        def loss_fn(weights, bias):
+            margin = y * (np.dot(x, weights) + bias)
+            loss = np.maximum(0, 1 - margin) ** 2
+            l2_cost = 0.5 * l2_regularization * np.dot(weights, weights)
+            loss = np.mean(loss) + l2_cost
+            print 'ran loss_fn(), returning', loss
+            return loss
+
+        w, b = fmin_l_bfgs_b(loss_fn, (np.zeros(5), np.zeros(())))
+        final_loss = loss_fn(w, b)
+        assert np.allclose(final_loss, 0.7229)
