@@ -137,5 +137,3 @@ def fmin_l_bfgs_b(fn,
         return x_reshaped, {'f_opt': f_opt, 'info': info}
     else:
         return x_reshaped
-
-# def fmin_sgd()

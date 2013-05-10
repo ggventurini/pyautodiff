@@ -20,6 +20,11 @@ info = logger.info
 warn = logger.warn
 
 
+raise NotImplementedError(
+    'fmin_sgd is a legacy file not supported in the current version of '
+    'PyAutoDiff (yet!)')
+
+
 class FMinSGD(object):
     """
     An iterator implementing the stochastic gradient descent algorithm.
