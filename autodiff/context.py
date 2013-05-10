@@ -470,7 +470,7 @@ class FrameVM(object):
                     sval = theano.tensor.cast(*s_args, dtype=func.__name__)
                     self.watcher.shadow(rval, sval)
                 elif func.__name__ in ['bool', 'bool_', 'bool8']:
-                    # Theano has no bool type
+                    # Theano has no bool type, cast to int8 instead
                     sval = theano.tensor.cast(*s_args, dtype='int8')
                 else:
                     try:
