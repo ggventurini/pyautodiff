@@ -24,13 +24,13 @@ class TestConstant(unittest.TestCase):
             for i in range(x):
                 x = x + x
             return x
-        self.assertRaises(NotImplementedError, check, f, 1)
+        self.assertTrue(check(f, 1))
 
         def f(x, r):
             for i in range(r):
                 x = x + x
             return x
-        self.assertRaises(NotImplementedError, check, f, np.ones(3), 3)
+        self.assertTrue(check(f, np.ones(3), 3))
 
         def f(x):
             for i in range(Constant(3)):
