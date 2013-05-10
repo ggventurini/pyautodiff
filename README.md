@@ -87,10 +87,17 @@ The `Function` class and `@function` decorator use Theano to compile the target 
 
 The `Gradient` class and `@gradient` decorator compile functions which return the gradient of the the target function. The target function must be scalar-valued. A `wrt` keyword may be passed to the class or decorator to indicate which variables should be differentiated; otherwise all arguments are used.
 
+#### Hessian-vector products
+
+The `HessianVector` class and `@hessian_vector` decorator compile functions that return the product of an argument's Hessian and an arbitrary vector (or tensor). The vectors must be provided to the resulting function with the `_tensors` keyword argument.
+
+#### Optimization
+
+The `autodiff.optimize` module wraps some SciPy minimizers, automatically compiling functions to compute derivatives and Hessian-vector products that the minimizers require in order to optimize an arbitrary function.
 
 #### Constants
 
-PyAutoDiff replaces many variables with symbolic Theano versions. This can cause problems, because some Theano functions do not support symbolic inputs. To resolve this, autodiff provides a `Constant()` modifier, which instructs PyAutoDiff not to try and build a symbolic version of that variable. 
+PyAutoDiff replaces many variables with symbolic Theano versions. This can cause problems, because some Theano functions do not support symbolic arguments. To resolve this, autodiff provides a `Constant()` modifier, which instructs PyAutoDiff to construct a non-symbolic (and therefore constant) version of a variable.
 
 Most of the time, users will not have to call Constant() -- it is only necessary in certain cases.
 
@@ -110,7 +117,7 @@ def fn_2(x):
     
 print fn_1(m)
 ```
-However, function arguments are always assumed to be symbolic. The following function will fail because the `axis` argument is the symbolic variable `a` and `tensor.sum` does not accept symbolic arguments:
+However, the decorated function's arguments are always assumed to be symbolic. Therefore, the following function will fail because the `axis` argument is the symbolic variable `a` and `tensor.sum` does not accept symbolic arguments:
 ```python
 @function
 def bad_fn(x, a):
@@ -119,23 +126,14 @@ def bad_fn(x, a):
 print bad_fn(m, 1) # error
 ```
 
-By calling `Constant()` appropriately, we can avoid assigning a symbolic variable. This function will compile, because the axis argument is treated as the constant `1`:
+By calling `Constant()` appropriately, we can convert the symbolic variable back to a constant `int`. Now the function will compile:
 ```python
 @function
 def good_fn(x, a):
     return x.sum(axis=Constant(a))
     
-print good_fn1(m)
+print good_fn1(m, 1)
 ```
-
-#### Hessian-vector products
-
-The `HessianVector` class and `@hessian_vector` decorator compile functions that return the product of an argument's Hessian and an arbitrary vector (or tensor). The vectors must be provided to the resulting function with the `_tensors` keyword argument.
-
-#### Optimization
-
-The `autodiff.optimize` module wraps some SciPy minimizers, automatically compiling functions to compute derivatives and Hessian-vector products that the minimizers require in order to optimize an arbitrary function.
-
 
 ## Caveats
 
