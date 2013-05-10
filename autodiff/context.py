@@ -48,6 +48,12 @@ cellmake.restype = ctypes.py_object
 cellmake.argtypes = (ctypes.py_object,)
 
 
+def istensor(x):
+    tensortypes = (theano.tensor.TensorConstant,
+                   theano.tensor.TensorVariable)
+    return isinstance(x, tensortypes)
+
+
 class Unassigned(object):
     """Unassigned value"""
 
@@ -436,6 +442,7 @@ class FrameVM(object):
               or str(func) == '<built-in function max>'
               or str(func) == '<built-in function min>'
               or str(func) == '<built-in function sum>'):
+
             rval = func(*args, **kwargs)
             if any(id(a) in self.watcher for a in all_args_expanded):
                 if func.__name__ == 'sum':
@@ -477,6 +484,26 @@ class FrameVM(object):
                         theano_fn = getattr(theano.tensor, func.__name__)
                     except:
                         raise NotImplementedError(func)
+
+                    # XXX should we do this? since it is not obvious that
+                    # reductions don't take symbolic args, this could lead to
+                    # users compiling functions that are supposed to have axis
+                    # arguments but silently ignore them. Leaving this
+                    # functionality out for now -- Users must call Constant()
+                    # explicitly.
+
+                    # many Theano reductions do not support symbolic axes
+                    # by checking for it here we don't have to wrap the
+                    # argument in a Constant()
+                    # argspec = orderedargspec(theano_fn, *s_args, **s_kwargs)
+                    # if (istensor(argspec.get('axis', None)) and
+                        # func.__name__ not in ['concatenate']):
+                        # if 'axis' in s_kwargs:
+                            # s_kwargs['axis'] = kwargs['axis']
+                        # else:
+                            # r_axis = args[argspec.args.index('axis')]
+                            # s_args[argspec.args.index('axis')] = r_axis
+
                     self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
             else:
                 # no argument was shadowed (e.g. zeros())
