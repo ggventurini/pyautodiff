@@ -17,9 +17,9 @@ class Symbolic(object):
         ---------
 
         pyfn : Python function
-            The function that will be traced. The will attempt to build
-            symbolic representations of any variables referenced in or created
-            by this function.
+            The function that will be traced. The Symbolic object will attempt
+            to build symbolic representations of any variables referenced in or
+            created by this function.
 
         borrow : tuple of objects
             If an object in this tuple is encountered while tracing the
