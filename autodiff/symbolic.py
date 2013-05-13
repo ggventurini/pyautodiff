@@ -64,7 +64,7 @@ class Symbolic(object):
             self._pyfn.func_defaults = tuple(reversed(new_defaults))
 
     def __call__(self, *args, **kwargs):
-        return self.get_theano_vars(args, kwargs)
+        return self.get_theano_graph(args, kwargs)
 
     def reset(self, reset_cache=False):
         self.s_vars.clear()
@@ -211,7 +211,7 @@ class Symbolic(object):
             except:
                 raise
 
-    def get_theano_vars(self, args, kwargs):
+    def get_theano_graph(self, args, kwargs):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
@@ -314,7 +314,7 @@ class Function(Symbolic):
             return tuple(varargs + dim)
 
     def compile_function(self, args, kwargs):
-        theano_vars = self.get_theano_vars(args, kwargs)
+        theano_vars = self.get_theano_graph(args, kwargs)
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -358,7 +358,7 @@ class Gradient(Function):
         self.wrt = utils.as_seq(wrt)
 
     def compile_function(self, args, kwargs):
-        theano_vars = self.get_theano_vars(args, kwargs)
+        theano_vars = self.get_theano_graph(args, kwargs)
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -407,7 +407,7 @@ class HessianVector(Gradient):
         kwargs = kwargs.copy()
         kwargs.pop('_vectors', None)
 
-        theano_vars = self.get_theano_vars(args, kwargs)
+        theano_vars = self.get_theano_graph(args, kwargs)
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -521,7 +521,7 @@ class VectorArg(Function):
 
     def compile_function(self, args, kwargs):
 
-        theano_vars = self.get_theano_vars(args, kwargs)
+        theano_vars = self.get_theano_graph(args, kwargs)
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -559,7 +559,7 @@ class VectorArg(Function):
 
         return fn
 
-    def get_theano_vars(self, args, kwargs):
+    def get_theano_graph(self, args, kwargs):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
