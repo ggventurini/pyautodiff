@@ -211,15 +211,12 @@ class Symbolic(object):
             except:
                 raise
 
-    def get_theano_graph(self, args, kwargs):
+    def get_theano_graph(self):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
 
         """
-
-        # trace the function
-        self.trace(args, kwargs)
 
         # get symbolic inputs corresponding to shared inputs in s_args
         s_memo = OrderedDict(
@@ -314,7 +311,8 @@ class Function(Symbolic):
             return tuple(varargs + dim)
 
     def compile_function(self, args, kwargs):
-        theano_vars = self.get_theano_graph(args, kwargs)
+        self.trace(args, kwargs)
+        theano_vars = self.get_theano_graph()
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -358,7 +356,8 @@ class Gradient(Function):
         self.wrt = utils.as_seq(wrt)
 
     def compile_function(self, args, kwargs):
-        theano_vars = self.get_theano_graph(args, kwargs)
+        self.trace(args, kwargs)
+        theano_vars = self.get_theano_graph()
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -407,7 +406,8 @@ class HessianVector(Gradient):
         kwargs = kwargs.copy()
         kwargs.pop('_vectors', None)
 
-        theano_vars = self.get_theano_graph(args, kwargs)
+        self.trace(args, kwargs)
+        theano_vars = self.get_theano_graph()
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -521,7 +521,8 @@ class VectorArg(Function):
 
     def compile_function(self, args, kwargs):
 
-        theano_vars = self.get_theano_graph(args, kwargs)
+        self.trace(args, kwargs)
+        theano_vars = self.get_theano_graph()
 
         inputs = theano_vars['inputs']
         outputs = theano_vars['outputs']
@@ -559,14 +560,11 @@ class VectorArg(Function):
 
         return fn
 
-    def get_theano_graph(self, args, kwargs):
+    def get_theano_graph(self):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
         """
-
-        # trace the function
-        self.trace(args, kwargs)
 
         if len(self.s_results) > 1:
             raise ValueError(
