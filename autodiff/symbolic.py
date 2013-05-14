@@ -66,7 +66,7 @@ class Symbolic(object):
     def __call__(self, *args, **kwargs):
         return self.get_theano_graph(args, kwargs)
 
-    def reset(self, reset_cache=False):
+    def reset(self, reset_cache=True):
         self.s_vars.clear()
         self.s_args.clear()
         self.s_results.clear()
