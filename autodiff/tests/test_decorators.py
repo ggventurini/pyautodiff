@@ -13,7 +13,25 @@ class TestFunction(unittest.TestCase):
         def fn(x):
             return x
         self.assertTrue(np.allclose(fn(3), 3))
-        self.assertTrue((0, 0) in fn._cache)
+        self.assertTrue(len(fn.cache) == 1)
+
+    def test_fn_cache(self):
+        @function
+        def fn(x):
+            return x
+
+        self.assertTrue(np.allclose(fn(3), 3))
+
+        # check that fn was cached
+        self.assertTrue(len(fn.cache) == 1)
+
+        # check that arg of new input dim was cached
+        fn(np.ones(10))
+        self.assertTrue(len(fn.cache) == 2)
+
+        # check that another arg of same input dim was not cached
+        fn(np.ones(10) + 15)
+        self.assertTrue(len(fn.cache) == 2)
 
 
 class TestGradient(unittest.TestCase):
@@ -22,7 +40,6 @@ class TestGradient(unittest.TestCase):
         def fn(x):
             return x
         self.assertTrue(np.allclose(fn(3), 1.0))
-        self.assertTrue((0, 0) in fn._cache)
 
     def test_nonscalar_grad(self):
         @gradient

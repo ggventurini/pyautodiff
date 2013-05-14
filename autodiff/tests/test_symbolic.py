@@ -197,6 +197,19 @@ class TestFunction(unittest.TestCase):
         self.assertTrue(np.allclose(uc_result_1, 1))
         self.assertTrue(np.allclose(uc_result_2, 0))
 
+    def test_compile_diff_inputs(self):
+        w = np.identity(3)
+
+        def fn(x):
+            return np.dot(x, w)
+
+        f1 = Function(fn)
+        y = np.ones((2, 3))
+        self.assertTrue(checkfn(f1, y))
+        f2 = f1.compile_function(trace_args=y, fn_inputs=w)
+        self.assertFalse(np.allclose(f1(y + 1), f2(w)))
+        self.assertTrue(np.allclose(f1(y) * 2, f2(w * 2)))
+
 
 class TestGradient(unittest.TestCase):
     def test_simple_gradients(self):
