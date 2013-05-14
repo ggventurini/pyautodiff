@@ -571,15 +571,36 @@ class FrameVM(object):
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
             elif 'method rand of mtrand.RandomState' in str(func):
+                # build Theano random uniform numbers
                 rval = func(*args, **kwargs)
-                assert not kwargs  # -- rand doesn't take kwargs right?
-                if list(args) != list(s_args):
-                    raise NotImplementedError()
-                self.watcher.shadow(rval,
-                                    global_randomstreams.uniform(
-                                        low=0, high=1,
-                                        size=tuple(args),
-                                        dtype=str(rval.dtype)))
+                self.watcher.shadow(
+                    rval,
+                    global_randomstreams.uniform(
+                        low=0,
+                        high=1,
+                        size=tuple(args),
+                        dtype=str(np.asarray(rval).dtype)))
+            elif ('method random of mtrand.RandomState' in str(func)
+                  or 'method random_sample of mtrand.RandomState'
+                  in str(func)):
+                # build Theano random uniform numbers
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(
+                    rval,
+                    global_randomstreams.uniform(
+                        low=0,
+                        high=1,
+                        size=args[0],
+                        dtype=str(np.asarray(rval).dtype)))
+            elif 'method uniform of mtrand.RandomState' in str(func):
+                # build Theano random normal numbers
+                rval = func(*args, **kwargs)
+                self.watcher.shadow(
+                    rval,
+                    global_randomstreams.uniform(
+                        *args,
+                        dtype=str(np.asarray(rval).dtype),
+                        **kwargs))
             else:
                 raise NotImplementedError(func)
 
