@@ -10,8 +10,8 @@
         - Support for advanced indexing
     - Add `Constant` transform
 - Added mid-level interface:
-    - `@function`, `@gradient`, `@hessian-vector` decorators
     - `Function`, `Gradient`, `HessianVector`, `VectorArg` (for SciPy optimization) classes
+    - `@function`, `@gradient`, `@hessian_vector` decorators
 - Added high-level interface for SciPy optimizers
     - L-BFGS-B, nonlinear conjugate gradient, Newton-CG
 - Added unit tests
