@@ -211,26 +211,37 @@ class Symbolic(object):
             except:
                 raise
 
-    def get_theano_graph(self):
+    def get_theano_graph(self, inputs=None, outputs=None):
         """
         Returns a dict containing inputs, outputs and givens corresponding to
         the Theano version of the pyfn.
 
         """
+        inputs = utils.as_seq(inputs, tuple)
+        outputs = utils.as_seq(outputs, tuple)
+
+        if inputs:
+            sym_inputs = [self.get_symbolic(x) for x in inputs]
+        else:
+            sym_inputs = self.s_args.values()
+
+        if outputs:
+            sym_outputs = [self.get_symbolic(x) for x in outputs]
+        else:
+            sym_outputs = self.s_results.values()
 
         # get symbolic inputs corresponding to shared inputs in s_args
-        s_memo = OrderedDict(
-            (arg, arg.type(name=arg.name))
-            for arg in utils.flat_from_doc(self.s_args.values()))
+        s_memo = OrderedDict((arg, arg.type(name=arg.name))
+                             for arg in utils.flat_from_doc(sym_inputs))
 
         # get new graph, replacing shared inputs with symbolic ones
         graph = theano.gof.graph.clone_get_equiv(
-            theano.gof.graph.inputs(self.s_results.values()),
-            self.s_results.values(),
+            theano.gof.graph.inputs(sym_outputs),
+            sym_outputs,
             memo=s_memo.copy())
 
         # get symbolic outputs
-        outputs = tuple([graph[o] for o in self.s_results.values()])
+        outputs = tuple([graph[o] for o in sym_outputs])
 
         defaults = dict()
         if self.argspec.defaults:
@@ -265,16 +276,14 @@ class Symbolic(object):
         """
         Retrieve the symbolic version of x.
 
-        x : python object or string
+        x : python object or string or int
 
         If x is a string, it is matched to the names of the function arguments.
+        If x is an int, it is matched to the index of the function results
         If x is an object, it must have been traced by the Symbolic class.
-        If x is a small int, raises an error.
         """
-        if type(x) is int and -5 <= x <= 256:
-            raise ValueError(
-                'Small integer arguments can not be traced selectively. '
-                'Either recast or redesign your function.')
+        if type(x) is int:
+            return self.s_results.values()[x]
         elif isinstance(x, basestring):
             if x in self.s_args:
                 return self.s_args[x]
