@@ -31,7 +31,7 @@ logger.setLevel(logging.INFO)
 # from theano.tensor.shared_randomstreams import RandomStreams
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
-# XXX This will not do - seed must be exposed.
+# XXX FIXME This will not do - seed must be exposed.
 global_randomstreams = RandomStreams(seed=123)
 
 
