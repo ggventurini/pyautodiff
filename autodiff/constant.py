@@ -24,36 +24,17 @@ def Constant(val):
     This should not work:
 
         @function
-        def fn1(x):
-            a = 3
-            for i in range(a):
-                ...
-
-        @function
-        def fn2(x, a):
+        def fn(x, a):
             x.sum(axis=a)
             ...
 
     But this should:
 
         @function
-        def fn1(x):
-            a = 3
-            for i in range(Constant(a)):
-                ...
-
-        @function
-        def fn2(x, a):
+        def fn(x, a):
             x.sum(axis=Constant(a))
             ...
 
-    Note that this *does* work:
-        @function
-        def fn1(x):
-            for i in range(3):
-                ...
-    Because the '3' is loaded as a constant int, which is not shadowed by
-    default.
     """
     if isinstance(val, int):
         new_val = np.int_(val)
