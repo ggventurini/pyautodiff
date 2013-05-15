@@ -421,23 +421,13 @@ class FrameVM(object):
         #print func.__self__
         all_args = args + kwargs.values()
 
-        # if all_args contains a tuple (due to varargs), be able to iterate
-        # over all entries when checking id's later
-        all_args_expanded = []
-        for a in all_args:
-            if isinstance(a, tuple):
-                all_args_expanded.extend(a)
-            else:
-                all_args_expanded.append(a)
-
-        # if args contains a tuple (due to varargs), set up the watcher for
-        # each entry
-        s_args = []
-        for a in args:
-            if isinstance(a, tuple):
-                s_args.append([self.watcher.getvar(ax) for ax in a])
-            else:
-                s_args.append(self.watcher.getvar(a))
+        # -- get symbolic args
+        if len(call_vargs) > 0:
+            s_args = [self.watcher.getvar(a) for a in args[:-len(call_vargs)]]
+            s_args.extend(self.watcher.getvar(a) for a in call_vargs)
+            s_args = tuple(s_args)
+        else:
+            s_args = tuple(self.watcher.getvar(a) for a in args)
         s_kwargs = dict([(kw, self.watcher.getvar(val))
                          for kw, val in kwargs.items()])
 
@@ -447,7 +437,7 @@ class FrameVM(object):
             #      going to know that.
             # -- hand control back to Python for duration of func
             rval = func(*args, **kwargs)
-            if any(id(a) in self.watcher for a in all_args_expanded):
+            if any(id(a) in self.watcher for a in all_args):
                 s_rval = func.__theano_op__(*s_args, **s_kwargs)
                 self.watcher.shadow(rval, s_rval)
 
@@ -461,7 +451,7 @@ class FrameVM(object):
               or str(func) == '<built-in function sum>'):
 
             rval = func(*args, **kwargs)
-            if any(id(a) in self.watcher for a in all_args_expanded):
+            if any(id(a) in self.watcher for a in all_args):
                 if func.__name__ == 'sum':
                     if type(rval) == int:
                         rval = np.int_(rval)
@@ -520,7 +510,6 @@ class FrameVM(object):
                         # else:
                             # r_axis = args[argspec.args.index('axis')]
                             # s_args[argspec.args.index('axis')] = r_axis
-
                     self.watcher.shadow(rval, theano_fn(*s_args, **s_kwargs))
             else:
                 # no argument was shadowed (e.g. zeros())
