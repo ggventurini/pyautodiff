@@ -826,9 +826,10 @@ class FrameVM(object):
 
             if attr == 'shape':
                 rval = tos.shape
+                # note this old comment... what does it mean?
                 # XXX: NOT TRACKING SHAPE CHANGES BECAUSE
                 #      BAD INTERACTION WITH fbncc.__theano_op__
-                # self.watcher.shadow(rval, s_tos.shape)
+                self.watcher.shadow(rval, s_tos.shape)
             elif attr == 'T':
                 rval = tos.T
                 self.watcher.shadow(rval, s_tos.T)
