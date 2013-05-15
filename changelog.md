@@ -8,12 +8,13 @@
     - Updated `FrameVM` for Theano 0.6
         - Added all shared NumPy/Theano functions
         - Support for advanced indexing
-    - Add `Constant` transform
-- Added mid-level interface:
+- Added mid-level interface
     - `Function`, `Gradient`, `HessianVector`, `VectorArg` (for SciPy optimization) classes
     - `@function`, `@gradient`, `@hessian_vector` decorators
 - Added high-level interface for SciPy optimizers
     - L-BFGS-B, nonlinear conjugate gradient, Newton-CG
+- Added helper functions
+    - `constant`, `tag`
 - Added unit tests
 - Added compatibility module (`OrderedDict`, `getcallargs`)
 
