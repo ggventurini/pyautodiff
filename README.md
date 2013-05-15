@@ -170,6 +170,14 @@ Pay attention to dtypes -- they are locked when Theano compiles a function. In p
 - The gradient of an integer argument is defined as zero.
 - Theano only supports `float32` operations on the GPU
 
+### Advanced Indexing
+
+Autodiff supports most forms of advanced indexing. One notable exception is the combination of indices and slices, which Theano does not recognize (at the time of this writing). For example:
+
+```python
+x[[1, 2, 3], 2:] # not supported
+```
+
 ### Control Flow and Loops
 
 Generally, PyAutoDiff supports any NumPy operation with a Theano equivalent. You will probably get unexpected results if you use more general Python operations like control flow tools (`for`, `if/else`, `try/except`, etc.) or iteraters without understanding how Theano handles them.
