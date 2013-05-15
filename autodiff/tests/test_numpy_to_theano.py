@@ -2,7 +2,6 @@ import unittest
 import numpy as np
 import theano
 
-
 from autodiff.symbolic import Function
 
 
@@ -78,6 +77,28 @@ class BasicMath(unittest.TestCase):
             self.assertTrue(checkfn(lambda x, y: x <= y, [d, d]))
             self.assertTrue(checkfn(lambda x, y: x == y, [d, d]))
             self.assertTrue(checkfn(lambda x, y: x != y, [d, d]))
+
+    def test_inplace(self):
+
+        def iadd(x):
+            x += 10
+            return x
+
+        def isub(x):
+            x -= 10
+            return x
+
+        def imul(x):
+            x *= 10
+            return x
+
+        def idiv(x):
+            x /= 10.0
+            return x
+
+        for d in range(3):
+            for f in [iadd, isub, imul, idiv]:
+                self.assertTrue(checkfn(f, [d]))
 
 
 class NumpyFns(unittest.TestCase):
