@@ -218,7 +218,14 @@ class FrameVM(object):
                 print 'OP: ', i, name
             if self.print_stack:
                 print self.stack
-            jmp = getattr(self, 'op_' + name)(i, op, arg)
+            try:
+                op_method = getattr(self, 'op_' + name)
+            except AttributeError:
+                raise AttributeError('FrameVM does not have a method defined '
+                                     'for \'op_{0}\''.format(name))
+            except:
+                raise
+            jmp = op_method(i, op, arg)
 
         return self.rval
 
