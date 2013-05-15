@@ -700,6 +700,10 @@ class FrameVM(object):
                 raise NotImplementedError('Comparison on watched args',
                                           opname)
 
+    def op_DUP_TOP(self, i, op, arg):
+        logger.debug('DUP_TOP')
+        self.stack.append(self.stack[-1])
+
     def op_DUP_TOPX(self, i, op, arg):
         assert arg > 0
         self.stack.extend(self.stack[-arg:])
