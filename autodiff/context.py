@@ -486,6 +486,17 @@ class FrameVM(object):
                 elif func.__name__ in ['bool', 'bool_', 'bool8']:
                     # Theano has no bool type, cast to int8 instead
                     sval = theano.tensor.cast(*s_args, dtype='int8')
+                elif func.__name__ in ['ones', 'zeros']:
+                    s_fn = getattr(theano.tensor, func.__name__)
+                    sval = s_fn(*s_args, **s_kwargs).astype(str(rval.dtype))
+                    self.watcher.shadow(rval, sval)
+                elif func.__name__ == 'identity':
+                    # theano has no identity function, only 'eye'
+                    dtype = s_kwargs.get('dtype', None)
+                    if not dtype and len(s_args) > 1:
+                        dtype = s_args[1]
+                    sval = theano.tensor.eye(s_args[0], dtype=dtype)
+                    self.watcher.shadow(rval, sval)
                 else:
                     try:
                         theano_fn = getattr(theano.tensor, func.__name__)
