@@ -319,8 +319,11 @@ class FrameVM(object):
         self.push(r)
         if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
-            s2 = self.ensure_shadow(arg2)
-            self.watcher.shadow(r, s1 ** s2)
+            s2 = self.ensure_shadow(arg2).astype(s1.dtype)
+            if isinstance(r, np.ndarray):
+                self.watcher.shadow(r, (s1 ** s2).astype(str(r.dtype)))
+            else:
+                self.watcher.shadow(r, s1 ** s2)
             #print 'mul sym', id(r)
 
     def op_BINARY_MODULO(self, i, op, arg):
@@ -331,8 +334,10 @@ class FrameVM(object):
         if (id(arg1) in self.watcher or id(arg2) in self.watcher):
             s1 = self.ensure_shadow(arg1)
             s2 = self.ensure_shadow(arg2)
-            self.watcher.shadow(r, s1 % s2)
-            #print 'added sym'
+            if isinstance(r, np.ndarray):
+                self.watcher.shadow(r, (s1 % s2).astype(str(r.dtype)))
+            else:
+                self.watcher.shadow(r, s1 % s2)
 
     def op_BINARY_SUBSCR(self, i, op, arg):
         # Implements TOS = TOS1[TOS].
@@ -732,9 +737,12 @@ class FrameVM(object):
         r += tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
+            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
-            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
-            self.watcher.shadow(r, s_tos + s_tos1, force=True)
+            if isinstance(r, np.ndarray):
+                self.watcher.shadow(r, (s_tos + s_tos1).astype(str(r.dtype)))
+            else:
+                self.watcher.shadow(r, s_tos + s_tos1)
 
     def op_INPLACE_DIVIDE(self, i, op, arg):
         tos = self.pop()
@@ -744,9 +752,12 @@ class FrameVM(object):
         r /= tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
+            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
-            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
-            self.watcher.shadow(r, s_tos1 / s_tos, force=True)
+            if isinstance(r, np.ndarray):
+                self.watcher.shadow(r, (s_tos / s_tos1).astype(str(r.dtype)))
+            else:
+                self.watcher.shadow(r, s_tos / s_tos1)
 
     def op_INPLACE_MULTIPLY(self, i, op, arg):
         tos = self.pop()
@@ -756,9 +767,12 @@ class FrameVM(object):
         r *= tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
+            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
-            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
-            self.watcher.shadow(r, s_tos * s_tos1, force=True)
+            if isinstance(r, np.ndarray):
+                self.watcher.shadow(r, (s_tos * s_tos1).astype(str(r.dtype)))
+            else:
+                self.watcher.shadow(r, s_tos * s_tos1)
 
     def op_INPLACE_SUBTRACT(self, i, op, arg):
         tos1, tos = self.popN(2)
@@ -767,9 +781,12 @@ class FrameVM(object):
         r -= tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
+            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
-            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
-            self.watcher.shadow(r, s_tos1 - s_tos, force=True)
+            if isinstance(r, np.ndarray):
+                self.watcher.shadow(r, (s_tos - s_tos1).astype(str(r.dtype)))
+            else:
+                self.watcher.shadow(r, s_tos - s_tos1)
 
     def op_JUMP_ABSOLUTE(self, i, op, arg):
         # print 'sending', arg
