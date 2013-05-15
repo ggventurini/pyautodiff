@@ -6,7 +6,6 @@ from inspect import getargspec
 
 from autodiff.context import Context
 from autodiff.compat import OrderedDict
-import autodiff.constant
 import autodiff.utils as utils
 
 
@@ -83,7 +82,7 @@ class Function(object):
         self.s_vars.clear()
         self.s_inputs.clear()
         self.s_outputs.clear()
-        self.context.svars.clear()
+        self.context.reset()
         self.context.svars.update(self._context_init_svars)
 
         if reset_cache:
@@ -171,9 +170,6 @@ class Function(object):
 
         # clear previous results and context
         self.reset(reset_cache=False)
-
-        # trace the function
-        autodiff.constant.clear_constants()
 
         # call the Context
         results = self.context.call(self.pyfn, args, kwargs)

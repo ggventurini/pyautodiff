@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from autodiff.constant import Constant
+from autodiff.functions import constant
 from autodiff.symbolic import Function
 
 
@@ -12,7 +12,7 @@ def check(fn, *args, **kwargs):
     return np.allclose(py_result, sym_result)
 
 
-class TestConstant(unittest.TestCase):
+class Testconstant(unittest.TestCase):
     def test_range(self):
         def f(x):
             for i in range(3):
@@ -33,19 +33,19 @@ class TestConstant(unittest.TestCase):
         self.assertTrue(check(f, np.ones(3), 3))
 
         def f(x):
-            for i in range(Constant(3)):
+            for i in range(constant(3)):
                 x = x + x
             return x
         self.assertTrue(check(f, 1))
 
         def f(x):
-            for i in range(Constant(x)):
+            for i in range(constant(x)):
                 x = x + x
             return x
         self.assertTrue(check(f, 1))
 
         def f(x, r):
-            for i in range(Constant(r)):
+            for i in range(constant(r)):
                 x = x + x
             return x
         self.assertTrue(check(f, np.ones(3), 3))
@@ -70,26 +70,26 @@ class TestConstant(unittest.TestCase):
         self.assertRaises(TypeError, check, f, np.ones((3, 4)))
 
         def f(x):
-            return x.sum(Constant(1))
+            return x.sum(constant(1))
         self.assertTrue(check(f, np.ones((3, 4))))
 
         def f(x):
-            a = Constant(1)
+            a = constant(1)
             return x.sum(a)
         self.assertTrue(check(f, np.ones((3, 4))))
 
         def f(x):
             a = 1
-            return x.sum(Constant(a))
+            return x.sum(constant(a))
         self.assertTrue(check(f, np.ones((3, 4))))
 
         def f(x):
             a = np.int_(1)
-            return x.sum(Constant(a))
+            return x.sum(constant(a))
         self.assertTrue(check(f, np.ones((3, 4))))
 
         def f(x, a):
-            return x.sum(Constant(a))
+            return x.sum(constant(a))
         self.assertTrue(check(f, np.ones((3, 4)), 1))
 
     def test_closure_sum(self):

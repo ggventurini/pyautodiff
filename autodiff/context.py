@@ -22,8 +22,8 @@ import types
 import numpy as np
 import theano
 
+import autodiff
 from autodiff.utils import itercode, orderedcallargs
-from autodiff.constant import Constant, _constants
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -99,7 +99,7 @@ class FrameVM(object):
         return rval
 
     def add_shadow(self, x):
-        if id(x) in _constants:
+        if id(x) in self.watcher.constants:
             return
         # -- We cannot safely set up shadow variables that are aliased to
         #    memory that is visible to the running program, unless that
@@ -610,8 +610,18 @@ class FrameVM(object):
             rval = func(*args, **kwargs)
 
         # ================ AutoDiff Constant
+        elif func is autodiff.functions.constant:
+            rval = func(*args, **kwargs)
+            if isinstance(rval, int):
+                rval = np.int_(rval)
+            elif isinstance(rval, float):
+                rval = np.float_(rval)
+            elif isinstance(rval, bool):
+                rval = np.bool_(rval)
+            else:
+                rval = np.asarray(rval)
+            self.watcher.constants.add(id(rval))
 
-        elif func is Constant:
             rval = func(*args, **kwargs)
 
         # ================ Everything Else
@@ -1081,6 +1091,7 @@ class Context(object):
         self.device = device
         self.borrowable_ids = [id(b) for b in borrowable]
         self.force_floatX = force_floatX
+        self.constants = set()
 
     def __iter__(self):
         return self.svars.__iter__()
@@ -1133,3 +1144,7 @@ class Context(object):
 
     def getvar(self, var):
         return self.svars.get(id(var), var)
+
+    def reset(self):
+        self.svars.clear()
+        self.constants.clear()
