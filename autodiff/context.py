@@ -69,7 +69,7 @@ class FrameVM(object):
 
     """
     def __init__(self, watcher, func):
-        #print 'FrameVM', func
+        logger.debug('FrameVM: {0}'.format(func))
         self.watcher = watcher
         self.func = func
         self.stack = []
@@ -850,7 +850,7 @@ class FrameVM(object):
             name = co_cellvars[arg]
         else:
             name = co_freevars[arg - len(co_cellvars)]
-        # print 'LOAD_CLOSURE', self.func, name
+        logger.debug('LOAD_CLOSURE {0} {1}'.format(self.func, name))
         thing = self._locals[co_varnames.index(name)]
         cell = cellmake(thing)
         self.push(cell)
@@ -868,10 +868,11 @@ class FrameVM(object):
         # -- all varnames
         co_varnames = self.func.func_code.co_varnames
 
-        # print 'LOAD_DEREF', arg, self.func
-        # print ' -> cellvars', co_cellvars
-        # print ' -> freevars', co_freevars
-        # print ' -> varnames', co_varnames
+        logger.debug('LOAD_DEREF: {0}, {1}'.format(arg, self.func))
+        logger.debug(' -> cellvars: {0}'.format(co_cellvars))
+        logger.debug(' -> freevars: {0}'.format(co_freevars))
+        logger.debug(' -> varnames: {0}'.format(co_varnames))
+
         if arg < len(co_cellvars):
             # -- normal case
             name = co_cellvars[arg]
@@ -922,11 +923,12 @@ class FrameVM(object):
             fn = types.FunctionType(func_code,
                                     self.func.func_globals,
                                     argdefs=argdefs)
-        # print 'made FN', fn, fn.func_closure
+
+        logger.debug('made FN: {0}, {1}'.format(fn, fn.func_closure))
         self.push(fn)
 
     def op_POP_BLOCK(self, i, op, arg):
-        #print 'pop block, what to do?'
+        logger.debug('POP_BLOCK, what to do?')
         pass
 
     def op_POP_JUMP_IF_FALSE(self, i, op, arg):
@@ -956,10 +958,11 @@ class FrameVM(object):
         print ''
 
     def op_SETUP_LOOP(self, i, op, arg):
-        #print 'SETUP_LOOP, what to do?'
+        logger.debug('SETUP_LOOP, what to do?')
         pass
 
     def op_SLICE_PLUS_1(self, i, op, arg):
+        logger.debug('SLICE_PLUS_1')
         # TOS = TOS1[TOS:]
         TOS1, TOS = self.popN(2)
         new_tos = TOS1[TOS:]
@@ -972,6 +975,7 @@ class FrameVM(object):
             self.watcher.shadow(new_tos, s_rval)
 
     def op_SLICE_PLUS_2(self, i, op, arg):
+        logger.debug('SLICE_PLUS_2')
         # TOS = TOS1[:TOS]
         TOS1, TOS = self.popN(2)
         new_tos = TOS1[:TOS]
@@ -984,6 +988,7 @@ class FrameVM(object):
             self.watcher.shadow(new_tos, s_rval)
 
     def op_SLICE_PLUS_3(self, i, op, arg):
+        logger.debug('SLICE_PLUS_3')
         # Implements TOS = TOS2[TOS1:TOS]
         TOS2, TOS1, TOS = self.stack[-3:]
         rval = TOS2[TOS1:TOS]
@@ -998,7 +1003,6 @@ class FrameVM(object):
             self.watcher.shadow(rval, s_rval)
 
     def op_STORE_FAST(self, i, op, arg):
-        #print 'STORE_FAST', self.varnames[arg], self.stack[-1]
         self._locals[arg] = self.pop()
 
     def op_STORE_MAP(self, i, op, arg):
@@ -1008,6 +1012,7 @@ class FrameVM(object):
         dct[key] = val
 
     def op_STORE_SUBSCR(self, i, op, arg):
+        logger.debug('STORE_SUBSCR')
         # Implements TOS1[TOS] = TOS2.
         tos = self.pop()
         tos1 = self.pop()
