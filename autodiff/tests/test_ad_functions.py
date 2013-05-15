@@ -1,8 +1,9 @@
 import unittest
 import numpy as np
 
-from autodiff.functions import constant
+from autodiff.functions import constant, tag
 from autodiff.symbolic import Function
+from autodiff.decorators import function
 
 
 def check(fn, *args, **kwargs):
@@ -12,7 +13,7 @@ def check(fn, *args, **kwargs):
     return np.allclose(py_result, sym_result)
 
 
-class Testconstant(unittest.TestCase):
+class TestConstant(unittest.TestCase):
     def test_range(self):
         def f(x):
             for i in range(3):
@@ -109,3 +110,27 @@ class Testconstant(unittest.TestCase):
         self.assertTrue(check(f))
 
         theano.config.floatX = old_floatX
+
+
+class TestTag(unittest.TestCase):
+    def test_tag(self):
+        def f(x):
+            y = tag(x + 2, 'y')
+            z = y * 3
+            return z
+
+        F = Function(f)
+        self.assertFalse('y' in F.s_vars)
+        F(10)
+        self.assertTrue('y' in F.s_vars)
+
+    def test_tag_decorator(self):
+        @function
+        def F(x):
+            y = tag(x + 2, 'y')
+            z = y * 3
+            return z
+
+        self.assertFalse('y' in F.s_vars)
+        F(10)
+        self.assertTrue('y' in F.s_vars)

@@ -609,8 +609,11 @@ class FrameVM(object):
         elif type(func) == type:
             rval = func(*args, **kwargs)
 
-        # ================ AutoDiff Constant
+        # ================ AutoDiff Functions
+
         elif func is autodiff.functions.constant:
+            # make sure the rval will have a vaild id, then add it to the
+            # Context's constants set (so it can be ignored)
             rval = func(*args, **kwargs)
             if isinstance(rval, int):
                 rval = np.int_(rval)
@@ -622,7 +625,13 @@ class FrameVM(object):
                 rval = np.asarray(rval)
             self.watcher.constants.add(id(rval))
 
+        elif func is autodiff.functions.tag:
+            # make sure the rval is shadowed, then add a new svar with the
+            # appropriate tag
             rval = func(*args, **kwargs)
+            tag = kwargs.pop('tag', args[1])
+            sval = self.ensure_shadow(rval)
+            self.watcher.svars[tag] = sval
 
         # ================ Everything Else
 
