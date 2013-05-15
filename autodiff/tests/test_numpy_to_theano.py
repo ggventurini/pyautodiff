@@ -428,6 +428,57 @@ class IndexSlice(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x[1:3, 1:3], [2]))
         self.assertTrue(checkfn(lambda x: x[-3:-1, -3:-1], [2]))
 
+    def test_store_slice(self):
+        # STORE_SLICE+0
+        def f(x):
+            x[:] = 5
+            x[:] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+
+        # STORE_SLICE+1
+        def f(x):
+            x[2:] = 5
+            x[-2:] += 5
+            return x
+
+        def f2(x):
+            x[2:, 2:] = 5
+            x[-2:, -2:] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+        self.assertTrue(checkfn(f2, [2]))
+
+        # STORE_SLICE+2
+        def f(x):
+            x[:2] = 5
+            x[:-2] += 5
+            return x
+
+        def f2(x):
+            x[:2, :2] = 5
+            x[:-2, :-2] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+        self.assertTrue(checkfn(f2, [2]))
+
+        # STORE_SLICE+3
+        def f(x):
+            x[1:3] = 5
+            x[-3:-1] += 5
+            return x
+
+        def f2(x):
+            x[1:3, 1:3] = 5
+            x[-3:-1, -3:-1] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+        self.assertTrue(checkfn(f2, [2]))
+
     def test_adv_index(self):
         self.assertTrue(checkfn(lambda x: x[[3, 2, 1], [1, 2, 3]], [2]))
         self.assertTrue(checkfn(lambda x: x[x > .5], [2]))

@@ -209,10 +209,15 @@ class FrameVM(object):
             except StopIteration:
                 break
             name = opcode.opname[op]
+            # method names can't have '+' in them
             name = {'SLICE+0': 'SLICE_PLUS_0',
                     'SLICE+1': 'SLICE_PLUS_1',
                     'SLICE+2': 'SLICE_PLUS_2',
                     'SLICE+3': 'SLICE_PLUS_3',
+                    'STORE_SLICE+0': 'STORE_SLICE_PLUS_0',
+                    'STORE_SLICE+1': 'STORE_SLICE_PLUS_1',
+                    'STORE_SLICE+2': 'STORE_SLICE_PLUS_2',
+                    'STORE_SLICE+3': 'STORE_SLICE_PLUS_3',
                     }.get(name, name)
             if self.print_ops:
                 print 'OP: ', i, name
@@ -1010,6 +1015,61 @@ class FrameVM(object):
             s1 = self.watcher.getvar(TOS1)
             s2 = self.watcher.getvar(TOS2)
             s_rval = s2[s1:s]
+            self.watcher.shadow(new_tos, s_rval)
+
+    def op_STORE_SLICE_PLUS_0(self, i, op, arg):
+        #Implements TOS[:] = TOS1
+        TOS1, TOS = self.popN(2)
+        new_tos = TOS
+        new_tos[:] = TOS1
+        self.push(new_tos)
+
+        if any(id(t) in self.watcher for t in [TOS, TOS1]):
+            s_tos = self.watcher.getvar(TOS)
+            s_tos1 = self.watcher.getvar(TOS1)
+            s_rval = theano.tensor.set_subtensor(s_tos[:], s_tos1)
+            self.watcher.shadow(new_tos, s_rval)
+
+    def op_STORE_SLICE_PLUS_1(self, i, op, arg):
+        TOS2, TOS1, TOS = self.popN(3)
+        new_tos = TOS1
+        new_tos[TOS:] = TOS2
+        self.push(new_tos)
+
+        if any(id(t) in self.watcher for t in [TOS, TOS1, TOS2]):
+            s_tos = self.watcher.getvar(TOS)
+            s_tos1 = self.watcher.getvar(TOS1)
+            s_tos2 = self.watcher.getvar(TOS2)
+            s_rval = theano.tensor.set_subtensor(s_tos1[s_tos:], s_tos2)
+            self.watcher.shadow(new_tos, s_rval)
+
+    def op_STORE_SLICE_PLUS_2(self, i, op, arg):
+        # TOS1[:TOS] = TOS2
+        TOS2, TOS1, TOS = self.popN(3)
+        new_tos = TOS1
+        new_tos[:TOS] = TOS2
+        self.push(new_tos)
+
+        if any(id(t) in self.watcher for t in [TOS, TOS1, TOS2]):
+            s_tos = self.watcher.getvar(TOS)
+            s_tos1 = self.watcher.getvar(TOS1)
+            s_tos2 = self.watcher.getvar(TOS2)
+            s_rval = theano.tensor.set_subtensor(s_tos1[:s_tos], s_tos2)
+            self.watcher.shadow(new_tos, s_rval)
+
+    def op_STORE_SLICE_PLUS_3(self, i, op, arg):
+        # Implements TOS2[TOS1:TOS] = TOS3
+        TOS3, TOS2, TOS1, TOS = self.popN(4)
+        new_tos = TOS2
+        new_tos[TOS1:TOS] = TOS3
+        self.push(new_tos)
+
+        if any(id(t) in self.watcher for t in [TOS, TOS1, TOS2, TOS3]):
+            s_tos = self.watcher.getvar(TOS)
+            s_tos1 = self.watcher.getvar(TOS1)
+            s_tos2 = self.watcher.getvar(TOS2)
+            s_tos3 = self.watcher.getvar(TOS3)
+            s_rval = theano.tensor.set_subtensor(s_tos2[s_tos1:s_tos], s_tos3)
             self.watcher.shadow(new_tos, s_rval)
 
     def op_STORE_FAST(self, i, op, arg):
