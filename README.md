@@ -13,6 +13,7 @@ PyAutoDiff automatically compiles NumPy code using [Theano](http://deeplearning.
 ####Decorators
 
 PyAutoDiff provides simple decorators for compiling arbitrary NumPy functions and their derivatives. For most users, these will be the primary interface to autodiff.
+
 ```python
 from autodiff import function, gradient
 
@@ -44,6 +45,7 @@ print f(3.0, 5.0) # 3.0
 #### Optimization
 
 Users can call a higher-level optimization interface that wraps SciPy minimization routines (currently L-BFGS-B, nonlinear conjugate gradient, and Newton-CG), using autodiff to compute the required derivatives and Hessian-vector products.
+
 ```python
 from autodiff.optimize import fmin_l_bfgs_b
 
@@ -62,6 +64,7 @@ print x_opt # [0.0, 1.0, 2.0]
 #### Classes
 
 Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
+
 ```python
 from autodiff import Function, Gradient
 
@@ -102,6 +105,7 @@ PyAutoDiff replaces many variables with symbolic Theano versions. This can cause
 Most of the time, users will not have to call Constant() -- it is only necessary in certain cases.
 
 For example, the following functions will compile, because the `axis` argument `1` is loaded as a constant, even when bound to a variable `a`.
+
 ```python
 from autodiff import Constant, function
 m = np.ones((3, 4))
@@ -117,7 +121,9 @@ def fn_2(x):
     
 print fn_1(m)
 ```
+
 However, the decorated function's arguments are always assumed to be symbolic. Therefore, the following function will fail because the `axis` argument is the symbolic variable `a` and `tensor.sum` does not accept symbolic arguments:
+
 ```python
 @function
 def bad_fn(x, a):
@@ -127,6 +133,7 @@ print bad_fn(m, 1) # error
 ```
 
 By calling `Constant()` appropriately, we can convert the symbolic variable back to a constant `int`. Now the function will compile:
+
 ```python
 @function
 def good_fn(x, a):
@@ -154,6 +161,7 @@ In the current version of PyAutoDiff, there **is** a way to avoid this problem, 
 **As a rule of thumb: if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance it won't behave as you expect.**
 
 Here is an example of compilation "locking" a control flow, and how to set `use_cache` to avoid it:
+
 ```python
 from autodiff import function
 
