@@ -7,7 +7,7 @@
 - Enhanced low-level interface
     - Updated `FrameVM` for Theano 0.6
         - Added all shared NumPy/Theano functions
-        - Support for advanced indexing
+        - Support for advanced indexing and inplace updates
 - Added mid-level interface
     - `Function`, `Gradient`, `HessianVector`, `VectorArg` (for SciPy optimization) classes
     - `@function`, `@gradient`, `@hessian_vector` decorators
