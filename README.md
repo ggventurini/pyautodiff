@@ -17,7 +17,7 @@ PyAutoDiff provides simple decorators for compiling arbitrary NumPy functions an
 ```python
 from autodiff import function, gradient
 
-#--- compile a Theano function
+# -- compile a Theano function
 
 @function
 def f(x):
@@ -25,7 +25,7 @@ def f(x):
 
 print f(5.0) # 25.0
 
-#--- compile a function returning the gradient
+# -- compile a function returning the gradient
 
 @gradient
 def f(x):
@@ -33,7 +33,7 @@ def f(x):
 
 print f(5.0) # 10.0
 
-#--- compile a function returning the gradient only with respect to a specific input
+# -- compile a function returning the gradient only with respect to a specific input
 
 @gradient(wrt='y')
 def f(x, y):
@@ -49,7 +49,7 @@ Users can call a higher-level optimization interface that wraps SciPy minimizati
 ```python
 from autodiff.optimize import fmin_l_bfgs_b
 
-#--- A trivial least-squares minimization problem
+# -- A trivial least-squares minimization problem
 
 def fn(x):
     y = np.arange(3.0)
