@@ -701,7 +701,6 @@ class FrameVM(object):
                                           opname)
 
     def op_DUP_TOP(self, i, op, arg):
-        logger.debug('DUP_TOP')
         self.stack.append(self.stack[-1])
 
     def op_DUP_TOPX(self, i, op, arg):
@@ -861,7 +860,6 @@ class FrameVM(object):
             name = co_cellvars[arg]
         else:
             name = co_freevars[arg - len(co_cellvars)]
-        logger.debug('LOAD_CLOSURE {0} {1}'.format(self.func, name))
         thing = self._locals[co_varnames.index(name)]
         cell = cellmake(thing)
         self.push(cell)
@@ -878,11 +876,6 @@ class FrameVM(object):
 
         # -- all varnames
         co_varnames = self.func.func_code.co_varnames
-
-        logger.debug('LOAD_DEREF: {0}, {1}'.format(arg, self.func))
-        logger.debug(' -> cellvars: {0}'.format(co_cellvars))
-        logger.debug(' -> freevars: {0}'.format(co_freevars))
-        logger.debug(' -> varnames: {0}'.format(co_varnames))
 
         if arg < len(co_cellvars):
             # -- normal case
@@ -935,7 +928,6 @@ class FrameVM(object):
                                     self.func.func_globals,
                                     argdefs=argdefs)
 
-        logger.debug('made FN: {0}, {1}'.format(fn, fn.func_closure))
         self.push(fn)
 
     def op_POP_BLOCK(self, i, op, arg):
@@ -973,7 +965,6 @@ class FrameVM(object):
         pass
 
     def op_SLICE_PLUS_1(self, i, op, arg):
-        logger.debug('SLICE_PLUS_1')
         # TOS = TOS1[TOS:]
         TOS1, TOS = self.popN(2)
         new_tos = TOS1[TOS:]
@@ -986,7 +977,6 @@ class FrameVM(object):
             self.watcher.shadow(new_tos, s_rval)
 
     def op_SLICE_PLUS_2(self, i, op, arg):
-        logger.debug('SLICE_PLUS_2')
         # TOS = TOS1[:TOS]
         TOS1, TOS = self.popN(2)
         new_tos = TOS1[:TOS]
@@ -999,7 +989,6 @@ class FrameVM(object):
             self.watcher.shadow(new_tos, s_rval)
 
     def op_SLICE_PLUS_3(self, i, op, arg):
-        logger.debug('SLICE_PLUS_3')
         # Implements TOS = TOS2[TOS1:TOS]
         TOS2, TOS1, TOS = self.stack[-3:]
         rval = TOS2[TOS1:TOS]
@@ -1023,7 +1012,6 @@ class FrameVM(object):
         dct[key] = val
 
     def op_STORE_SUBSCR(self, i, op, arg):
-        logger.debug('STORE_SUBSCR')
         # Implements TOS1[TOS] = TOS2.
         tos = self.pop()
         tos1 = self.pop()
