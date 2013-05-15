@@ -1001,16 +1001,16 @@ class FrameVM(object):
 
     def op_SLICE_PLUS_3(self, i, op, arg):
         # Implements TOS = TOS2[TOS1:TOS]
-        TOS2, TOS1, TOS = self.stack[-3:]
-        rval = TOS2[TOS1:TOS]
-        self.stack[-3:] = [rval]
+        TOS2, TOS1, TOS = self.popN(3)
+        new_tos = TOS2[TOS1:TOS]
+        self.push(new_tos)
 
         if any(id(t) in self.watcher for t in [TOS, TOS1, TOS2]):
             s = self.watcher.getvar(TOS)
             s1 = self.watcher.getvar(TOS1)
             s2 = self.watcher.getvar(TOS2)
             s_rval = s2[s1:s]
-            self.watcher.shadow(rval, s_rval)
+            self.watcher.shadow(new_tos, s_rval)
 
     def op_STORE_FAST(self, i, op, arg):
         self._locals[arg] = self.pop()
