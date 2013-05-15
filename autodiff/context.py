@@ -732,8 +732,8 @@ class FrameVM(object):
         r += tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
-            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
+            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
             self.watcher.shadow(r, s_tos + s_tos1, force=True)
 
     def op_INPLACE_DIVIDE(self, i, op, arg):
@@ -744,8 +744,8 @@ class FrameVM(object):
         r /= tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
-            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
+            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
             self.watcher.shadow(r, s_tos1 / s_tos, force=True)
 
     def op_INPLACE_MULTIPLY(self, i, op, arg):
@@ -756,8 +756,8 @@ class FrameVM(object):
         r *= tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
-            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
+            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
             self.watcher.shadow(r, s_tos * s_tos1, force=True)
 
     def op_INPLACE_SUBTRACT(self, i, op, arg):
@@ -767,8 +767,8 @@ class FrameVM(object):
         r -= tos
         self.push(r)
         if (id(tos) in self.watcher or id(tos1) in self.watcher):
-            s_tos = self.ensure_shadow(tos)
             s_tos1 = self.ensure_shadow(tos1)
+            s_tos = self.ensure_shadow(tos).astype(s_tos1.dtype)
             self.watcher.shadow(r, s_tos1 - s_tos, force=True)
 
     def op_JUMP_ABSOLUTE(self, i, op, arg):
