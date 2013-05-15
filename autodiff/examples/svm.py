@@ -3,7 +3,7 @@ Linear SVM
 ==========
 
 This script fits a linear support vector machine classifier to random data.  It
-illustrates how a function defined purely by numpy operations can be minimized
+illustrates how a function defined purely by NumPy operations can be minimized
 directly with a gradient-based solver.
 
 """
@@ -29,7 +29,8 @@ def test_svm():
         return loss
 
     # -- call optimizer
-    w, b = fmin_l_bfgs_b(loss_fn, (np.zeros(5), np.zeros(())))
+    w_0, b_0 = np.zeros(5), np.zeros(())
+    w, b = fmin_l_bfgs_b(loss_fn, init_args=(w_0, b_0))
 
     final_loss = loss_fn(w, b)
 
