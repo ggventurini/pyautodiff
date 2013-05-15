@@ -236,7 +236,7 @@ class Function(object):
             except:
                 raise
 
-    def get_theano_graph(self, inputs=None, outputs=None):
+    def get_theano_variables(self, inputs=None, outputs=None):
         """
         Returns a dict containing inputs, outputs and graph corresponding to
         the Theano version of the pyfn.
@@ -276,25 +276,21 @@ class Function(object):
                                             name=i.name)
                                for i in s_memo.values()])
 
-        theano_vars = {'inputs': theano_inputs,
-                       'outputs': theano_outputs,
-                       'graph': graph}
+        final_in, final_out = self.finalize_inputs_outputs(theano_inputs,
+                                                           theano_outputs,
+                                                           graph)
 
-        return theano_vars
+        return final_in, final_out
 
-    def get_theano_variables(self, inputs, outputs, graph):
+    def finalize_inputs_outputs(self, inputs, outputs, graph):
         """
-        self.get_theano_graph() returns a dict with the following keys:
-            'inputs'  : symbolic inputs to the graph
-            'outputs' : symbolic outputs
-            'graph'   : a graph dict mapping traced symbolic variables to their
-                        representation in the graph that will be compiled
-        That expanded dict can be passed to this function, which should return
-        the final inputs and outputs for compilation.
+        This function accepts a "default" set of inputs and outputs
+        corresponding to the traced function (or specified) and returns the
+        final inputs and outputs for compilation.
 
-        For example, to create a function, the inputs and outputs can be passed
-        through directly. However, to create a gradient, the tensor.grad op
-        might be called on the outputs before returning them.
+        For example, to create a "standard" function, the inputs and outputs
+        can be passed through directly. However, to create a gradient, the
+        tensor.grad op might be called on the outputs before returning them.
         """
         return inputs, outputs
 
@@ -316,8 +312,7 @@ class Function(object):
             return self.cache[cache_id]
 
         self.trace(trace_args, trace_kwargs)
-        theano_graph = self.get_theano_graph(fn_inputs, fn_outputs)
-        inputs, outputs = self.get_theano_variables(**theano_graph)
+        inputs, outputs = self.get_theano_variables(fn_inputs, fn_outputs)
 
         if len(outputs) == 1:
             outputs = outputs[0]
@@ -379,7 +374,7 @@ class Gradient(Function):
                                        force_floatX=force_floatX)
         self.wrt = utils.as_seq(wrt, tuple)
 
-    def get_theano_variables(self, inputs, outputs, graph):
+    def finalize_inputs_outputs(self, inputs, outputs, graph):
         if np.any([o.ndim != 0 for o in outputs]):
             raise TypeError('Gradient requires scalar outputs.')
 
@@ -407,7 +402,7 @@ class HessianVector(Gradient):
     '_vectors'.
     """
 
-    def get_theano_variables(self, inputs, outputs, graph):
+    def finalize_inputs_outputs(self, inputs, outputs, graph):
         if np.any([o.ndim != 0 for o in outputs]):
             raise TypeError('HessianVector requires scalar outputs.')
 
@@ -501,7 +496,7 @@ class VectorArg(Function):
 
         self.cache['fn'] = self.compile_function(init_args, init_kwargs)
 
-    def get_theano_variables(self, inputs, outputs, graph):
+    def finalize_inputs_outputs(self, inputs, outputs, graph):
         if self.compile_grad or self.compile_hv:
             if outputs.ndim != 0:
                 raise TypeError('Gradient requires scalar outputs.')
@@ -524,7 +519,7 @@ class VectorArg(Function):
 
         return vector_inputs, vector_outputs
 
-    def get_theano_graph(self, inputs=None, outputs=None):
+    def get_theano_variables(self, inputs=None, outputs=None):
         """
         Returns a dict containing inputs, outputs and graph corresponding to
         the Theano version of the pyfn.
@@ -577,11 +572,11 @@ class VectorArg(Function):
         # get symbolic outputs
         theano_outputs = graph[sym_outputs[0]]
 
-        theano_vars = {'inputs': theano_input,
-                       'outputs': theano_outputs,
-                       'graph': graph}
+        final_in, final_out = self.finalize_inputs_outputs(theano_input,
+                                                           theano_outputs,
+                                                           graph)
 
-        return theano_vars
+        return final_in, final_out
 
     def vector_from_args(self, args=None, kwargs=None):
         if args is None:
