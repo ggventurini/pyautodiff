@@ -10,7 +10,7 @@ PyAutoDiff automatically compiles NumPy code using [Theano](http://deeplearning.
 
 ## Quickstart
 
-####Decorators
+###Decorators
 
 PyAutoDiff provides simple decorators for compiling arbitrary NumPy functions and their derivatives. For most users, these will be the primary interface to autodiff.
 
@@ -42,7 +42,7 @@ def f(x, y):
 print f(3.0, 5.0) # 3.0
 ```
 
-#### Optimization
+### Optimization
 
 Users can call a higher-level optimization interface that wraps SciPy minimization routines (currently L-BFGS-B, nonlinear conjugate gradient, and Newton-CG), using autodiff to compute the required derivatives and Hessian-vector products.
 
@@ -61,7 +61,7 @@ print x_opt # [0.0, 1.0, 2.0]
 
 ```
 
-#### Classes
+### Classes
 
 Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
 
@@ -82,32 +82,34 @@ print g(5.0) # 10.0
 
 ## Concepts
 
-#### Functions
+### Functions
 
 The `Function` class and `@function` decorator use Theano to compile the target function. PyAutoDiff has support for all NumPy operations with Theano equivalents and limited support for many Python behaviors (see caveats).
 
-#### Gradients
+### Gradients
 
 The `Gradient` class and `@gradient` decorator compile functions which return the gradient of the the target function. The target function must be scalar-valued. A `wrt` keyword may be passed to the class or decorator to indicate which variables should be differentiated; otherwise all arguments are used.
 
-#### Hessian-vector products
+### Hessian-vector products
 
 The `HessianVector` class and `@hessian_vector` decorator compile functions that return the product of an argument's Hessian and an arbitrary vector (or tensor). The vectors must be provided to the resulting function with the `_tensors` keyword argument.
 
-#### Optimization
+### Optimization
 
 The `autodiff.optimize` module wraps some SciPy minimizers, automatically compiling functions to compute derivatives and Hessian-vector products that the minimizers require in order to optimize an arbitrary function.
 
+### Special Functions
+
 #### Constants
 
-PyAutoDiff replaces many variables with symbolic Theano versions. This can cause problems, because some Theano functions do not support symbolic arguments. To resolve this, autodiff provides a `Constant()` modifier, which instructs PyAutoDiff to construct a non-symbolic (and therefore constant) version of a variable.
+PyAutoDiff replaces many variables with symbolic Theano versions. This can cause problems, because some Theano functions do not support symbolic arguments. To resolve this, autodiff provides a `constant()` modifier, which instructs PyAutoDiff to construct a non-symbolic (and therefore constant) version of a variable.
 
-Most of the time, users will not have to call Constant() -- it is only necessary in certain cases.
+Most of the time, users will not have to call `constant()` -- it is only necessary in certain cases.
 
 For example, the following functions will compile, because the `axis` argument `1` is loaded as a constant, even when bound to a variable `a`.
 
 ```python
-from autodiff import Constant, function
+from autodiff import constant, function
 m = np.ones((3, 4))
 
 @function
@@ -132,25 +134,43 @@ def bad_fn(x, a):
 print bad_fn(m, 1) # error
 ```
 
-By calling `Constant()` appropriately, we can convert the symbolic variable back to a constant `int`. Now the function will compile:
+By calling 'constant()` appropriately, we can convert the symbolic variable back to a constant `int`. Now the function will compile:
 
 ```python
 @function
 def good_fn(x, a):
-    return x.sum(axis=Constant(a))
+    return x.sum(axis=constant(a))
     
 print good_fn1(m, 1)
 ```
 
+#### Tagging
+PyAutoDiff tacing makes it relatively easy to access a function's symbolic inputs and outputs, allowing Theano to compile the function with ease. However, advanced users may wish to access the symbolic representations of other variables, including variables local to the function. Autodiff stores symbolic variables by the id of the corresponding Python object, something which may not always be available to the user. Instead, users can manually tag symbolic variables with arbitrary keys, as the following example demonstrates:
+
+```python
+from autodiff import tag
+
+@function
+def local_fn(x):
+    y = tag(x + 2, 'y_var')
+    z = y * 3
+    return z
+
+local_fn(10.0)                   # call local_fn to trace and compile it
+y_sym = local_fn.s_vars['y_var'] # access the symbolic version of the function's 
+                                 # local variable 'y', tagged as 'y_var'
+
+```
+
 ## Caveats
 
-#### dtypes
+### dtypes
 
 Pay attention to dtypes -- they are locked when Theano compiles a function. In particular, note the following:
 - The gradient of an integer argument is defined as zero.
 - Theano only supports `float32` operations on the GPU
 
-#### Control Flow and Loops
+### Control Flow and Loops
 
 Generally, PyAutoDiff supports any NumPy operation with a Theano equivalent. You will probably get unexpected results if you use more general Python operations like control flow tools (`for`, `if/else`, `try/except`, etc.) or iteraters without understanding how Theano handles them.
 
