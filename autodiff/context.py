@@ -1078,6 +1078,16 @@ class FrameVM(object):
         self.stack[-2] = c
         self.stack[-3] = a
 
+    def op_ROT_FOUR(self, i, op, arg):
+        a = self.stack[-1]
+        b = self.stack[-2]
+        c = self.stack[-3]
+        d = self.stack[-4]
+        self.stack[-1] = b
+        self.stack[-2] = c
+        self.stack[-3] = d
+        self.stack[-4] = a
+
     def op_UNARY_NEGATIVE(self, i, op, arg):
         arg1 = self.pop()
         assert not hasattr(arg1, 'type')
