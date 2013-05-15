@@ -397,7 +397,7 @@ class NumberMethodsAttributes(unittest.TestCase):
 
 class IndexSlice(unittest.TestCase):
     """
-    Test for coverage of operators
+    Test for coverage of indexing and slicing
     """
     def test_index(self):
         self.assertTrue(checkfn(lambda x: x[1], [1]))
@@ -406,16 +406,23 @@ class IndexSlice(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x[-1, -1], [2]))
 
     def test_slice(self):
+        # SLICE+0
+        self.assertTrue(checkfn(lambda x: x[:], [1]))
+        self.assertTrue(checkfn(lambda x: x[:], [2]))
+
+        # SLICE+1
         self.assertTrue(checkfn(lambda x: x[1:], [1]))
         self.assertTrue(checkfn(lambda x: x[-2:], [1]))
         self.assertTrue(checkfn(lambda x: x[1:, 1:], [2]))
         self.assertTrue(checkfn(lambda x: x[-2:, -2:], [2]))
 
+        # SLICE+2
         self.assertTrue(checkfn(lambda x: x[:2], [1]))
         self.assertTrue(checkfn(lambda x: x[:-2], [1]))
         self.assertTrue(checkfn(lambda x: x[:2, :2], [2]))
         self.assertTrue(checkfn(lambda x: x[:-2, :-2], [2]))
 
+        # SLICE+3
         self.assertTrue(checkfn(lambda x: x[1:3], [1]))
         self.assertTrue(checkfn(lambda x: x[-3:-1], [1]))
         self.assertTrue(checkfn(lambda x: x[1:3, 1:3], [2]))

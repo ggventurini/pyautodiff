@@ -964,6 +964,17 @@ class FrameVM(object):
         logger.debug('SETUP_LOOP, what to do?')
         pass
 
+    def op_SLICE_PLUS_0(self, i, op, arg):
+        #Implements TOS = TOS[:].
+        TOS = self.pop()
+        new_tos = TOS[:]
+        self.push(new_tos)
+
+        if id(TOS) in self.watcher:
+            s = self.watcher.getvar(TOS)
+            s_rval = s[:]
+            self.watcher.shadow(new_tos, s_rval)
+
     def op_SLICE_PLUS_1(self, i, op, arg):
         # TOS = TOS1[TOS:]
         TOS1, TOS = self.popN(2)
