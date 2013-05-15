@@ -969,10 +969,10 @@ class FrameVM(object):
         TOS1, TOS = self.popN(2)
         new_tos = TOS1[TOS:]
         self.push(new_tos)
-        watcher = self.watcher
-        if any(id(t) in watcher for t in [TOS, TOS1]):
-            s = watcher.getvar(TOS)
-            s1 = watcher.getvar(TOS1)
+
+        if any(id(t) in self.watcher for t in [TOS, TOS1]):
+            s = self.watcher.getvar(TOS)
+            s1 = self.watcher.getvar(TOS1)
             s_rval = s1[s:]
             self.watcher.shadow(new_tos, s_rval)
 
@@ -981,10 +981,10 @@ class FrameVM(object):
         TOS1, TOS = self.popN(2)
         new_tos = TOS1[:TOS]
         self.push(new_tos)
-        watcher = self.watcher
-        if any(id(t) in watcher for t in [TOS, TOS1]):
-            s = watcher.getvar(TOS)
-            s1 = watcher.getvar(TOS1)
+
+        if any(id(t) in self.watcher for t in [TOS, TOS1]):
+            s = self.watcher.getvar(TOS)
+            s1 = self.watcher.getvar(TOS1)
             s_rval = s1[:s]
             self.watcher.shadow(new_tos, s_rval)
 
@@ -994,11 +994,10 @@ class FrameVM(object):
         rval = TOS2[TOS1:TOS]
         self.stack[-3:] = [rval]
 
-        watcher = self.watcher
-        if any(id(t) in watcher for t in [TOS, TOS1, TOS2]):
-            s = watcher.getvar(TOS)
-            s1 = watcher.getvar(TOS1)
-            s2 = watcher.getvar(TOS2)
+        if any(id(t) in self.watcher for t in [TOS, TOS1, TOS2]):
+            s = self.watcher.getvar(TOS)
+            s1 = self.watcher.getvar(TOS1)
+            s2 = self.watcher.getvar(TOS2)
             s_rval = s2[s1:s]
             self.watcher.shadow(rval, s_rval)
 
