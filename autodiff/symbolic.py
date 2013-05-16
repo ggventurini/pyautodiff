@@ -126,10 +126,19 @@ class Symbolic(object):
         """
         Retrieve the symbolic version of x.
 
-        x : python object
+        x : python object or string
 
         If x is an object, it must have been traced by the Symbolic class.
+        If x is a string, it must have been tagged with
+            autodiff.functions.tag().
         """
+        if isinstance(x, basestring):
+            if x in self.s_vars:
+                return self.s_vars[x]
+            else:
+                raise ValueError(
+                    'Requested the symbolic variable of tag \'{0}\''
+                    ', but \'{0}\' was not traced.'.format(x))
         if id(x) in self.s_vars:
             return self.s_vars[id(x)]
         else:
