@@ -238,6 +238,11 @@ class Function(object):
             except:
                 raise
 
+        if len(results) == 1:
+            return results[0]
+        else:
+            return results
+
     def get_theano_variables(self, inputs=None, outputs=None):
         """
         Returns a dict containing inputs, outputs and graph corresponding to
