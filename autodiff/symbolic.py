@@ -16,6 +16,7 @@ class Function(object):
                  init_args=None,
                  init_kwargs=None,
                  force_floatX=False,
+                 context=None,
                  use_cache=True):
         """
         Arguments
@@ -46,11 +47,17 @@ class Function(object):
                                         pyfn.func_defaults,
                                         pyfn.func_closure)
 
-        self.context = Context(borrowable=utils.as_seq(borrow, tuple),
-                               force_floatX=force_floatX)
+        if context is None:
+            self.context = Context(borrowable=utils.as_seq(borrow, tuple),
+                                   force_floatX=force_floatX)
+        elif isinstance(context, Context):
+            self.context = context
+        else:
+            raise TypeError(
+                'Received unrecognized Context: {0}'.format(context))
+
         self._context_init_svars = self.context.svars.copy()
 
-        self.s_vars = OrderedDict()
         self.s_inputs = OrderedDict()
         self.s_outputs = OrderedDict()
         self._cache = dict()
@@ -79,11 +86,10 @@ class Function(object):
         return self.call(*args, **kwargs)
 
     def reset(self, reset_cache=True):
-        self.s_vars.clear()
+        # self.s_vars.clear()
         self.s_inputs.clear()
         self.s_outputs.clear()
         self.context.reset()
-        self.context.svars.update(self._context_init_svars)
 
         if reset_cache:
             self.cache.clear()
@@ -91,6 +97,10 @@ class Function(object):
     @property
     def pyfn(self):
         return self._pyfn
+
+    @property
+    def s_vars(self):
+        return self.context.svars
 
     @property
     def cache(self):
@@ -133,8 +143,6 @@ class Function(object):
                             Contains the symbolic function results, indexed by
                             the id of the corresponding Python object.
 
-            The dictionaries are cleared every time this method is run.
-
         """
         if args is None:
             args = ()
@@ -168,7 +176,6 @@ class Function(object):
 
         args = tuple(args)
 
-        # clear previous results and context
         self.reset(reset_cache=False)
 
         # call the Context
@@ -176,7 +183,6 @@ class Function(object):
 
         # collect symbolic variables in s_vars
         self.s_vars.update(self.context.svars)
-        self.context.svars.clear()
 
         # collect symbolic arguments in s_inputs
         callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
@@ -364,10 +370,16 @@ class Gradient(Function):
     respect to (optionally specified) variables.
     """
 
-    def __init__(self, pyfn, wrt=None, borrow=None, force_floatX=False):
+    def __init__(self,
+                 pyfn,
+                 wrt=None,
+                 borrow=None,
+                 force_floatX=False,
+                 context=None):
         super(Gradient, self).__init__(pyfn=pyfn,
                                        borrow=borrow,
-                                       force_floatX=force_floatX)
+                                       force_floatX=force_floatX,
+                                       context=context)
         self.wrt = utils.as_seq(wrt, tuple)
 
     def finalize_inputs_outputs(self, inputs, outputs, graph):
@@ -470,14 +482,16 @@ class VectorArg(Function):
                  compile_grad=False,
                  compile_hv=False,
                  borrow=None,
-                 force_floatX=False):
+                 force_floatX=False,
+                 context=None):
         if not (compile_fn or compile_grad or compile_hv):
             raise ValueError('At least one of \'compile_fn\', '
                              '\'compile_grad\', or \'compile_hv\' '
                              'must be True.')
         super(VectorArg, self).__init__(pyfn=pyfn,
                                         borrow=borrow,
-                                        force_floatX=force_floatX)
+                                        force_floatX=force_floatX,
+                                        context=context)
 
         self.compile_fn = compile_fn
         self.compile_grad = compile_grad

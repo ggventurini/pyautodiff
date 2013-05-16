@@ -1257,5 +1257,4 @@ class Context(object):
         return self.svars.get(id(var), var)
 
     def reset(self):
-        self.svars.clear()
         self.constants.clear()
