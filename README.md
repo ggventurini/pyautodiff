@@ -231,6 +231,8 @@ y_sym = local_fn.s_vars['y_var'] # access the symbolic version of the function's
 
 ```
 
+Tagging is especially useful in combination with autodiff's `Symbolic` class, as it allows tracing and compiling functions of purely local variables. An example of this behavior can be found in the Symbolic section of the Quickstart.
+
 ## Caveats
 
 ### dtypes
