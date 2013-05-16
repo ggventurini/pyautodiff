@@ -117,13 +117,7 @@ theano_grad = tracer.compile_gradient(
     inputs=[x, y], outputs=o3, wrt=y, reduction=theano.tensor.sum)
 
 assert np.allclose(theano_fn(x, y), f3(f2(f1(x), y)))
-
-
-
-
 ```
-
-
 
 ## Concepts
 
