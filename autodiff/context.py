@@ -554,9 +554,10 @@ class FrameVM(object):
                 self.watcher.shadow(rval, s_self.dimshuffle(*s_dims))
             elif func.__name__ == 'astype':
                 rval = func(*args, **kwargs)
-                assert not kwargs
-                assert list(args) == s_args
-                dtype = args[0]
+                if 'dtype' in kwargs:
+                    dtype = kwargs['dtype']
+                else:
+                    dtype = args[0]
                 if not isinstance(dtype, str):
                     # catch numpy dtype objects like np.float32
                     try:
