@@ -69,47 +69,46 @@ class Symbolic(object):
         return theano_inputs, theano_outputs, graph
 
     def compile_function(self,
-                         fn_inputs=None,
-                         fn_outputs=None):
+                         inputs=None,
+                         outputs=None):
 
-        inputs, outputs, graph = self.get_theano_variables(fn_inputs,
-                                                           fn_outputs)
+        fn_inputs, fn_outputs, graph = self.get_theano_variables(inputs,
+                                                                 outputs)
 
-        if len(outputs) == 1:
-            outputs = outputs[0]
+        if len(fn_outputs) == 1:
+            fn_outputs = fn_outputs[0]
 
         # compile function
-        fn = theano.function(inputs=inputs,
-                             outputs=outputs,
+        fn = theano.function(inputs=fn_inputs,
+                             outputs=fn_outputs,
                              on_unused_input='ignore')
 
         return fn
 
     def compile_gradient(self,
-                         fn_inputs=None,
-                         fn_outputs=None,
-                         wrt=None):
+                         inputs=None,
+                         outputs=None,
 
-        inputs, outputs, graph = self.get_theano_variables(fn_inputs,
-                                                           fn_outputs)
+        fn_inputs, fn_outputs, graph = self.get_theano_variables(inputs,
+                                                                 outputs)
         wrt = utils.as_seq(wrt)
 
-        if np.any([o.ndim != 0 for o in outputs]):
             raise TypeError('Gradient requires scalar outputs.')
+        if np.any([o.ndim != 0 for o in fn_outputs]):
 
         # get wrt variables. If none were specified, use inputs.
         if len(wrt) == 0:
-            wrt = [i.variable for i in inputs]
+            wrt = [i.variable for i in fn_inputs]
         else:
             wrt = [graph[self.get_symbolic(w)] for w in wrt]
 
-        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
+        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in fn_outputs])
 
         if len(grads) == 1:
             grads = grads[0]
 
         # compile function
-        fn = theano.function(inputs=inputs,
+        fn = theano.function(inputs=fn_inputs,
                              outputs=grads,
                              on_unused_input='ignore')
 
