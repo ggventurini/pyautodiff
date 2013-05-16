@@ -608,7 +608,7 @@ class FrameVM(object):
                     global_randomstreams.uniform(
                         low=0,
                         high=1,
-                        size=args[0],
+                        size=autodiff.utils.as_seq(args[0], tuple),
                         dtype=str(np.asarray(rval).dtype)))
             elif 'method uniform of mtrand.RandomState' in str(func):
                 # build Theano random normal numbers
