@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import theano.tensor
 
 from autodiff.symbolic import Symbolic, Function, Gradient
 
@@ -269,3 +270,34 @@ class TestSymbolic(unittest.TestCase):
         o4 = s.trace(lambda x: x.sum(), o3)
         g = s.compile_gradient(x, o4, wrt=x)
         self.assertTrue(np.allclose(g(x), 8 * (x+1)))
+
+    def test_symbolic_readme(self):
+        def f1(x):
+            return x + 2
+
+        def f2(x, y):
+            return x * y
+
+        def f3(x):
+            return x ** 2
+
+        x = np.random.random(10)
+        y = np.random.random(10)
+
+        # -- create and use a general symbolic tracer
+        tracer = Symbolic()
+        o1 = tracer.trace(f1, x)
+        o2 = tracer.trace(f2, o1, y)
+        o3 = tracer.trace(f3, o2)
+
+        # -- compile a function of the operations that transformed
+        #    x and y into o3.
+        theano_fn = tracer.compile_function(inputs=[x, y], outputs=[o3])
+
+        # -- compile the gradient of the operations that transformed
+        #    x and y into o3, with respect to y, using 'sum' to reduce
+        #    the output to a scalar.
+        theano_grad = tracer.compile_gradient(
+            inputs=[x, y], outputs=[o3], wrt=[y], reduction=theano.tensor.sum)
+
+        self.assertTrue(np.allclose(theano_fn(x, y), f3(f2(f1(x), y))))

@@ -47,6 +47,7 @@ print f(3.0, 5.0) # 3.0
 Users can call a higher-level optimization interface that wraps SciPy minimization routines (currently L-BFGS-B, nonlinear conjugate gradient, and Newton-CG), using autodiff to compute the required derivatives and Hessian-vector products.
 
 ```python
+import numpy as np
 from autodiff.optimize import fmin_l_bfgs_b
 
 # -- A trivial least-squares minimization problem
@@ -63,7 +64,7 @@ print x_opt # [0.0, 1.0, 2.0]
 
 ### Classes
 
-Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
+Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function` and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
 
 ```python
 from autodiff import Function, Gradient
@@ -78,6 +79,50 @@ print f(5.0) # 25.0
 print g(5.0) # 10.0
 
 ```
+
+### General Symbolic Tracing
+The `Symbolic` class allows more general tracing of NumPy objects through (potentially) multiple functions. Users should call it's `trace` method on any functions and arguments, followed by either the `compile_function` or `compile_gradient` method in order to get a compiled Theano function.
+
+```python
+import numpy as np
+import theano.tensor
+from autodiff import Symbolic
+
+def f1(x):
+    return x + 2
+
+def f2(x, y):
+    return x * y
+
+def f3(x):
+    return x ** 2
+
+x = np.random.random(10)
+y = np.random.random(10)
+
+# -- create and use a general symbolic tracer
+tracer = Symbolic()
+o1 = tracer.trace(f1, x)
+o2 = tracer.trace(f2, o1, y)
+o3 = tracer.trace(f3, o2)
+
+# -- compile a function of the operations that transformed
+#    x and y into o3.
+theano_fn = tracer.compile_function(inputs=[x, y], outputs=o3)
+
+# -- compile the gradient of the operations that transformed
+#    x and y into o3, with respect to y, using 'sum' to reduce
+#    the output to a scalar.
+theano_grad = tracer.compile_gradient(
+    inputs=[x, y], outputs=o3, wrt=y, reduction=theano.tensor.sum)
+
+assert np.allclose(theano_fn(x, y), f3(f2(f1(x), y)))
+
+
+
+
+```
+
 
 
 ## Concepts
@@ -97,6 +142,10 @@ The `HessianVector` class and `@hessian_vector` decorator compile functions that
 ### Optimization
 
 The `autodiff.optimize` module wraps some SciPy minimizers, automatically compiling functions to compute derivatives and Hessian-vector products that the minimizers require in order to optimize an arbitrary function.
+
+### Symbolic
+
+The `Symbolic` class is used for general purpose symbolic tracing, usually through multiple functions. It creates `Function` instances as necessary to trace different variables, and has `compile_function()` and `compile_gradient()` methods to get the compiled functions corresponding to a traced set of operations.
 
 ### Special Functions
 
