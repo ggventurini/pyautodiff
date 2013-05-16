@@ -88,13 +88,21 @@ class Symbolic(object):
     def compile_gradient(self,
                          inputs=None,
                          outputs=None,
+                         wrt=None,
+                         reduction=None):
 
         fn_inputs, fn_outputs, graph = self.get_theano_variables(inputs,
                                                                  outputs)
         wrt = utils.as_seq(wrt)
 
-            raise TypeError('Gradient requires scalar outputs.')
+        if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
+            reduction = getattr(theano.tensor, reduction)
+        if callable(reduction):
+            fn_outputs = [reduction(o) for o in fn_outputs]
+
         if np.any([o.ndim != 0 for o in fn_outputs]):
+            raise TypeError('Gradient requires either scalar outputs or a '
+                            'reduction that returns a scalar.')
 
         # get wrt variables. If none were specified, use inputs.
         if len(wrt) == 0:
