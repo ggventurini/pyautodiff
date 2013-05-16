@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from autodiff.symbolic import Function, Gradient
+from autodiff.symbolic import Symbolic, Function, Gradient
 
 
 def checkfn(symF, *args, **kwargs):
@@ -243,3 +243,29 @@ class TestGradient(unittest.TestCase):
 
         g = Gradient(fn, wrt=b)
         self.assertTrue(np.allclose(g(a, b), a))
+
+
+class TestSymbolic(unittest.TestCase):
+    def test_symbolic(self):
+        def f1(x):
+            return x + 1.0
+
+        def f2(x):
+            return x * 2.0
+
+        def f3(x):
+            return x ** 2
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        o1 = s.trace(f1, x)
+        o2 = s.trace(f2, o1)
+        o3 = s.trace(f3, o2)
+
+        # test function
+        f = s.compile_function(x, o3)
+        self.assertTrue(np.allclose(f(x), f3(f2(f1(x)))))
+
+        # test gradient
+        o4 = s.trace(lambda x: x.sum(), o3)
+        g = s.compile_gradient(x, o4, wrt=x)
+        self.assertTrue(np.allclose(g(x), 8 * (x+1)))

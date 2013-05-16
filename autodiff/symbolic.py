@@ -9,6 +9,128 @@ from autodiff.compat import OrderedDict
 import autodiff.utils as utils
 
 
+class Symbolic(object):
+    def __init__(self,
+                 borrow=None,
+                 force_floatX=False):
+        """
+        Arguments
+        ---------
+
+        borrow : tuple of objects
+            If an object in this tuple is encountered while tracing the
+            function, then its symbolic representation will alias that object's
+            memory location. This means that *inplace* operations on the Python
+            (likely NumPy) object will affect the symbolic function.
+
+        force_floatX : bool
+            If True, floats and float NumPy ndarrays will be cast to the dtype
+            specified at theano.config.floatX when forming symbolic shared
+            variables, if they do not have it already. Objects in `borrowable`
+            are never cast.
+
+        """
+        self.context = Context(borrowable=utils.as_seq(borrow, tuple),
+                               force_floatX=force_floatX)
+
+    @property
+    def s_vars(self):
+        return self.context.svars
+
+    def trace(self, fn, *args, **kwargs):
+        f = Function(fn, context=self.context)
+        return f.trace(args, kwargs)
+
+    def get_theano_variables(self, inputs=None, outputs=None):
+        """
+        Returns a dict containing inputs, outputs and graph corresponding to
+        the Theano version of the pyfn.
+        """
+        inputs = utils.as_seq(inputs, tuple)
+        sym_inputs = [self.get_symbolic(x) for x in inputs]
+
+        outputs = utils.as_seq(outputs, tuple)
+        sym_outputs = [self.get_symbolic(x) for x in outputs]
+
+        # get symbolic inputs corresponding to shared inputs in s_inputs
+        s_memo = OrderedDict((arg, arg.type(name=arg.name))
+                             for arg in utils.flat_from_doc(sym_inputs))
+        theano_inputs = tuple(s_memo.values())
+
+        # get new graph, replacing shared inputs with symbolic ones
+        graph = theano.gof.graph.clone_get_equiv(
+            theano.gof.graph.inputs(sym_outputs),
+            sym_outputs,
+            memo=s_memo.copy())
+
+        # get symbolic outputs
+        theano_outputs = tuple([graph[o] for o in sym_outputs])
+
+        return theano_inputs, theano_outputs, graph
+
+    def compile_function(self,
+                         fn_inputs=None,
+                         fn_outputs=None):
+
+        inputs, outputs, graph = self.get_theano_variables(fn_inputs,
+                                                           fn_outputs)
+
+        if len(outputs) == 1:
+            outputs = outputs[0]
+
+        # compile function
+        fn = theano.function(inputs=inputs,
+                             outputs=outputs,
+                             on_unused_input='ignore')
+
+        return fn
+
+    def compile_gradient(self,
+                         fn_inputs=None,
+                         fn_outputs=None,
+                         wrt=None):
+
+        inputs, outputs, graph = self.get_theano_variables(fn_inputs,
+                                                           fn_outputs)
+        wrt = utils.as_seq(wrt)
+
+        if np.any([o.ndim != 0 for o in outputs]):
+            raise TypeError('Gradient requires scalar outputs.')
+
+        # get wrt variables. If none were specified, use inputs.
+        if len(wrt) == 0:
+            wrt = [i.variable for i in inputs]
+        else:
+            wrt = [graph[self.get_symbolic(w)] for w in wrt]
+
+        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
+
+        if len(grads) == 1:
+            grads = grads[0]
+
+        # compile function
+        fn = theano.function(inputs=inputs,
+                             outputs=grads,
+                             on_unused_input='ignore')
+
+        return fn
+
+    def get_symbolic(self, x):
+        """
+        Retrieve the symbolic version of x.
+
+        x : python object
+
+        If x is an object, it must have been traced by the Symbolic class.
+        """
+        if id(x) in self.s_vars:
+            return self.s_vars[id(x)]
+        else:
+            raise ValueError(
+                'Requested the symbolic variable shadowing object {0}'
+                ', but it was not traced.'.format(repr(x)))
+
+
 class Function(object):
     def __init__(self,
                  pyfn,
