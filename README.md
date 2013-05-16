@@ -62,24 +62,6 @@ print x_opt # [0.0, 1.0, 2.0]
 
 ```
 
-### Classes
-
-Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function` and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
-
-```python
-from autodiff import Function, Gradient
-
-def fn(x):
-    return x ** 2
-
-f = Function(fn) # compile the function
-g = Gradient(fn) # compile the gradient of the function
-
-print f(5.0) # 25.0
-print g(5.0) # 10.0
-
-```
-
 ### General Symbolic Tracing
 The `Symbolic` class allows more general tracing of NumPy objects through (potentially) multiple functions. Users should call it's `trace` method on any functions and arguments, followed by either the `compile_function` or `compile_gradient` method in order to get a compiled Theano function.
 
@@ -117,6 +99,24 @@ theano_grad = tracer.compile_gradient(
     inputs=[x, y], outputs=o3, wrt=y, reduction=theano.tensor.sum)
 
 assert np.allclose(theano_fn(x, y), f3(f2(f1(x), y)))
+```
+
+### Classes
+
+Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function` and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
+
+```python
+from autodiff import Function, Gradient
+
+def fn(x):
+    return x ** 2
+
+f = Function(fn) # compile the function
+g = Gradient(fn) # compile the gradient of the function
+
+print f(5.0) # 25.0
+print g(5.0) # 10.0
+
 ```
 
 ## Concepts
