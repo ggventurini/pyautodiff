@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='pyautodiff',
-    version='0.1',
+    version='0.2',
     maintainer='Lowin Data Company',
     maintainer_email='info@lowindata.com',
     description=('Automatic differentiation for NumPy.'),

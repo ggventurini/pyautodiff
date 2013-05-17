@@ -1,5 +1,12 @@
 #PyAutoDiff Changelog
 
+##0.2 - May 2013
+
+### Features
+
+- Added `Symbolic` general tracing/compiling class
+- Added `tag` mechanism
+
 ##0.1 - May 2013
 
 ### Features
@@ -14,7 +21,7 @@
 - Added high-level interface for SciPy optimizers
     - L-BFGS-B, nonlinear conjugate gradient, Newton-CG
 - Added helper functions
-    - `constant`, `tag`
+    - `constant`
 - Added unit tests
 - Added compatibility module (`OrderedDict`, `getcallargs`)
 
