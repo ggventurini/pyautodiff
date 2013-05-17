@@ -63,68 +63,49 @@ print x_opt # [0.0, 1.0, 2.0]
 ```
 
 ### General Symbolic Tracing
-The `Symbolic` class allows more general tracing of NumPy objects through (potentially) multiple functions. Users should call it's `trace` method on any functions and arguments, followed by either the `compile_function` or `compile_gradient` method in order to get a compiled Theano function.
+The `Symbolic` class allows more general tracing of NumPy objects through (potentially) multiple functions. Users should call it's `trace` method on any functions and arguments, followed by either the `compile_function` or `compile_gradient` method in order to get a compiled Theano function. 
+
+Critically, `Symbolic` can compile functions not only from existing arguments and results, but of any NumPy object 
+referenced while tracing. The following example traces objects through three different functions and ultimately compiles a function of an existing argument, a global variable, and a local variable via autodiff's `tag` mechanism: 
 
 ```python
 import numpy as np
 import theano.tensor
-from autodiff import Symbolic
+from autodiff import Symbolic, tag
 
+# -- a vanilla function
 def f1(x):
     return x + 2
 
-def f2(x, y):
+# -- a function referencing a global variable
+y = np.random.random(10)
+def f2(x):
     return x * y
 
+# -- a function with a local variable
 def f3(x):
-    return x ** 2
+    z = tag(np.ones(10), 'local_var')
+    return (x + z) ** 2
 
+# -- create a general symbolic tracer and apply it to the three functions
 x = np.random.random(10)
-y = np.random.random(10)
-
-# -- create and use a general symbolic tracer
 tracer = Symbolic()
-o1 = tracer.trace(f1, x)
-o2 = tracer.trace(f2, o1, y)
-o3 = tracer.trace(f3, o2)
 
-# -- compile a function of the traced operations between x, y, and o3
-theano_fn = tracer.compile_function(inputs=[x, y], outputs=o3)
+out1 = tracer.trace(f1, x)
+out2 = tracer.trace(f2, out1)
+out3 = tracer.trace(f3, out2)
 
-# -- compile the gradient of the traced operations, wrt y
-theano_grad = tracer.compile_gradient(
-    inputs=[x, y], outputs=o3, wrt=y, reduction=theano.tensor.sum)
+# -- compile a function representing f(x, y, z) = out3
+new_fn = tracer.compile_function(inputs=[x, y, 'local_var'], 
+                                 outputs=out3)
 
-assert np.allclose(theano_fn(x, y), f3(f2(f1(x), y)))
-```
+# -- compile the gradient of f(x) = out3, with respect to y
+fn_grad = tracer.compile_gradient(inputs=x, 
+                                  outputs=out3, 
+                                  wrt=y, 
+                                  reduction=theano.tensor.sum)
 
-It is important to note that the `Symbolic` class does not only trace function arguments. It can also trace referenced variables or even purely local variables via autodiff's `tag` mechanism:
-
-```python
-from autodiff import Symbolic
-from autodiff.functions import tag
-
-# -- create a variable that will be referenced by the function f
-y = np.random.random(10)
-
-def f(x):
-    return x + y
-
-def g(x):
-    # -- create a variable local to this function
-    y = tag(np.random.random(10), 'y')
-    return x + y
-
-x = np.random.random(10)
-
-# -- create and use two symbolic tracers
-tracer_1, tracer_2 = Symbolic(), Symbolic()
-o1 = tracer_1.trace(f, x)
-o2 = tracer_2.trace(g, x)
-
-# -- compile a function of referenced/local variable y
-theano_fn_1 = tracer_1.compile_function(inputs=y, outputs=o1)
-theano_fn_2 = tracer_2.compile_function(inputs='y', outputs=o2)
+assert np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x))))
 ```
 
 ### Classes

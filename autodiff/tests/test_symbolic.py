@@ -3,6 +3,7 @@ import numpy as np
 import theano.tensor
 
 from autodiff.symbolic import Symbolic, Function, Gradient
+from autodiff import tag
 
 
 def checkfn(symF, *args, **kwargs):
@@ -272,32 +273,40 @@ class TestSymbolic(unittest.TestCase):
         self.assertTrue(np.allclose(g(x), 8 * (x+1)))
 
     def test_symbolic_readme(self):
+        """ the README example"""
+
+        # -- a vanilla function
         def f1(x):
             return x + 2
 
-        def f2(x, y):
-            return x * y
-
-        def f3(x):
-            return x ** 2
-
-        x = np.random.random(10)
+        # -- a function referencing a global variable
         y = np.random.random(10)
 
-        # -- create and use a general symbolic tracer
+        def f2(x):
+            return x * y
+
+        # -- a function with a local variable
+        def f3(x):
+            z = tag(np.ones(10), 'local_var')
+            return (x + z) ** 2
+
+        # -- create a general symbolic tracer and apply
+        #    it to the three functions
+        x = np.random.random(10)
         tracer = Symbolic()
-        o1 = tracer.trace(f1, x)
-        o2 = tracer.trace(f2, o1, y)
-        o3 = tracer.trace(f3, o2)
 
-        # -- compile a function of the operations that transformed
-        #    x and y into o3.
-        theano_fn = tracer.compile_function(inputs=[x, y], outputs=[o3])
+        out1 = tracer.trace(f1, x)
+        out2 = tracer.trace(f2, out1)
+        out3 = tracer.trace(f3, out2)
 
-        # -- compile the gradient of the operations that transformed
-        #    x and y into o3, with respect to y, using 'sum' to reduce
-        #    the output to a scalar.
-        theano_grad = tracer.compile_gradient(
-            inputs=[x, y], outputs=[o3], wrt=[y], reduction=theano.tensor.sum)
+        # -- compile a function representing f(x, y, z) = out3
+        new_fn = tracer.compile_function(inputs=[x, y, 'local_var'],
+                                         outputs=out3)
 
-        self.assertTrue(np.allclose(theano_fn(x, y), f3(f2(f1(x), y))))
+        # -- compile the gradient of f(x) = out3, with respect to y
+        fn_grad = tracer.compile_gradient(inputs=x,
+                                          outputs=out3,
+                                          wrt=y,
+                                          reduction=theano.tensor.sum)
+
+        self.assertTrue(np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x)))))
