@@ -183,6 +183,7 @@ class Function(object):
             pyfn = pyfn.pyfn
 
         # make deepcopy of pyfn because we might change its defaults
+        # -- note that copy.deepcopy doesn't work on functions
         self._pyfn = types.FunctionType(pyfn.func_code,
                                         pyfn.func_globals,
                                         pyfn.func_name,
