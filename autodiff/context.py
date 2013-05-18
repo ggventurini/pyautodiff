@@ -665,6 +665,15 @@ class FrameVM(object):
         call_vargs = self.pop()
         return self.op_CALL_FUNCTION(i, op, arg, call_vargs=call_vargs)
 
+    def op_CALL_FUNCTION_VAR_KW(self, i, op, arg):
+        call_vargs, call_kwargs = self.popN(2)
+        rval = self.op_CALL_FUNCTION(i,
+                                     op,
+                                     arg,
+                                     call_vargs=call_vargs,
+                                     call_kwargs=call_kwargs)
+        return rval
+
     def op_COMPARE_OP(self, i, op, arg):
         opname = opcode.cmp_op[arg]
         right = self.pop()
