@@ -364,14 +364,15 @@ class Function(object):
 
             # collect positional args
             else:
-                try:
-                    self.s_inputs[name] = self.s_vars[id(arg)]
-                    self.s_inputs[name].name = name
-                except KeyError:
-                    raise KeyError('Unable to trace argument '
-                                   '\'{0}\'.'.format(name))
-                except:
-                    raise
+                if arg is not getattr(self.pyfn, 'im_self', None):
+                    try:
+                        self.s_inputs[name] = self.s_vars[id(arg)]
+                        self.s_inputs[name].name = name
+                    except KeyError:
+                        raise KeyError('Unable to trace argument '
+                                       '\'{0}\'.'.format(name))
+                    except:
+                        raise
 
         # collect symbolic results in s_outputs
         if not isinstance(results, tuple):
