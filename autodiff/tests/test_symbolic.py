@@ -212,6 +212,14 @@ class TestFunction(unittest.TestCase):
         self.assertFalse(np.allclose(f1(y + 1), f2(w)))
         self.assertTrue(np.allclose(f1(y) * 2, f2(w * 2)))
 
+    def test_function_of_function(self):
+        # single arg, no default
+        def fn():
+            return np.ones((3, 4)) + 2
+        f = Function(fn)
+        f2 = Function(f)
+        self.assertTrue(checkfn(f2))
+
 
 class TestGradient(unittest.TestCase):
     def test_simple_gradients(self):
@@ -308,5 +316,7 @@ class TestSymbolic(unittest.TestCase):
                                           outputs=out3,
                                           wrt=y,
                                           reduction=theano.tensor.sum)
+
+        assert fn_grad  # to stop flake error
 
         self.assertTrue(np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x)))))
