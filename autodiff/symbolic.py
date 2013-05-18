@@ -499,14 +499,17 @@ class Function(object):
 
         x : python object or string or int
 
-        If x is a string, it is matched to the names of the function arguments.
+        If x is a string, it is matched first to any tagged objects, then to
+            the names of the function arguments.
         If x is an int, it is matched to the index of the function results
         If x is an object, it must have been traced by the Symbolic class.
         """
         if type(x) is int:
             return self.s_outputs.values()[x]
         elif isinstance(x, basestring):
-            if x in self.s_inputs:
+            if x in self.s_vars:
+                return self.s_vars[x]
+            elif x in self.s_inputs:
                 return self.s_inputs[x]
             else:
                 raise ValueError(
