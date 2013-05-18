@@ -190,6 +190,10 @@ class Function(object):
                                         pyfn.func_defaults,
                                         pyfn.func_closure)
 
+        # if pyfn is a method, make sure to make the copy a method as well
+        if isinstance(pyfn, types.MethodType):
+            self._pyfn = types.MethodType(self._pyfn, pyfn.im_self, pyfn.im_class)
+
         if context is None:
             self.context = Context(borrowable=utils.as_seq(borrow, tuple),
                                    force_floatX=force_floatX)
