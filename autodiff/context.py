@@ -71,6 +71,8 @@ class FrameVM(object):
     def __init__(self, watcher, func):
         logger.debug('FrameVM: {0}'.format(func))
         self.watcher = watcher
+        if isinstance(func, autodiff.symbolic.Function):
+            func = func.pyfn
         self.func = func
         self.stack = []
         self._locals = None

@@ -178,6 +178,10 @@ class Function(object):
             are never cast.
 
         """
+        # if the pyfn is an autodiff Function, get the pyfn
+        if isinstance(pyfn, Function):
+            pyfn = pyfn.pyfn
+
         # make deepcopy of pyfn because we might change its defaults
         self._pyfn = types.FunctionType(pyfn.func_code,
                                         pyfn.func_globals,
