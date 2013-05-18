@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 from autodiff.decorators import function, gradient, hessian_vector
-
+from autodiff.functions import tag
 
 #========= Tests
 
@@ -111,3 +111,46 @@ class TestHV(unittest.TestCase):
         x = np.ones((3, 3))
         self.assertTrue(np.allclose(x * 6, fn(x, _vectors=x)))
         self.assertTrue(np.allclose(x * 2, fn(x[0], _vectors=x[0])))
+
+
+class TestClass(unittest.TestCase):
+    def setUp(self):
+        class AutoDiff(object):
+            def __init__(self):
+                self.x = 100.0
+                self.y = np.ones((3, 4))
+                self.grad_f4 = gradient(self.f4, wrt=self.y)
+
+            @function
+            def f1(self):
+                return self.x + self.y
+
+            @function
+            def f2(self, x):
+                return self.x + x
+
+            @gradient
+            def f3(self, x):
+                return np.sum(self.y + x)
+
+            @gradient(wrt='y')
+            def f4(self, x):
+                return np.sum(tag(self.y, 'y') * x)
+
+            def passthrough(self, *args, **kwargs):
+                return self.f2(*args, **kwargs)
+
+            @function
+            def passthrough_fn(self, *args, **kwargs):
+                return self.f2(*args, **kwargs)
+
+        self.AD = AutoDiff()
+
+    def test_decorated_method(self):
+        self.assertTrue(np.allclose(self.AD.f1(), self.AD.x + self.AD.y))
+        self.assertTrue(np.allclose(self.AD.f2(1.0), self.AD.x + 1.0))
+        self.assertTrue(np.allclose(self.AD.f3(1.0), np.sum(self.AD.y)))
+        self.assertTrue(np.allclose(self.AD.f4(2.0), self.AD.y * 2.0))
+        self.assertTrue(np.allclose(self.AD.grad_f4(2.0), self.AD.y * 2.0))
+        self.assertTrue(np.allclose(self.AD.passthrough(2.0), self.AD.f2(2.0)))
+        self.assertTrue(np.allclose(self.AD.passthrough_fn(3.0), self.AD.f2(3.0)))
