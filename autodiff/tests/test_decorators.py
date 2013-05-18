@@ -116,6 +116,9 @@ class TestHV(unittest.TestCase):
 class TestClass(unittest.TestCase):
     def setUp(self):
         class AutoDiff(object):
+
+            a = 100.0
+
             def __init__(self):
                 self.x = 100.0
                 self.y = np.ones((3, 4))
@@ -144,6 +147,16 @@ class TestClass(unittest.TestCase):
             def passthrough_fn(self, *args, **kwargs):
                 return self.f2(*args, **kwargs)
 
+            @classmethod
+            @function
+            def class_method(cls, x):
+                return cls.a + x
+
+            @staticmethod
+            @function
+            def static_method(x):
+                return x + 100.0
+
         self.AD = AutoDiff()
 
     def test_decorated_method(self):
@@ -153,4 +166,11 @@ class TestClass(unittest.TestCase):
         self.assertTrue(np.allclose(self.AD.f4(2.0), self.AD.y * 2.0))
         self.assertTrue(np.allclose(self.AD.grad_f4(2.0), self.AD.y * 2.0))
         self.assertTrue(np.allclose(self.AD.passthrough(2.0), self.AD.f2(2.0)))
-        self.assertTrue(np.allclose(self.AD.passthrough_fn(3.0), self.AD.f2(3.0)))
+        self.assertTrue(np.allclose(self.AD.passthrough_fn(3.0),
+                                    self.AD.f2(3.0)))
+
+    def test_class_method(self):
+        self.assertTrue(np.allclose(self.AD.class_method(1.0), 101.0))
+
+    def test_static_method(self):
+        self.assertTrue(np.allclose(self.AD.static_method(1.0), 101.0))

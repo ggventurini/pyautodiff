@@ -364,7 +364,9 @@ class Function(object):
 
             # collect positional args
             else:
-                if arg is not getattr(self.pyfn, 'im_self', None):
+                # avoid tracing 'self' and 'cls' args
+                if (arg is not getattr(self.pyfn, 'im_self', None)
+                    and type(arg) is not type):
                     try:
                         self.s_inputs[name] = self.s_vars[id(arg)]
                         self.s_inputs[name].name = name
@@ -491,6 +493,7 @@ class Function(object):
     def call(self, *args, **kwargs):
         fn = self.compile_function(args, kwargs, None, None)
         pos_args = utils.flat_from_doc(args)
+        pos_args = [a for a in args if not type(a) is type]
         return fn(*pos_args, **kwargs)
 
     def get_symbolic(self, x):
