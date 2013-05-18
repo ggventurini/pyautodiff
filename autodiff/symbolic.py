@@ -192,7 +192,9 @@ class Function(object):
 
         # if pyfn is a method, make sure to make the copy a method as well
         if isinstance(pyfn, types.MethodType):
-            self._pyfn = types.MethodType(self._pyfn, pyfn.im_self, pyfn.im_class)
+            self._pyfn = types.MethodType(self._pyfn,
+                                          pyfn.im_self,
+                                          pyfn.im_class)
 
         if context is None:
             self.context = Context(borrowable=utils.as_seq(borrow, tuple),
@@ -374,8 +376,8 @@ class Function(object):
             # collect positional args
             else:
                 # avoid tracing 'self' and 'cls' args
-                if (arg is not getattr(self.pyfn, 'im_self', None)
-                    and type(arg) is not type):
+                if arg is not getattr(self.pyfn, 'im_self', None) \
+                   and type(arg) is not type:
                     try:
                         self.s_inputs[name] = self.s_vars[id(arg)]
                         self.s_inputs[name].name = name
