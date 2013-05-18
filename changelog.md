@@ -6,6 +6,10 @@
 
 - Added `Symbolic` general tracing/compiling class
 - Added `tag` mechanism
+- Support for decorating bound methods, `@staticmethod`, `@classmethod`
+- Preliminary support for wrapping docstrings of traced functions
+
+
 
 ##0.1 - May 2013
 
@@ -29,7 +33,7 @@
 
 - Wrapped small `int` variables to solve tracing issues
 
- 
+
 
 ##0.0.1 (prototype) - June 2012
 - Introduced low-level `Context` and `FrameVM` tracing objects

@@ -229,6 +229,15 @@ class Function(object):
         if init_args or init_kwargs or takes_no_args:
             self.compile_function(init_args, init_kwargs)
 
+        # set the instance docstring to look like that of the function
+        ds = 'AutoDiff class: {0}\n\nWrapped docstring:\n\n'.format(
+            self.__class__.__name__)
+        if self.pyfn.__doc__ is not None:
+            fn_ds = self.pyfn.__doc__
+        else:
+            fn_ds = '[no docstring found]\n '
+        self.__doc__ = ds + fn_ds
+
     def __call__(self, *args, **kwargs):
         return self.call(*args, **kwargs)
 
