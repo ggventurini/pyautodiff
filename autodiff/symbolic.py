@@ -477,6 +477,12 @@ class Function(object):
 
         return fn
 
+    def __get__(self, instance, owner=None):
+        if instance is not None:
+            method = self.pyfn.__get__(instance, owner)
+            self._pyfn = method
+        return self
+
     def call(self, *args, **kwargs):
         fn = self.compile_function(args, kwargs, None, None)
         pos_args = utils.flat_from_doc(args)
