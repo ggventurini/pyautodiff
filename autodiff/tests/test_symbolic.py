@@ -220,6 +220,25 @@ class TestFunction(unittest.TestCase):
         f2 = Function(f)
         self.assertTrue(checkfn(f2))
 
+    def test_function_of_nested_vargs_kwargs(self):
+        def fn(*args, **kwargs):
+            return args[1] + kwargs['kw']
+
+        def fn2(*args, **kwargs):
+            return fn(*args, **kwargs)
+
+        f = Function(fn2)
+        self.assertTrue(checkfn(f, 1.0, 2.0, kw=3.0, kw2=4.0))
+
+    def test_function_of_nested_def_vargs_kwargs(self):
+        def fn2(*args, **kwargs):
+            def fn(*args, **kwargs):
+                return args[1] + kwargs['kw']
+            return fn(*args, **kwargs)
+
+        f = Function(fn2)
+        self.assertTrue(checkfn(f, 1.0, 2.0, kw=3.0, kw2=4.0))
+
 
 class TestGradient(unittest.TestCase):
     def test_simple_gradients(self):
