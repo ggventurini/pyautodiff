@@ -388,8 +388,7 @@ class Function(object):
                         raise
 
         # collect symbolic results in s_outputs
-        if not isinstance(results, tuple):
-            results = [results]
+        results = utils.as_seq(results, tuple)
         for i, r in enumerate(results):
             try:
                 self.s_outputs[id(r)] = self.s_vars[id(r)]
