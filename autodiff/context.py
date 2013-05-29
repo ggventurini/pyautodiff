@@ -1041,6 +1041,14 @@ class FrameVM(object):
             s_rval = s2[s1:s]
             self.watcher.shadow(new_tos, s_rval)
 
+    def op_STORE_ATTR(self, i, op, arg):
+        # implements TOS.name = TOS1
+        TOS1, TOS = self.popN(2)
+        if TOS in self.watcher:
+            raise NotImplementedError()
+        name = self.func.func_code.co_names[arg]
+        setattr(TOS, name, TOS1)
+
     def op_STORE_SLICE_PLUS_0(self, i, op, arg):
         #Implements TOS[:] = TOS1
         TOS1, TOS = self.popN(2)
