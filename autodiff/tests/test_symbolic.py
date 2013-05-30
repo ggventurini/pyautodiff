@@ -226,6 +226,16 @@ class TestFunction(unittest.TestCase):
         f = Function(fn2)
         self.assertTrue(checkfn(f, 1.0, 2.0, kw=3.0, kw2=4.0))
 
+    def test_dict_arg(self):
+        def f(x):
+            return x + 1
+
+        def g(x):
+            return f(x[1])
+
+        F = Function(g)
+        self.assertTrue(checkfn(F, {1.0: 5.0}))
+
 
 class TestGradient(unittest.TestCase):
     def test_simple_gradients(self):
@@ -332,9 +342,25 @@ class TestSymbolic(unittest.TestCase):
             def f(self, x):
                 return x + 100.0
 
+            @classmethod
+            def g(cls, x):
+                return x + 100.0
+
+            @staticmethod
+            def h(x):
+                return x + 100.0
+
         t = Test()
         s = Symbolic()
         x = 1.0
         o = s.trace(t.f, x)
+        f = s.compile_function(x, o)
+        assert(f(2.0) == 102.0)
+
+        o = s.trace(t.g, x)
+        f = s.compile_function(x, o)
+        assert(f(2.0) == 102.0)
+
+        o = s.trace(t.h, x)
         f = s.compile_function(x, o)
         assert(f(2.0) == 102.0)
