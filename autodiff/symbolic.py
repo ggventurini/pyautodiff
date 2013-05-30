@@ -396,25 +396,6 @@ class HessianVector(Gradient):
     '_vectors'.
     """
 
-    def finalize_inputs_outputs(self, inputs, outputs, graph):
-        if np.any([o.ndim != 0 for o in outputs]):
-            raise TypeError('HessianVector requires scalar outputs.')
-
-        # get wrt variables. If none were specified, use inputs.
-        if len(self.wrt) == 0:
-            wrt = [i.variable for i in inputs]
-        else:
-            wrt = [graph[self.get_symbolic(w)] for w in self.wrt]
-
-        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
-
-        sym_vecs = tuple(tt.TensorType(dtype=w.dtype,
-                                       broadcastable=[False]*w.ndim)()
-                         for w in wrt)
-        hess_vec = tt.Rop(grads, wrt, sym_vecs)
-
-        return inputs + sym_vecs, hess_vec
-
     def call(self, *args, **kwargs):
         if '_vectors' in kwargs:
             vectors = kwargs.pop('_vectors')
@@ -423,7 +404,15 @@ class HessianVector(Gradient):
                 'Vectors must be passed the keyword \'_vectors\'.')
         vectors = utils.as_seq(vectors, tuple)
 
-        fn = self.compile_function(args, kwargs)
+        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+        # avoid 'self' and 'cls' bound arguments
+        if inspect.ismethod(self.pyfn) or type(all_args[0]) is type:
+            all_args = all_args[1:]
+
+        cache_key = tuple(np.asarray(a).ndim for a in all_args)
+        if cache_key not in self.cache or not self.use_cache:
+            self.cache[cache_key] = self.get_theano_fn(args, kwargs)
+        fn = self.cache[cache_key]
 
         if len(self.wrt) > 0 and len(vectors) != len(self.wrt):
             raise ValueError('Expected {0} items in _vectors; received '
@@ -432,8 +421,40 @@ class HessianVector(Gradient):
             raise ValueError('Expected {0} items in _vectors; received '
                              '{1}.'.format(len(self.s_inputs), len(vectors)))
 
-        pos_args = tuple(utils.flat_from_doc(args)) + vectors
-        return fn(*pos_args, **kwargs)
+        return fn(*(all_args + vectors))
+
+    def get_theano_fn(self, args, kwargs):
+        self.trace(*args, **kwargs)
+
+        fn_inputs, fn_outputs, graph = self.get_theano_variables(
+            self.s_inputs, self.s_outputs)
+
+        if np.any([o.ndim != 0 for o in fn_outputs]):
+            raise TypeError('HessianVector requires scalar outputs.')
+
+        # get wrt variables. If none were specified, use inputs.
+        wrt = utils.as_seq(self.wrt)
+        if len(wrt) == 0:
+            wrt = [i for i in fn_inputs]
+        else:
+            wrt = [graph[self.get_symbolic(w)] for w in wrt]
+
+        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in fn_outputs])
+
+        sym_vecs = tuple(tt.TensorType(dtype=w.dtype,
+                                       broadcastable=[False]*w.ndim)()
+                         for w in wrt)
+        hess_vec = tt.Rop(grads, wrt, sym_vecs)
+
+        if len(hess_vec) == 1:
+            hess_vec = hess_vec[0]
+
+        # compile function
+        fn = theano.function(inputs=fn_inputs + sym_vecs,
+                             outputs=hess_vec,
+                             on_unused_input='ignore')
+
+        return fn
 
 
 class VectorArg(Function):
