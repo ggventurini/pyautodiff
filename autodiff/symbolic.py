@@ -44,7 +44,7 @@ def copy_function(fn):
 
     # if pyfn is a method, make sure to make the copy a method as well
     if isinstance(fn, types.MethodType):
-        fn_copy = types.MethodType(fn,
+        fn_copy = types.MethodType(fn_copy,
                                    fn.im_self,
                                    fn.im_class)
 
