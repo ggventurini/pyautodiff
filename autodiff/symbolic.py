@@ -57,8 +57,8 @@ class Symbolic(object):
         return self.context.svars
 
     def trace(self, fn, *args, **kwargs):
-        f = Function(fn, context=self.context)
-        return f.trace(args, kwargs)
+        args, kwargs = clean_int_args(*args, **kwargs)
+        return self.context.call(fn, args, kwargs)
 
     def get_theano_variables(self, inputs=None, outputs=None):
         """
