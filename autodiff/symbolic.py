@@ -374,6 +374,11 @@ class Gradient(Function):
                                        context=context)
         self.wrt = utils.as_seq(wrt, tuple)
 
+    def get_theano_fn(self, args, kwargs):
+        self.trace(*args, **kwargs)
+        fn = self.compile_gradient(
+            inputs=self.s_inputs, outputs=self.s_outputs, wrt=self.wrt)
+        return fn
 
 
 class HessianVector(Gradient):
