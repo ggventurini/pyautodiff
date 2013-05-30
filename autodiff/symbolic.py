@@ -514,6 +514,13 @@ class Function(Symbolic):
         return fn
 
     def __get__(self, instance, owner=None):
+        """
+        Necessary descriptor for decorator compatibility.
+
+        At decoration time, methods have not been bound. However, when bound
+        methods are accessed, the __get__ method is called, so we can monitor
+        that call and bind the method as necessary.
+        """
         if instance is not None:
             method = self.pyfn.__get__(instance, owner)
             self._pyfn = method
