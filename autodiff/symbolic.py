@@ -516,9 +516,9 @@ class VectorArg(Function):
                                                     *init_args,
                                                     **init_kwargs)
 
-        self.cache['fn'] = self.compile_function(init_args, init_kwargs)
+        self.cache['fn'] = self.get_theano_fn(init_args, init_kwargs)
 
-    def finalize_inputs_outputs(self, inputs, outputs, graph):
+    def finalize(self, inputs, outputs, graph):
         if self.compile_grad or self.compile_hv:
             if outputs.ndim != 0:
                 raise TypeError('Gradient requires scalar outputs.')
@@ -594,11 +594,9 @@ class VectorArg(Function):
         # get symbolic outputs
         theano_outputs = graph[sym_outputs[0]]
 
-        final_in, final_out = self.finalize_inputs_outputs(theano_input,
-                                                           theano_outputs,
-                                                           graph)
+        f_in, f_out = self.finalize(theano_input, theano_outputs, graph)
 
-        return final_in, final_out
+        return f_in, f_out, graph
 
     def vector_from_args(self, args=None, kwargs=None):
         if args is None:
