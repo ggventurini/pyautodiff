@@ -214,6 +214,11 @@ class Symbolic(object):
 
 
 class Function(Symbolic):
+    """
+    A Symbolic tracer which is specialized for a specific function, passed at
+    initialization.
+
+    """
     def __init__(self,
                  pyfn,
                  borrow=None,
