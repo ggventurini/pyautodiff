@@ -23,7 +23,7 @@ import numpy as np
 import theano
 
 import autodiff
-from autodiff.utils import itercode, orderedcallargs
+from autodiff.utils import itercode, orderedcallargs, flat_from_doc
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -184,18 +184,9 @@ class FrameVM(object):
         self._locals.extend([Unassigned] * no_unbound_args)
 
         # shadow arguments
-        for name, val in callargs.iteritems():
-            if name == argspec.varargs:
-                for v in val:
-                    if id(v) not in self.watcher:
-                        self.add_shadow(v)
-            elif name == argspec.keywords:
-                for v in val.values():
-                    if id(v) not in self.watcher:
-                        self.add_shadow(v)
-            else:
-                if id(val) not in self.watcher:
-                    self.add_shadow(val)
+        for val in flat_from_doc(callargs):
+            if id(val) not in self.watcher:
+                self.add_shadow(val)
 
         self.code_iter = itercode(func_code.co_code)
         jmp = None
