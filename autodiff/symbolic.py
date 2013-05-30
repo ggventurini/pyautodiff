@@ -375,19 +375,6 @@ class Gradient(Function):
                                        context=context)
         self.wrt = utils.as_seq(wrt, tuple)
 
-    def finalize_inputs_outputs(self, inputs, outputs, graph):
-        if np.any([o.ndim != 0 for o in outputs]):
-            raise TypeError('Gradient requires scalar outputs.')
-
-        # get wrt variables. If none were specified, use inputs.
-        if len(self.wrt) == 0:
-            wrt = [i.variable for i in inputs]
-        else:
-            wrt = [graph[self.get_symbolic(w)] for w in self.wrt]
-
-        grads = utils.flat_from_doc([tt.grad(o, wrt=wrt) for o in outputs])
-
-        return inputs, grads
 
 
 class HessianVector(Gradient):
