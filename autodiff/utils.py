@@ -110,14 +110,13 @@ def flat_from_doc(doc):
         for d_i in doc:
             rval.extend(flat_from_doc(d_i))
     elif type(doc) == dict:
-        for k, v in doc.items():
-            if not isinstance(k, basestring):
+        for k in sorted(doc.iterkeys()):
+            if isinstance(k, (tuple, dict)):
                 # -- if keys are tuples containing ndarrays, should
-                #    they be traversed also?  What about number keys
-                #    where to draw line?
+                #    they be traversed also?
                 raise NotImplementedError(
-                    'potential ambiguity in non-string keys', k)
-            rval.extend(flat_from_doc(v))
+                    'potential ambiguity in container key', k)
+            rval.extend(flat_from_doc(doc[k]))
     else:
         rval.append(doc)
     return rval
