@@ -51,8 +51,7 @@ def copy_function(fn):
     # replace integer defaults in fn to avoid tracing problems
     if fn_copy.func_defaults:
         a = inspect.getargspec(fn_copy)
-        defaults = reversed(zip(reversed(a.args), reversed(a.defaults)))
-        clean_defaults = tuple(clean_int_args(*defaults)[0])
+        clean_defaults = tuple(clean_int_args(*a.defaults)[0])
         fn_copy.func_defaults = clean_defaults
 
     return fn_copy
