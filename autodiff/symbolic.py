@@ -252,6 +252,9 @@ class Function(Symbolic):
 
         self._pyfn = copy_function(pyfn)
 
+        self.s_inputs = ()
+        self.s_outputs = ()
+
         self._cache = dict()
         self.use_cache = use_cache
         self.argspec = inspect.getargspec(self._pyfn)
@@ -268,257 +271,6 @@ class Function(Symbolic):
     def __call__(self, *args, **kwargs):
         return self.call(*args, **kwargs)
 
-    def reset(self, reset_cache=True):
-        # self.s_vars.clear()
-        self.s_inputs.clear()
-        self.s_outputs.clear()
-        self.context.reset()
-
-        if reset_cache:
-            self.cache.clear()
-
-    @property
-    def pyfn(self):
-        return self._pyfn
-
-    @property
-    def s_vars(self):
-        return self.context.svars
-
-    @property
-    def cache(self):
-        return self._cache
-
-    def cache_id(self, args=None, kwargs=None, inputs=None, outputs=None):
-        """
-        Generates a unique id for caching a function
-        """
-        if self.use_cache:
-            if args is None:
-                args = ()
-            if kwargs is None:
-                kwargs = {}
-            inputs = utils.as_seq(inputs)
-            outputs = utils.as_seq(outputs)
-            callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-            varargs = len(callargs.get(self.argspec.varargs, ()))
-            dim = tuple(np.asarray(a).ndim for a in callargs.values())
-            inputs_id = tuple(id(i) for i in inputs)
-            outputs_id = tuple(id(o) for o in outputs)
-            return (varargs, dim, inputs_id, outputs_id)
-
-    def trace(self, args=None, kwargs=None):
-        """
-        Given args and kwargs, call the Python function and get its
-        symbolic representation.
-
-        Three ordered dictionaries are maintained:
-            self.s_vars   : {id(obj) : sym_var}
-                            Contains all symbolic variables traced during
-                            function execution, indexed by the id of the
-                            corresponding Python object.
-
-            self.s_inputs   : {arg name : sym_var}
-                            Contains all symbolic inputs to the function,
-                            indexed by the argument name.
-
-            self.s_outputs : {id(obj) : sym_var}
-                            Contains the symbolic function results, indexed by
-                            the id of the corresponding Python object.
-
-        """
-        if args is None:
-            args = ()
-        elif not isinstance(args, tuple):
-            raise TypeError('args must be a tuple')
-
-        if kwargs is None:
-            kwargs = dict()
-        elif not isinstance(kwargs, dict):
-            raise TypeError('kwargs must be a dict')
-
-        def check(name, i):
-            if type(i) is int and -5 <= i <= 256:
-                i = np.int_(i)
-            elif isinstance(i, (list, tuple, dict)):
-                raise TypeError(
-                    'Function arguments can not be containers (received '
-                    '{0} for argument \'{1}\').'.format(i, name))
-            return i
-
-        args = list(args)
-
-        for i, (n, a) in enumerate(zip(self.argspec.args, args)):
-            args[i] = check(n, a)
-
-        for i, a in enumerate(args[len(self.argspec.args):]):
-            args[len(self.argspec.args) + i] = check(self.argspec.varargs, a)
-
-        for k, v in kwargs.iteritems():
-            kwargs[k] = check(k, v)
-
-        args = tuple(args)
-
-        self.reset(reset_cache=False)
-
-        # call the Context
-        results = self.context.call(self.pyfn, args, kwargs)
-
-        # collect symbolic variables in s_vars
-        self.s_vars.update(self.context.svars)
-
-        # collect symbolic arguments in s_inputs
-        callargs = utils.orderedcallargs(self.pyfn, *args, **kwargs)
-
-        for name, arg in callargs.iteritems():
-
-            # collect variable args
-            if name == self.argspec.varargs:
-                self.s_inputs[name] = ()
-                for i, a in enumerate(arg):
-                    try:
-                        self.s_inputs[name] += (self.s_vars[id(a)],)
-                        self.s_inputs[name][-1].name = '{0}_{1}'.format(
-                            name, i)
-                    except KeyError:
-                        raise KeyError('Unable to trace item {0} of variable '
-                                       'argument \'{1}\'.'.format(i, name))
-                    except:
-                        raise
-
-            # collect variable kwargs
-            elif name == self.argspec.keywords:
-                for n, a in arg.iteritems():
-                    try:
-                        self.s_inputs[n] = self.s_vars[id(a)]
-                        self.s_inputs[n].name = n
-                    except KeyError:
-                        raise KeyError('Unable to trace argument '
-                                       '\'{0}\'.'.format(n))
-                    except:
-                        raise
-
-            # collect positional args
-            else:
-                # avoid tracing 'self' and 'cls' args
-                if arg is not getattr(self.pyfn, 'im_self', None) \
-                   and type(arg) is not type:
-                    try:
-                        self.s_inputs[name] = self.s_vars[id(arg)]
-                        self.s_inputs[name].name = name
-                    except KeyError:
-                        raise KeyError('Unable to trace argument '
-                                       '\'{0}\'.'.format(name))
-                    except:
-                        raise
-
-        # collect symbolic results in s_outputs
-        results = utils.as_seq(results, tuple)
-        for i, r in enumerate(results):
-            try:
-                self.s_outputs[id(r)] = self.s_vars[id(r)]
-            except KeyError:
-                raise KeyError('Unable to trace result #{0} '
-                               '(indexed from 1).'.format(i + 1))
-            except:
-                raise
-
-        if len(results) == 1:
-            return results[0]
-        else:
-            return results
-
-    def get_theano_variables(self, inputs=None, outputs=None):
-        """
-        Returns a dict containing inputs, outputs and graph corresponding to
-        the Theano version of the pyfn.
-        """
-        inputs = utils.as_seq(inputs, tuple)
-        outputs = utils.as_seq(outputs, tuple)
-
-        if inputs:
-            sym_inputs = [self.get_symbolic(x) for x in inputs]
-        else:
-            sym_inputs = self.s_inputs.values()
-
-        if outputs:
-            sym_outputs = [self.get_symbolic(x) for x in outputs]
-        else:
-            sym_outputs = self.s_outputs.values()
-
-        # get symbolic inputs corresponding to shared inputs in s_inputs
-        s_memo = OrderedDict((arg, arg.type(name=arg.name))
-                             for arg in utils.flat_from_doc(sym_inputs))
-
-        # get new graph, replacing shared inputs with symbolic ones
-        graph = theano.gof.graph.clone_get_equiv(
-            theano.gof.graph.inputs(sym_outputs),
-            sym_outputs,
-            memo=s_memo.copy())
-
-        # get symbolic outputs
-        theano_outputs = tuple([graph[o] for o in sym_outputs])
-
-        defaults = dict()
-        if self.argspec.defaults:
-            defaults.update(zip(reversed(self.argspec.args),
-                                reversed(self.argspec.defaults)))
-        theano_inputs = tuple([theano.Param(variable=i,
-                                            default=defaults.get(i.name, None),
-                                            name=i.name)
-                               for i in s_memo.values()])
-
-        final_in, final_out = self.finalize_inputs_outputs(theano_inputs,
-                                                           theano_outputs,
-                                                           graph)
-
-        return final_in, final_out
-
-    def finalize_inputs_outputs(self, inputs, outputs, graph):
-        """
-        This function accepts a "default" set of inputs and outputs
-        corresponding to the traced function (or specified) and returns the
-        final inputs and outputs for compilation.
-
-        For example, to create a "standard" function, the inputs and outputs
-        can be passed through directly. However, to create a gradient, the
-        tensor.grad op might be called on the outputs before returning them.
-        """
-        return inputs, outputs
-
-    def compile_function(self,
-                         trace_args=None,
-                         trace_kwargs=None,
-                         fn_inputs=None,
-                         fn_outputs=None):
-
-        trace_args = utils.as_seq(trace_args, tuple)
-        trace_kwargs = utils.as_seq(trace_kwargs, dict)
-
-        cache_id = self.cache_id(trace_args,
-                                 trace_kwargs,
-                                 fn_inputs,
-                                 fn_outputs)
-
-        if cache_id and cache_id in self.cache:
-            return self.cache[cache_id]
-
-        self.trace(trace_args, trace_kwargs)
-        inputs, outputs = self.get_theano_variables(fn_inputs, fn_outputs)
-
-        if len(outputs) == 1:
-            outputs = outputs[0]
-
-        # compile function
-        fn = theano.function(inputs=inputs,
-                             outputs=outputs,
-                             on_unused_input='ignore')
-
-        # store in cache if it has a valid id
-        self.cache[cache_id] = fn
-
-        return fn
-
     def __get__(self, instance, owner=None):
         """
         Necessary descriptor for decorator compatibility.
@@ -532,41 +284,75 @@ class Function(Symbolic):
             self._pyfn = method
         return self
 
+    @property
+    def pyfn(self):
+        return self._pyfn
+
+    @property
+    def s_vars(self):
+        return self.context.svars
+
+    @property
+    def cache(self):
+        return self._cache
+
+    def trace(self, *args, **kwargs):
+        """
+        Given args and kwargs, call the Python function and get its
+        symbolic representation.
+
+        A dictionary of shadowed symbolic variables is maintained:
+            self.s_vars   : {id(obj) : sym_var}
+                            Contains all symbolic variables traced during
+                            function execution, indexed by the id of the
+                            corresponding Python object.
+
+        Additionally, self.s_inputs and self.s_outputs are lists of symbolic
+        arguments and results, respectively.
+        """
+
+        # clean args and kwargs
+        c_args, c_kwargs = clean_int_args(*args, **kwargs)
+
+        # call the Context
+        results = self.context.call(self.pyfn, c_args, c_kwargs)
+
+        # get a tuple of the symbolic inputs
+        callargs = utils.orderedcallargs(self.pyfn, *c_args, **c_kwargs)
+        all_args = utils.flat_from_doc(callargs)
+        self.s_inputs = tuple(self.s_vars[id(a)] for a in all_args)
+        if inspect.ismethod(self.pyfn):
+            self.s_inputs = self.s_inputs[1:]
+
+        # get a tuple of the symbolic outputs
+        self.s_outputs = tuple(self.s_vars[id(r)]
+                               for r in utils.as_seq(results))
+
+        # update variable names where possible
+        for name, arg in callargs.iteritems():
+            if self.s_vars.get(id(arg), None) in self.s_inputs:
+                self.s_vars[name] = self.s_vars[id(arg)]
+
+        return results
+
+    def get_theano_fn(self, args, kwargs):
+        self.trace(*args, **kwargs)
+        inputs, outputs, graph = self.get_theano_variables(
+            inputs=self.s_inputs, outputs=self.s_outputs)
+        fn = self.compile_function(inputs=inputs, outputs=outputs)
+        return fn
+
     def call(self, *args, **kwargs):
-        fn = self.compile_function(args, kwargs, None, None)
-        pos_args = utils.flat_from_doc(args)
-        pos_args = [a for a in args if not type(a) is type]
-        return fn(*pos_args, **kwargs)
+        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+        if inspect.ismethod(self.pyfn):
+            all_args = all_args[1:]
 
-    def get_symbolic(self, x):
-        """
-        Retrieve the symbolic version of x.
+        cache_key = tuple(np.asarray(a).ndim for a in all_args)
+        if cache_key not in self.cache or not self.use_cache:
+            self.cache[cache_key] = self.get_theano_fn(args, kwargs)
+        fn = self.cache[cache_key]
 
-        x : python object or string or int
-
-        If x is a string, it is matched first to any tagged objects, then to
-            the names of the function arguments.
-        If x is an int, it is matched to the index of the function results
-        If x is an object, it must have been traced by the Symbolic class.
-        """
-        if type(x) is int:
-            return self.s_outputs.values()[x]
-        elif isinstance(x, basestring):
-            if x in self.s_vars:
-                return self.s_vars[x]
-            elif x in self.s_inputs:
-                return self.s_inputs[x]
-            else:
-                raise ValueError(
-                    'Requested the symbolic variable shadowing object {0}'
-                    ', but it was not traced.'.format(repr(x)))
-        else:
-            if id(x) in self.s_vars:
-                return self.s_vars[id(x)]
-            else:
-                raise ValueError(
-                    'Requested the symbolic variable shadowing object {0}'
-                    ', but it was not traced.'.format(repr(x)))
+        return fn(*all_args)
 
 
 class Gradient(Function):
