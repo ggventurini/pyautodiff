@@ -109,7 +109,7 @@ class Symbolic(object):
         sym_outputs = [self.get_symbolic(x) for x in outputs]
 
         # get symbolic inputs corresponding to shared inputs in s_inputs
-        s_memo = OrderedDict((arg, arg.type(name=arg.name))
+        s_memo = OrderedDict((arg, arg.type())
                              for arg in utils.flat_from_doc(sym_inputs))
         theano_inputs = tuple(s_memo.values())
 
