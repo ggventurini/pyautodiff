@@ -38,8 +38,7 @@ def expandedcallargs(fn, *args, **kwargs):
     """
     Returns a tuple of all function args and kwargs, expanded so that varargs
     and kwargs are not nested. The args are ordered by their position in the
-    function signature. Note that any **kwargs passed to the function can not
-    have their order guaranteed since they are transformed to Python dicts.
+    function signature.
     """
     return tuple(flat_from_doc(orderedcallargs(fn, *args, **kwargs).values()))
 
@@ -104,6 +103,8 @@ def flat_from_doc(doc):
     unpacking dictionaries, lists, and tuples.
 
     Returns a list.
+
+    Note that doc_from_flat(doc, flat_from_doc(doc)) == doc
     """
     rval = []
     if type(doc) in (list, tuple):
@@ -122,31 +123,33 @@ def flat_from_doc(doc):
     return rval
 
 
-def doc_from_flat(doc, flat, pos):
+def doc_from_flat(doc, flat):
     """Iterate over a nested document, building a clone from the elements of
-    flat
+    flat.
 
-    Returns object with same type as doc, and the position of the next unused
-    element in flat.
+    Returns object with same type as doc.
+
+    Note that doc_from_flat(doc, flat_from_doc(doc)) == doc
     """
-    if type(doc) in (list, tuple):
-        rval = []
-        for d_i in doc:
-            d_i_clone, pos = doc_from_flat(d_i, flat, pos)
-            rval.append(d_i_clone)
-        rval = type(doc)(rval)
+    def doc_from_flat_inner(doc, pos):
+        if type(doc) in (list, tuple):
+            rval = []
+            for d_i in doc:
+                d_i_clone, pos = doc_from_flat_inner(d_i, pos)
+                rval.append(d_i_clone)
+            rval = type(doc)(rval)
 
-    elif type(doc) == dict:
-        rval = {}
-        for k, v in doc.items():
-            v_clone, pos = doc_from_flat(v, flat, pos)
-            rval[k] = v_clone
+        elif type(doc) == dict:
+            rval = {}
+            for k in sorted(doc.iterkeys()):
+                v_clone, pos = doc_from_flat_inner(doc[k], pos)
+                rval[k] = v_clone
 
-    else:
-        rval = flat[pos]
-        pos += 1
-
-    return rval, pos
+        else:
+            rval = flat[pos]
+            pos += 1
+        return rval, pos
+    return doc_from_flat_inner(doc, 0)[0]
 
 
 # -- picklable decorated function
