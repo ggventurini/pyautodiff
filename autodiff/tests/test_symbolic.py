@@ -339,3 +339,15 @@ class TestSymbolic(unittest.TestCase):
         assert fn_grad  # to stop flake error
 
         self.assertTrue(np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x)))))
+
+    def test_class(self):
+        class Test(object):
+            def f(self, x):
+                return x + 100.0
+
+        t = Test()
+        s = Symbolic()
+        x = 1.0
+        o = s.trace(t.f, x)
+        f = s.compile_function(x, o)
+        assert(f(2.0) == 102.0)
