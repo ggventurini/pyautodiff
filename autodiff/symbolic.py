@@ -329,11 +329,11 @@ class Function(Symbolic):
         if (inspect.ismethod(self.pyfn) or
            (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
-        self.s_inputs = tuple(self.s_vars[id(a)] for a in all_args)
+        self.s_inputs = tuple([self.s_vars[id(a)] for a in all_args])
 
         # get a tuple of the symbolic outputs
-        self.s_outputs = tuple(self.s_vars[id(r)]
-                               for r in utils.as_seq(results))
+        self.s_outputs = tuple(
+            [self.s_vars[id(r)] for r in utils.as_seq(results)])
 
         # update variable names where possible
         for name, arg in callargs.iteritems():
