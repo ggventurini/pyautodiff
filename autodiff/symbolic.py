@@ -326,7 +326,8 @@ class Function(Symbolic):
         # but avoid 'self' and 'cls' bound arguments
         callargs = utils.orderedcallargs(self.pyfn, *c_args, **c_kwargs)
         all_args = utils.flat_from_doc(callargs)
-        if inspect.ismethod(self.pyfn) or type(all_args[0]) is type:
+        if (inspect.ismethod(self.pyfn) or
+           (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
         self.s_inputs = tuple(self.s_vars[id(a)] for a in all_args)
 
@@ -350,7 +351,8 @@ class Function(Symbolic):
     def call(self, *args, **kwargs):
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
         # avoid 'self' and 'cls' bound arguments
-        if inspect.ismethod(self.pyfn) or type(all_args[0]) is type:
+        if (inspect.ismethod(self.pyfn) or
+           (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
 
         cache_key = tuple(np.asarray(a).ndim for a in all_args)
@@ -411,7 +413,8 @@ class HessianVector(Gradient):
 
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
         # avoid 'self' and 'cls' bound arguments
-        if inspect.ismethod(self.pyfn) or type(all_args[0]) is type:
+        if (inspect.ismethod(self.pyfn) or
+           (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
 
         cache_key = tuple(np.asarray(a).ndim for a in all_args)
