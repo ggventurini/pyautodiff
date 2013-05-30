@@ -171,7 +171,7 @@ class NumpyFns(unittest.TestCase):
     def test_reshape(self):
         def fn(x, shape):
             return np.reshape(x, shape)
-        self.assertRaises(TypeError, checkfn, fn, [2], [2, 8])
+        self.assertTrue(checkfn(fn, [2], [2, 8]))
 
         def fn(x, shape1, shape2):
             return np.reshape(x, [shape1, shape2])
@@ -330,7 +330,7 @@ class ArrayMethodsAttributes(unittest.TestCase):
     def test_reshape(self):
         def fn(x, shape):
             return x.reshape(shape)
-        self.assertRaises(TypeError, checkfn, fn, [2], [2, 8])
+        self.assertTrue(checkfn(fn, [2], [2, 8]))
 
         def fn(x, s1, s2):
             return x.reshape(s1, s2)
