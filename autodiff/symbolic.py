@@ -189,7 +189,8 @@ class Symbolic(object):
 
         If x is an object, it must have been traced by the Symbolic class.
         If x is a string, it must have been tagged with
-            autodiff.functions.tag().
+            autodiff.functions.tag() or have been placed in s_vars by
+            other means.
         If x is a Theano variable, it must be in the s_vars dict.
         """
         if isinstance(x, basestring):
