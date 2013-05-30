@@ -207,12 +207,10 @@ class Symbolic(object):
                 ', but it was not traced.'.format(repr(x)))
 
 
-class Function(object):
+class Function(Symbolic):
     def __init__(self,
                  pyfn,
                  borrow=None,
-                 init_args=None,
-                 init_kwargs=None,
                  force_floatX=False,
                  context=None,
                  use_cache=True):
@@ -238,58 +236,19 @@ class Function(object):
             are never cast.
 
         """
+        super(Function, self).__init__(borrow=borrow,
+                                       force_floatX=force_floatX,
+                                       context=context)
+
         # if the pyfn is an autodiff Function, get the pyfn
         if isinstance(pyfn, Function):
             pyfn = pyfn.pyfn
 
-        # make deepcopy of pyfn because we might change its defaults
-        # -- note that copy.deepcopy doesn't work on functions
-        self._pyfn = types.FunctionType(pyfn.func_code,
-                                        pyfn.func_globals,
-                                        pyfn.func_name,
-                                        pyfn.func_defaults,
-                                        pyfn.func_closure)
+        self._pyfn = copy_function(pyfn)
 
-        # if pyfn is a method, make sure to make the copy a method as well
-        if isinstance(pyfn, types.MethodType):
-            self._pyfn = types.MethodType(self._pyfn,
-                                          pyfn.im_self,
-                                          pyfn.im_class)
-
-        if context is None:
-            self.context = Context(borrowable=utils.as_seq(borrow, tuple),
-                                   force_floatX=force_floatX)
-        elif isinstance(context, Context):
-            self.context = context
-        else:
-            raise TypeError(
-                'Received unrecognized Context: {0}'.format(context))
-
-        self._context_init_svars = self.context.svars.copy()
-
-        self.s_inputs = OrderedDict()
-        self.s_outputs = OrderedDict()
         self._cache = dict()
         self.use_cache = use_cache
         self.argspec = getargspec(self._pyfn)
-
-        # replace integer defaults in pyfn to avoid tracing problems
-        if self._pyfn.func_defaults:
-            a = getargspec(self._pyfn)
-            new_defaults = []
-            for n, d in zip(reversed(a.args), reversed(a.defaults)):
-                if type(d) is int and -5 <= d <= 256:
-                    new_defaults.append(np.int_(d))
-                else:
-                    new_defaults.append(d)
-            self._pyfn.func_defaults = tuple(reversed(new_defaults))
-
-        takes_no_args = (len(self.argspec.args) == 0
-                         and not self.argspec.varargs
-                         and not self.argspec.keywords)
-
-        if init_args or init_kwargs or takes_no_args:
-            self.compile_function(init_args, init_kwargs)
 
         # set the instance docstring to look like that of the function
         ds = 'AutoDiff class: {0}\n\nWrapped docstring:\n\n'.format(
