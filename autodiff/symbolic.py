@@ -2,7 +2,7 @@ import numpy as np
 import theano
 import theano.tensor as tt
 import types
-from inspect import getargspec
+import inspect
 
 from autodiff.context import Context
 from autodiff.compat import OrderedDict
@@ -50,7 +50,7 @@ def copy_function(fn):
 
     # replace integer defaults in fn to avoid tracing problems
     if fn_copy.func_defaults:
-        a = getargspec(fn_copy)
+        a = inspect.getargspec(fn_copy)
         defaults = OrderedDict(reversed(zip(reversed(a.args),
                                             reversed(a.defaults))))
         clean_defaults = tuple(clean_int_args(**defaults)[1].values())
@@ -248,7 +248,7 @@ class Function(Symbolic):
 
         self._cache = dict()
         self.use_cache = use_cache
-        self.argspec = getargspec(self._pyfn)
+        self.argspec = inspect.getargspec(self._pyfn)
 
         # set the instance docstring to look like that of the function
         ds = 'AutoDiff class: {0}\n\nWrapped docstring:\n\n'.format(
