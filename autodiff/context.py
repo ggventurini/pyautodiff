@@ -579,8 +579,10 @@ class FrameVM(object):
         # ================ built-ins
 
         elif 'built-in' in str(func):
+            if len(args) == len(kwargs) == 0:
+                rval = func()
             # -- built-in ndarray methods should be caught above, not here.
-            if func.__name__ in ('setdefault',):
+            elif func.__name__ in ('setdefault',):
                 rval = func(*args, **kwargs)
             elif func.__name__ in ('enumerate', 'range', 'xrange', 'zip'):
                 rval = func(*args, **kwargs)
