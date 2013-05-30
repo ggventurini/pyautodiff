@@ -166,7 +166,7 @@ class Symbolic(object):
 
         # get wrt variables. If none were specified, use inputs.
         if len(wrt) == 0:
-            wrt = [i.variable for i in fn_inputs]
+            wrt = [i for i in fn_inputs]
         else:
             wrt = [graph[self.get_symbolic(w)] for w in wrt]
 
