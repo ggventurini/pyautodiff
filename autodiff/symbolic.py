@@ -318,11 +318,12 @@ class Function(Symbolic):
         results = self.context.call(self.pyfn, c_args, c_kwargs)
 
         # get a tuple of the symbolic inputs
+        # but avoid 'self' and 'cls' bound arguments
         callargs = utils.orderedcallargs(self.pyfn, *c_args, **c_kwargs)
         all_args = utils.flat_from_doc(callargs)
+        if inspect.ismethod(self.pyfn) or type(all_args[0]) is type:
+            all_args = all_args[1:]
         self.s_inputs = tuple(self.s_vars[id(a)] for a in all_args)
-        if inspect.ismethod(self.pyfn):
-            self.s_inputs = self.s_inputs[1:]
 
         # get a tuple of the symbolic outputs
         self.s_outputs = tuple(self.s_vars[id(r)]
@@ -343,7 +344,8 @@ class Function(Symbolic):
 
     def call(self, *args, **kwargs):
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
-        if inspect.ismethod(self.pyfn):
+        # avoid 'self' and 'cls' bound arguments
+        if inspect.ismethod(self.pyfn) or type(all_args[0]) is type:
             all_args = all_args[1:]
 
         cache_key = tuple(np.asarray(a).ndim for a in all_args)
