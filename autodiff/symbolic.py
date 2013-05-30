@@ -96,8 +96,8 @@ class Symbolic(object):
 
     def trace(self, fn, *args, **kwargs):
         fn_copy = copy_function(fn)
-        args, kwargs = clean_int_args(*args, **kwargs)
-        return self.context.call(fn_copy, args, kwargs)
+        clean_args, clean_kwargs = clean_int_args(*args, **kwargs)
+        return self.context.call(fn_copy, clean_args, clean_kwargs)
 
     def get_theano_variables(self, inputs=None, outputs=None):
         """
