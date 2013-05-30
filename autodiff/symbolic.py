@@ -203,12 +203,7 @@ class Symbolic(object):
         elif isinstance(x, (tt.TensorConstant,
                             tt.TensorVariable,
                             tt.sharedvar.SharedVariable)):
-            if x in self.s_vars.values():
-                return x
-            else:
-                raise ValueError(
-                    'Requested the symbolic variable {0}'
-                    ', but it was not traced.'.format(repr(x)))
+            return x
 
         elif id(x) in self.s_vars:
             return self.s_vars[id(x)]
