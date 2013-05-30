@@ -62,7 +62,8 @@ def copy_function(fn):
 class Symbolic(object):
     def __init__(self,
                  borrow=None,
-                 force_floatX=False):
+                 force_floatX=False,
+                 context=None):
         """
         Arguments
         ---------
@@ -80,8 +81,14 @@ class Symbolic(object):
             are never cast.
 
         """
-        self.context = Context(borrowable=utils.as_seq(borrow, tuple),
-                               force_floatX=force_floatX)
+        if context is None:
+            self.context = Context(borrowable=utils.as_seq(borrow, tuple),
+                                   force_floatX=force_floatX)
+        elif isinstance(context, Context):
+            self.context = context
+        else:
+            raise TypeError(
+                'Received unrecognized Context: {0}'.format(context))
 
     @property
     def s_vars(self):
