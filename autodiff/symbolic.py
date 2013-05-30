@@ -57,6 +57,28 @@ class Symbolic(object):
         return self.context.svars
 
     def trace(self, fn, *args, **kwargs):
+        # make deepcopy of fn because we might change its defaults
+        # -- note that copy.deepcopy doesn't work on functions
+        fn_copy = types.FunctionType(fn.func_code,
+                                     fn.func_globals,
+                                     fn.func_name,
+                                     fn.func_defaults,
+                                     fn.func_closure)
+
+        # if pyfn is a method, make sure to make the copy a method as well
+        if isinstance(fn, types.MethodType):
+            fn_copy = types.MethodType(fn,
+                                       fn.im_self,
+                                       fn.im_class)
+
+        # replace integer defaults in fn to avoid tracing problems
+        if fn_copy.func_defaults:
+            a = getargspec(self._pyfn)
+            defaults = OrderedDict(reversed(zip(reversed(a.args),
+                                                reversed(a.defaults))))
+            clean_defaults = tuple(clean_int_args(**defaults)[1].values())
+            fn_copy.func_defaults = clean_defaults
+
         args, kwargs = clean_int_args(*args, **kwargs)
         return self.context.call(fn, args, kwargs)
 
