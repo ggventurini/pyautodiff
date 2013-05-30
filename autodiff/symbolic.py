@@ -186,20 +186,32 @@ class Symbolic(object):
         """
         Retrieve the symbolic version of x.
 
-        x : python object or string
+        x : python object or string or Theano variable
 
         If x is an object, it must have been traced by the Symbolic class.
         If x is a string, it must have been tagged with
             autodiff.functions.tag().
+        If x is a Theano variable, it must be in the s_vars dict.
         """
         if isinstance(x, basestring):
             if x in self.s_vars:
                 return self.s_vars[x]
             else:
                 raise ValueError(
-                    'Requested the symbolic variable of tag \'{0}\''
-                    ', but \'{0}\' was not traced.'.format(x))
-        if id(x) in self.s_vars:
+                    'Requested the symbolic variable of tag `{0}`'
+                    ', but `{0}` was not traced.'.format(x))
+
+        elif isinstance(x, (tt.TensorConstant,
+                            tt.TensorVariable,
+                            tt.sharedvar.SharedVariable)):
+            if x in self.s_vars.values():
+                return x
+            else:
+                raise ValueError(
+                    'Requested the symbolic variable {0}'
+                    ', but it was not traced.'.format(repr(x)))
+
+        elif id(x) in self.s_vars:
             return self.s_vars[id(x)]
         else:
             raise ValueError(
