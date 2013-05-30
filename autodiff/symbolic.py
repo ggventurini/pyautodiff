@@ -337,9 +337,8 @@ class Function(Symbolic):
 
     def get_theano_fn(self, args, kwargs):
         self.trace(*args, **kwargs)
-        inputs, outputs, graph = self.get_theano_variables(
+        fn = self.compile_function(
             inputs=self.s_inputs, outputs=self.s_outputs)
-        fn = self.compile_function(inputs=inputs, outputs=outputs)
         return fn
 
     def call(self, *args, **kwargs):
