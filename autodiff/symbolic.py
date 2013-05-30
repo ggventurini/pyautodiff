@@ -117,6 +117,8 @@ class Symbolic(object):
         if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
             reduction = getattr(theano.tensor, reduction)
         if callable(reduction):
+            if 'numpy' in reduction.__module__:
+                reduction = getattr(theano.tensor, reduction.__name__)
             fn_outputs = [reduction(o) for o in fn_outputs]
 
         if np.any([o.ndim != 0 for o in fn_outputs]):
