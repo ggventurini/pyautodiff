@@ -111,7 +111,11 @@ def flat_from_doc(doc):
         for d_i in doc:
             rval.extend(flat_from_doc(d_i))
     elif isinstance(doc, dict):
-        for k in sorted(doc.iterkeys()):
+        if isinstance(doc, OrderedDict):
+            sortedkeys = doc.iterkeys()
+        else:
+            sortedkeys = sorted(doc.iterkeys())
+        for k in sortedkeys:
             if isinstance(k, (tuple, dict)):
                 # -- if keys are tuples containing ndarrays, should
                 #    they be traversed also?
@@ -141,7 +145,11 @@ def doc_from_flat(doc, flat):
 
         elif isinstance(doc, dict):
             rval = type(doc)()
-            for k in sorted(doc.iterkeys()):
+            if isinstance(doc, OrderedDict):
+                sortedkeys = doc.iterkeys()
+            else:
+                sortedkeys = sorted(doc.iterkeys())
+            for k in sortedkeys:
                 v_clone, pos = doc_from_flat_inner(doc[k], pos)
                 rval[k] = v_clone
 
