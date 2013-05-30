@@ -40,7 +40,7 @@ def expandedcallargs(fn, *args, **kwargs):
     and kwargs are not nested. The args are ordered by their position in the
     function signature.
     """
-    return tuple(flat_from_doc(orderedcallargs(fn, *args, **kwargs).values()))
+    return tuple(flat_from_doc(orderedcallargs(fn, *args, **kwargs)))
 
 
 def as_seq(x, seq_type=None):
@@ -107,10 +107,10 @@ def flat_from_doc(doc):
     Note that doc_from_flat(doc, flat_from_doc(doc)) == doc
     """
     rval = []
-    if type(doc) in (list, tuple):
+    if isinstance(doc, (list, tuple)):
         for d_i in doc:
             rval.extend(flat_from_doc(d_i))
-    elif type(doc) == dict:
+    elif isinstance(doc, dict):
         for k in sorted(doc.iterkeys()):
             if isinstance(k, (tuple, dict)):
                 # -- if keys are tuples containing ndarrays, should
@@ -132,15 +132,15 @@ def doc_from_flat(doc, flat):
     Note that doc_from_flat(doc, flat_from_doc(doc)) == doc
     """
     def doc_from_flat_inner(doc, pos):
-        if type(doc) in (list, tuple):
+        if isinstance(doc, (list, tuple)):
             rval = []
             for d_i in doc:
                 d_i_clone, pos = doc_from_flat_inner(d_i, pos)
                 rval.append(d_i_clone)
             rval = type(doc)(rval)
 
-        elif type(doc) == dict:
-            rval = {}
+        elif isinstance(doc, dict):
+            rval = type(doc)()
             for k in sorted(doc.iterkeys()):
                 v_clone, pos = doc_from_flat_inner(doc[k], pos)
                 rval[k] = v_clone
