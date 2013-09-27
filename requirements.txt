@@ -1,2 +1,2 @@
 numpy
-theano
+theano>=0.6
