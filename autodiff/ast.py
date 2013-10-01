@@ -88,5 +88,5 @@ class TheanoTransformer(ast.NodeTransformer):
         a = ast.fix_missing_locations(a)
         new_globals = globals()
         new_globals.update({'self' : self})
-        new_f = meta.decompiler.compile_func(a, '<TheanoTransformer>', new_globals)
+        new_f = meta.decompiler.compile_func(a, '<TheanoTransformer-AST>', new_globals)
         return new_f
