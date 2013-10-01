@@ -86,6 +86,9 @@ class TheanoTransformer(ast.NodeTransformer):
         else:
             return func
 
+    def visit_Num(self, node):
+        return self.ast_wrap(node, 'shadow')
+
     def visit_Name(self, node):
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load):
