@@ -76,7 +76,7 @@ class TheanoTransformer(ast.NodeTransformer):
     def visit_Name(self, node):
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load):
-            node = ast.copy_location(self.ast_wrap_node(node, 'ensure_shadow'), node)
+            node = self.ast_wrap_node(node, 'ensure_shadow')
         return node
 
     def test_run(self, f):
