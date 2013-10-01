@@ -113,3 +113,15 @@ class TheanoTransformer(ast.NodeTransformer):
         new_globals.update({'self' : self})
         new_f = meta.decompiler.compile_func(a, '<TheanoTransformer-AST>', new_globals)
         return new_f
+
+
+def f1(x):
+    z = np.dot(x.sum(), 4)
+    return z + np.ones((2,4))
+
+t = TheanoTransformer()
+f2 = t.test_run(f1)
+
+a = np.ones((3,4))
+f2(a)
+
