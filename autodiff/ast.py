@@ -75,11 +75,26 @@ class TheanoTransformer(ast.NodeTransformer):
 
         return self.smap.setdefault(id(x), sym_x)
 
+    def switch_numpy_theano(self, func):
+        # if the function comes from numpy...
+        if ((getattr(func, '__module__', None)
+            and func.__module__.startswith('numpy'))
+            or isinstance(func, np.ufunc)):
+
+            # try to get the theano version...
+            return getattr(T, func.__name__, func)
+        else:
+            return func
+
     def visit_Name(self, node):
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load):
             node = self.ast_wrap(node, 'shadow')
         return node
+
+    def visit_Attribute(self, node):
+        self.generic_visit(node)
+        node = self.ast_wrap(node, 'switch_numpy_theano')
         return node
 
     def test_run(self, f):
