@@ -56,6 +56,9 @@ class TheanoTransformer(ast.NodeTransformer):
                            starargs=None)
         return wrapped
 
+    def getvar(self, var):
+        return self.smap.get(id(var), var)
+
     def shadow(self, x):
         if not isinstance(x, (int, float, np.ndarray)):
             return x
