@@ -56,17 +56,16 @@ class TheanoTransformer(ast.NodeTransformer):
                            starargs=None)
         return wrapped
 
-    def ensure_shadow(self, x):
-        if isvar(x):
-            return x
-        else:
-            return self.shadow(x)
-
     def shadow(self, x):
+        if not isinstance(x, (int, float, np.ndarray)):
+            return x
+
         # take special care with small ints, because CPYthon caches them.
         # This makes it impossible to tell one from the other.
         if isinstance(x, int) and -5 <= x <= 256:
             x = np.int_(x)
+        elif isinstance(x, float):
+            x = np.float_(x)
 
         if getattr(x, 'dtype', None) == bool:
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
