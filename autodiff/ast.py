@@ -90,7 +90,9 @@ class TheanoTransformer(ast.NodeTransformer):
             return func
 
     def visit_Num(self, node):
-        return self.ast_wrap(node, 'shadow')
+        # return self.ast_wrap(node, 'shadow')
+        # don't make changes because these are typically function arguments
+        return node
 
     def visit_Name(self, node):
         self.generic_visit(node)
