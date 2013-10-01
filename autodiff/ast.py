@@ -4,16 +4,19 @@ import ast
 
 logger = logging.getLogger('pyautodiff')
 
+
 def istensor(x):
     tensortypes = (theano.tensor.TensorConstant,
                    theano.tensor.TensorVariable)
     return isinstance(x, tensortypes)
+
 
 def isvar(x):
     vartypes = (theano.tensor.sharedvar.SharedVariable,
                 theano.tensor.TensorConstant,
                 theano.tensor.TensorVariable)
     return isinstance(x, vartypes)
+
 
 def get_ast(func, flags=0):
     func_def = meta.decompiler.decompile_func(func)
@@ -23,6 +26,7 @@ def get_ast(func, flags=0):
                                    decorator_list=[])
     assert isinstance(func_def, ast.FunctionDef)
     return func_def
+
 
 def print_ast(ast):
     meta.asttools.print_ast(ast)
