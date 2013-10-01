@@ -45,7 +45,7 @@ class TheanoTransformer(ast.NodeTransformer):
         super(TheanoTransformer, self).__init__()
         self.smap = dict()
 
-    def ast_wrap_node(self, node, method_name):
+    def ast_wrap(self, node, method_name):
         wrapped = ast.Call(args=[node],
                            func=ast.Attribute(attr=method_name,
                                               ctx=ast.Load(),
@@ -78,7 +78,8 @@ class TheanoTransformer(ast.NodeTransformer):
     def visit_Name(self, node):
         self.generic_visit(node)
         if isinstance(node.ctx, ast.Load):
-            node = self.ast_wrap_node(node, 'ensure_shadow')
+            node = self.ast_wrap(node, 'shadow')
+        return node
         return node
 
     def test_run(self, f):
