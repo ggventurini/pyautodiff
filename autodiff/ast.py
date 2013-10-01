@@ -31,14 +31,19 @@ def get_ast(func, flags=0):
 def print_ast(ast):
     meta.asttools.print_ast(ast)
 
+
+def print_source(ast):
+    meta.asttools.python_source(ast)
+
+
 class TheanoTransformer(ast.NodeTransformer):
     def __init__(self):
         super(TheanoTransformer, self).__init__()
         self.smap = dict()
 
-    def ast_wrap_node(self, node, method):
+    def ast_wrap_node(self, node, method_name):
         wrapped = ast.Call(args=[node],
-                           func=ast.Attribute(attr=method,
+                           func=ast.Attribute(attr=method_name,
                                               ctx=ast.Load(),
                                               value=ast.Name(ctx=ast.Load(),
                                                              id='self')),
