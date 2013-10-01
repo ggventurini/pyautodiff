@@ -1,6 +1,7 @@
 import logging
 import meta
 import ast
+import theano
 
 logger = logging.getLogger('pyautodiff')
 
