@@ -1,7 +1,10 @@
 import logging
 import meta
 import ast
+import numpy as np
 import theano
+import theano.tensor as T
+
 
 logger = logging.getLogger('pyautodiff')
 
