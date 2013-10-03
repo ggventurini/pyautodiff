@@ -9,6 +9,11 @@ import theano.tensor as T
 logger = logging.getLogger('pyautodiff')
 
 
+# XXX FIXME This will not do - seed must be exposed.
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
+global_randomstreams = RandomStreams(seed=123)
+
+
 def istensor(x):
     tensortypes = (theano.tensor.TensorConstant,
                    theano.tensor.TensorVariable)
@@ -43,6 +48,16 @@ def print_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
     meta.asttools.python_source(ast)
+
+
+def escape(x):
+    if isvar(x):
+        try:
+            return x.eval()
+        except:
+            return x
+    else:
+        return x
 
 
 class TheanoTransformer(ast_module.NodeTransformer):
@@ -88,18 +103,26 @@ class TheanoTransformer(ast_module.NodeTransformer):
 
 
     def handle_functions(self, func):
+
         # if the function has a _theano_fn attribute, return that fn
         if hasattr(func, '_theano_fn'):
-            return func._theano_fn
+            func = func._theano_fn
 
         # if it is a numpy function, try to get the theano version
         elif ((getattr(func, '__module__', None)
-            and func.__module__.startswith('numpy'))
-            or isinstance(func, np.ufunc)):
-                return getattr(T, func.__name__, func)
+               and func.__module__.startswith('numpy'))
+               or isinstance(func, np.ufunc)):
+            func = getattr(T, func.__name__, func)
 
-        else:
-            return func
+        # handle random numbers
+        elif ('method random of mtrand.RandomState' in str(func)
+              or 'method random_sample of mtrand.RandomState' in str(func)):
+            def rand_u(shape):
+                return global_randomstreams.uniform(
+                    low=0, high=1, size=shape)
+            return rand_u
+
+        return func
 
     def visit_Num(self, node):
         # return self.ast_wrap(node, 'shadow')
@@ -112,12 +135,12 @@ class TheanoTransformer(ast_module.NodeTransformer):
             node = self.ast_wrap(node, 'shadow')
         return node
 
-    def visit_Attribute(self, node):
+    def visit_Call(self, node):
         self.generic_visit(node)
-        node = self.ast_wrap(node, 'handle_functions')
+        node.func = self.ast_wrap(node.func, 'handle_functions')
         return node
 
-    def transform(f):
+    def transform(self, f):
         ast = self.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
         new_globals = globals()
@@ -125,15 +148,4 @@ class TheanoTransformer(ast_module.NodeTransformer):
         new_f = meta.decompiler.compile_func(
             ast, '<TheanoTransformer-AST>', new_globals)
         return new_f
-
-
-def f1(x):
-    z = np.dot(x.sum(), 4)
-    return z + np.ones((2,4))
-
-t = TheanoTransformer()
-f2 = t.test_run(f1)
-
-a = np.ones((3,4))
-f2(a)
 
