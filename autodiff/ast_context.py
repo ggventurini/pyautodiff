@@ -87,6 +87,10 @@ class TheanoTransformer(ast_module.NodeTransformer):
         return self.smap.get(id(var), var)
 
     def shadow(self, x):
+        """
+        Given a numerical variable x, return an equivalent Theano shared variable
+        and store the relationship in self.smap. Otherwise return x.
+        """
         if not isinstance(x, (int, float, np.ndarray)):
             return x
 
@@ -107,6 +111,11 @@ class TheanoTransformer(ast_module.NodeTransformer):
 
 
     def handle_functions(self, func):
+        """
+        Given some function for, return another function.
+
+        Generally used to exchange NumPy functions for Theano equivalents.
+        """
 
         # if the function has a _theano_fn attribute, return that fn
         if hasattr(func, '_theano_fn'):
