@@ -77,7 +77,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
                 attr=method_name,
                 ctx=ast_module.Load(),
                 value=ast_module.Name(
-                    ctx=ast_module.Load(), id='TT')),
+                    ctx=ast_module.Load(), id='__TT')),
             keywords=[],
             kwargs=None,
             starargs=None)
@@ -204,7 +204,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
         ast = self.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
         new_globals = globals()
-        new_globals.update({'TT' : self})
+        new_globals.update({'__TT' : self})
         new_f = meta.decompiler.compile_func(
             ast, '<TheanoTransformer-AST>', new_globals)
         return new_f
