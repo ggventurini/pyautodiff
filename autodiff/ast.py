@@ -86,14 +86,18 @@ class TheanoTransformer(ast.NodeTransformer):
 
         return self.smap.setdefault(id(x), sym_x)
 
-    def numpy_to_theano(self, func):
-        # if the function comes from numpy...
-        if ((getattr(func, '__module__', None)
+
+    def handle_functions(self, func):
+        # if the function has a _theano_fn attribute, return that fn
+        if hasattr(func, '_theano_fn'):
+            return func._theano_fn
+
+        # if it is a numpy function, try to get the theano version
+        elif ((hasattr(func, '__module__')
             and func.__module__.startswith('numpy'))
             or isinstance(func, np.ufunc)):
+                return getattr(T, func.__name__, func)
 
-            # try to get the theano version...
-            return getattr(T, func.__name__, func)
         else:
             return func
 
@@ -110,7 +114,7 @@ class TheanoTransformer(ast.NodeTransformer):
 
     def visit_Attribute(self, node):
         self.generic_visit(node)
-        node = self.ast_wrap(node, 'numpy_to_theano')
+        node = self.ast_wrap(node, 'handle_functions')
         return node
 
     def test_run(self, f):
