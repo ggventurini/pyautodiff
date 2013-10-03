@@ -125,8 +125,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
         elif ('method random of mtrand.RandomState' in str(func)
               or 'method random_sample of mtrand.RandomState' in str(func)):
             def rand_u(shape):
-                return global_randomstreams.uniform(
-                    low=0, high=1, size=shape)
+                return global_randomstreams.uniform( low=0, high=1, size=shape)
             return rand_u
 
         return func
