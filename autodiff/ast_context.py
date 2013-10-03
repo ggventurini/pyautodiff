@@ -112,6 +112,19 @@ class TheanoTransformer(ast_module.NodeTransformer):
         if hasattr(func, '_theano_fn'):
             func = func._theano_fn
 
+        # handle casting functions
+        elif func.__name__ in ['bool', 'bool_', 'bool8']:
+            logger.info('Warning: Theano has no bool type; upgrading to int8.')
+            return lambda x : T.neq(x, 0)
+        elif func.__name__ in T.basic._cast_mapping.keys():
+            return lambda x : T.cast(x, dtype=func.__name__)
+        elif func.__name__ == 'float':
+            return lambda x : T.cast(x, dtype=theano.config.floatX)
+        elif func.__name__ == 'int':
+            dtype = 'int' + theano.config.floatX[-2:]
+            return lambda x : T.cast(x, dtype=dtype)
+
+        # handle range/xrange
         elif func.__name__ in ('range', 'xrange'):
             return lambda *args : func(*(unshadow(a) for a in args))
 
