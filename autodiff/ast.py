@@ -93,7 +93,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
             return func._theano_fn
 
         # if it is a numpy function, try to get the theano version
-        elif ((hasattr(func, '__module__')
+        elif ((getattr(func, '__module__', None)
             and func.__module__.startswith('numpy'))
             or isinstance(func, np.ufunc)):
                 return getattr(T, func.__name__, func)
