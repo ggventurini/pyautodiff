@@ -50,7 +50,7 @@ def print_source(ast):
     meta.asttools.python_source(ast)
 
 
-def escape(x):
+def unshadow(x):
     if isvar(x):
         try:
             return x.eval()
