@@ -1,6 +1,6 @@
 import logging
 import meta
-import ast
+import ast as ast_module
 import numpy as np
 import theano
 import theano.tensor as T
@@ -24,11 +24,12 @@ def isvar(x):
 
 def get_ast(func, flags=0):
     func_def = meta.decompiler.decompile_func(func)
-    if isinstance(func_def, ast.Lambda):
-        func_def = ast.FunctionDef(name='<lambda>', args=func_def.args,
-                                   body=[ast.Return(func_def.body)],
-                                   decorator_list=[])
-    assert isinstance(func_def, ast.FunctionDef)
+    if isinstance(func_def, ast_module.Lambda):
+        func_def = ast_module.FunctionDef(
+            name='<lambda>', args=func_def.args,
+            body=[ast_module.Return(func_def.body)],
+            decorator_list=[])
+    assert isinstance(func_def, ast_module.FunctionDef)
     return func_def
 
 
@@ -51,14 +52,16 @@ class TheanoTransformer(ast.NodeTransformer):
         self.smap = dict()
 
     def ast_wrap(self, node, method_name):
-        wrapped = ast.Call(args=[node],
-                           func=ast.Attribute(attr=method_name,
-                                              ctx=ast.Load(),
-                                              value=ast.Name(ctx=ast.Load(),
-                                                             id='TT')),
-                           keywords=[],
-                           kwargs=None,
-                           starargs=None)
+        wrapped = ast_module.Call(
+            args=[node],
+            func=ast_module.Attribute(
+                attr=method_name,
+                ctx=ast_module.Load(),
+                value=ast_module.Name(
+                    ctx=ast_module.Load(), id='TT')),
+            keywords=[],
+            kwargs=None,
+            starargs=None)
         return wrapped
 
     def getvar(self, var):
@@ -101,7 +104,7 @@ class TheanoTransformer(ast.NodeTransformer):
 
     def visit_Name(self, node):
         self.generic_visit(node)
-        if isinstance(node.ctx, ast.Load):
+        if isinstance(node.ctx, ast_module.Load):
             node = self.ast_wrap(node, 'shadow')
         return node
 
