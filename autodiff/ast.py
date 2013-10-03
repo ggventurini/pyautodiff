@@ -117,13 +117,13 @@ class TheanoTransformer(ast.NodeTransformer):
         node = self.ast_wrap(node, 'handle_functions')
         return node
 
-    def test_run(self, f):
-        a = get_ast(f)
-        self.visit(a)
-        a = ast.fix_missing_locations(a)
+    def transform(f):
+        ast = self.visit(get_ast(f))
+        ast = ast_module.fix_missing_locations(ast)
         new_globals = globals()
         new_globals.update({'TT' : self})
-        new_f = meta.decompiler.compile_func(a, '<TheanoTransformer-AST>', new_globals)
+        new_f = meta.decompiler.compile_func(
+            ast, '<TheanoTransformer-AST>', new_globals)
         return new_f
 
 
