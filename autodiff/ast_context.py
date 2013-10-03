@@ -141,6 +141,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
         return node
 
     def transform(self, f):
+        self.smap.clear()
         ast = self.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
         new_globals = globals()
