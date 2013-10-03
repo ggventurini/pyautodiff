@@ -10,6 +10,27 @@ import autodiff.ast_context as ac
 
 TT = TheanoTransformer()
 
+# def f(x, shape1, shape2):
+#     return np.reshape(x, [shape1, shape2])
+
+# def f(a, b):
+#     return [a, b]
+# F = TT.transform(f)
+# F(15, 4)[1].eval()
+
+
+# F(np.random.random((3,4)), 3, 4)
+
+# v = np.random.random((3,4))
+# a=3
+# b=4
+# targs = [TT.shadow(v), [TT.shadow(a), TT.shadow(b)]]
+
+
+def test(x):
+    print x, id(x)
+    x = np.int_(x)
+    print x, id(x)
 
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
@@ -20,6 +41,13 @@ def checkfn(f, var_ndim, *args, **kwargs):
     sym_result = F(*(values + args)).eval()
     return np.allclose(py_result, sym_result)
 
+class BadAliasing(unittest.TestCase):
+    # shadowing is creating aliased variables
+    def test_aliasing(self):
+        def f(x, y):
+            return [x, y]
+        F = TT.transform(f)
+        assert F(3, 4)[1].eval() == 4
 
 
 class Python(unittest.TestCase):

@@ -91,13 +91,21 @@ class TheanoTransformer(ast_module.NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared variable
         and store the relationship in self.smap. Otherwise return x.
         """
+        print 'in shadow'
+        print x, id(x)
         if not isinstance(x, (int, float, np.ndarray)):
             return x
 
         # take special care with small ints, because CPYthon caches them.
         # This makes it impossible to tell one from the other.
         if isinstance(x, int) and -5 <= x <= 256:
-            x = np.int_(x)
+            print 'in int'
+            print x, id(x)
+            x2 = np.asarray(x)
+            x = x2
+            print x, id(x)
+            print 'done with int'
+
         elif isinstance(x, float):
             x = np.float_(x)
 
@@ -106,7 +114,6 @@ class TheanoTransformer(ast_module.NodeTransformer):
             x = x.astype('int8')
 
         sym_x = theano.shared(x)
-
         return self.smap.setdefault(id(x), sym_x)
 
 
@@ -137,10 +144,20 @@ class TheanoTransformer(ast_module.NodeTransformer):
         elif func.__name__ in ('range', 'xrange'):
             return lambda *args : func(*(unshadow(a) for a in args))
 
-        # if it is a numpy function, try to get the theano version
+        # handle numpy functions
         elif ((getattr(func, '__module__', None)
                and func.__module__.startswith('numpy'))
                or isinstance(func, np.ufunc)):
+
+            # if func.__name__ == 'reshape':
+                # return func
+                # def f(x, shape):
+                    # print shape
+                    # return T.reshape(x, shape)#[unshadow(s) for s in shape])
+                # return f
+
+            # else:
+                # get the theano version
             func = getattr(T, func.__name__, func)
 
         # handle random numbers
