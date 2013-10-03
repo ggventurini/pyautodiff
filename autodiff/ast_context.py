@@ -146,6 +146,37 @@ class TheanoTransformer(ast_module.NodeTransformer):
         node.func = self.ast_wrap(node.func, 'handle_functions')
         return node
 
+    def visit_Compare(self, node):
+        self.generic_visit(node)
+        op = node.ops[0]
+        if isinstance(op, ast_module.Gt):
+            theano_op = 'gt'
+        elif isinstance(op, ast_module.GtE):
+            theano_op = 'ge'
+        elif isinstance(op, ast_module.Lt):
+            theano_op = 'lt'
+        elif isinstance(op, ast_module.LtE):
+            theano_op = 'le'
+        elif isinstance(op, ast_module.Eq):
+            theano_op = 'eq'
+        elif isinstance(op, ast_module.NotEq):
+            theano_op = 'neq'
+        else:
+            # Is, IsNot, In, Not In
+            return node
+
+        new_node = ast_module.Call(args=[node.left] + node.comparators,
+                                   func=ast_module.Attribute(
+                                       attr=theano_op,
+                                       ctx=ast_module.Load(),
+                                       value=ast_module.Name(
+                                           ctx=ast_module.Load(), id='T')),
+                                   keywords=[],
+                                   kwargs=None,
+                                   starargs=None)
+
+        return new_node
+
     def transform(self, f):
         self.smap.clear()
         ast = self.visit(get_ast(f))
