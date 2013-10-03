@@ -33,10 +33,14 @@ def get_ast(func, flags=0):
 
 
 def print_ast(ast):
+    if hasattr(ast, 'func_code'):
+        ast = get_ast(ast)
     meta.asttools.print_ast(ast)
 
 
 def print_source(ast):
+    if hasattr(ast, 'func_code'):
+        ast = get_ast(ast)
     meta.asttools.python_source(ast)
 
 
