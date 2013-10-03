@@ -108,6 +108,9 @@ class TheanoTransformer(ast_module.NodeTransformer):
         if hasattr(func, '_theano_fn'):
             func = func._theano_fn
 
+        elif func.__name__ in ('range', 'xrange'):
+            return lambda *args : func(*(unshadow(a) for a in args))
+
         # if it is a numpy function, try to get the theano version
         elif ((getattr(func, '__module__', None)
                and func.__module__.startswith('numpy'))
