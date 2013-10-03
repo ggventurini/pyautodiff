@@ -45,7 +45,7 @@ def print_source(ast):
     meta.asttools.python_source(ast)
 
 
-class TheanoTransformer(ast.NodeTransformer):
+class TheanoTransformer(ast_module.NodeTransformer):
 
     def __init__(self):
         super(TheanoTransformer, self).__init__()
