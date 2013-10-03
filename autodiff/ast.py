@@ -45,6 +45,7 @@ def print_source(ast):
 
 
 class TheanoTransformer(ast.NodeTransformer):
+
     def __init__(self):
         super(TheanoTransformer, self).__init__()
         self.smap = dict()
