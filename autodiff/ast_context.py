@@ -82,7 +82,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
         self.smap.clear()
         ast = self.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
-        new_globals = globals()
+        new_globals = f.func_globals.copy()
         new_globals.update({'__TT' : self})
         new_f = meta.decompiler.compile_func(
             ast, '<TheanoTransformer-AST>', new_globals)
