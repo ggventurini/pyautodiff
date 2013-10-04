@@ -5,7 +5,6 @@ import theano.tensor as T
 import copy
 
 from autodiff.context import Context
-from autodiff.ast_context import Context
 
 
 context = Context()
