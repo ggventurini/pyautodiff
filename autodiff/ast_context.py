@@ -88,9 +88,12 @@ class TheanoTransformer(ast_module.NodeTransformer):
             ast, '<TheanoTransformer-AST>', new_globals)
         return new_f
 
-    def ast_wrap(self, node, method_name):
+    def ast_wrap(self, args, method_name):
+        if not isinstance(args, (list, tuple)):
+            args = [args]
+
         wrapped = ast_module.Call(
-            args=[node],
+            args=args,
             func=ast_module.Attribute(
                 attr=method_name,
                 ctx=ast_module.Load(),
@@ -181,8 +184,8 @@ class TheanoTransformer(ast_module.NodeTransformer):
         return func
 
     def visit_Num(self, node):
-        # return self.ast_wrap(node, 'shadow')
         # don't make changes because these are typically function arguments
+        # return self.ast_wrap(node, 'shadow')
         return node
 
     def visit_Name(self, node):
@@ -193,7 +196,9 @@ class TheanoTransformer(ast_module.NodeTransformer):
 
     def visit_Call(self, node):
         self.generic_visit(node)
-        node.func = self.ast_wrap(node.func, 'handle_functions')
+        node.func = self.ast_wrap(
+            self.ast_wrap(node.func, 'handle_functions'),
+            'shadow')
         return node
 
     def visit_Compare(self, node):
