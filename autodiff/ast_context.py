@@ -72,6 +72,15 @@ class TheanoTransformer(ast_module.NodeTransformer):
         super(TheanoTransformer, self).__init__()
         self.smap = dict() # symbolic map
         self._nogc = [] # ensure these id's do not get recycled by garbage collection
+    def transform(self, f):
+        self.smap.clear()
+        ast = self.visit(get_ast(f))
+        ast = ast_module.fix_missing_locations(ast)
+        new_globals = globals()
+        new_globals.update({'__TT' : self})
+        new_f = meta.decompiler.compile_func(
+            ast, '<TheanoTransformer-AST>', new_globals)
+        return new_f
 
     def ast_wrap(self, node, method_name):
         wrapped = ast_module.Call(
@@ -212,13 +221,4 @@ class TheanoTransformer(ast_module.NodeTransformer):
 
         return new_node
 
-    def transform(self, f):
-        self.smap.clear()
-        ast = self.visit(get_ast(f))
-        ast = ast_module.fix_missing_locations(ast)
-        new_globals = globals()
-        new_globals.update({'__TT' : self})
-        new_f = meta.decompiler.compile_func(
-            ast, '<TheanoTransformer-AST>', new_globals)
-        return new_f
 
