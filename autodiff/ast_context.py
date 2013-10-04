@@ -78,6 +78,8 @@ class TheanoTransformer(ast_module.NodeTransformer):
         super(TheanoTransformer, self).__init__()
         self.smap = dict() # symbolic map
         self._nogc = [] # ensure these id's do not get recycled by garbage collection
+        self._noshadow = set()
+
     def transform(self, f):
         self.smap.clear()
         ast = self.visit(get_ast(f))
@@ -112,6 +114,9 @@ class TheanoTransformer(ast_module.NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared variable
         and store the relationship in self.smap. Otherwise return x.
         """
+        if id(x) in self._noshadow:
+            return x
+
         if not isinstance(x, (int, float, np.ndarray)):
             return x
 
