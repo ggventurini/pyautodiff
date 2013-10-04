@@ -37,6 +37,8 @@ def get_ast(func, flags=0):
     assert isinstance(func_def, ast_module.FunctionDef)
     return func_def
 
+def get_source(ast):
+    return meta.asttools.dump_python_source(ast)
 
 def print_ast(ast):
     if hasattr(ast, 'func_code'):
