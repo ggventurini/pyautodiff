@@ -6,7 +6,7 @@ import theano
 import theano.tensor as T
 
 
-logger = logging.getLogger('pyautodiff')
+logger = logging.getLogger('autodiff')
 
 
 # XXX FIXME This will not do - seed must be exposed.
