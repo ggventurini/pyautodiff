@@ -197,12 +197,20 @@ class TheanoTransformer(ast_module.NodeTransformer):
         return node
 
     def visit_Name(self, node):
+        """
+        Whenever a literal variable name is loaded, call the
+        'shadow' method on its value.
+        """
         self.generic_visit(node)
         if isinstance(node.ctx, ast_module.Load):
             node = self.ast_wrap(node, 'shadow')
         return node
 
     def visit_Call(self, node):
+        """
+        Whenever a function is called, first pass it to
+        the 'handle_functions' method.
+        """
         self.generic_visit(node)
         node.func = self.ast_wrap(
             self.ast_wrap(node.func, 'handle_functions'),
@@ -210,6 +218,10 @@ class TheanoTransformer(ast_module.NodeTransformer):
         return node
 
     def visit_Compare(self, node):
+        """
+        Theano operators must be called as functions.
+        This replaces literal operators with the appropriate functions.
+        """
         self.generic_visit(node)
         op = node.ops[0]
         if isinstance(op, ast_module.Gt):
