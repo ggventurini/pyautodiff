@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import theano
 import theano.tensor as T
+import copy
 
 from autodiff.context import Context
 from autodiff.ast_context import TheanoTransformer
@@ -10,30 +11,20 @@ import autodiff.ast_context as ac
 
 TT = TheanoTransformer()
 
-# def f(x, shape1, shape2):
-#     return np.reshape(x, [shape1, shape2])
-
-# def f(a, b):
-#     return [a, b]
-# F = TT.transform(f)
-# F(15, 4)[1].eval()
-
-
-# F(np.random.random((3,4)), 3, 4)
-
-# v = np.random.random((3,4))
-# a=3
-# b=4
-# targs = [TT.shadow(v), [TT.shadow(a), TT.shadow(b)]]
-
 
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
     dim = [[4] * nd for nd in var_ndim]
     values = tuple([np.random.random(d) for d in dim])
+    # make shallow copies to avoid inplace corruption
+    sym_values = tuple(copy.copy(v) for v in values)
+    sym_args = tuple(copy.copy(a) for a in args)
+
     F = TT.transform(f)
+
     py_result = override or f(*(values + args))
-    sym_result = F(*(values + args)).eval()
+    sym_result = F(*(sym_values + args)).eval()
+
     return np.allclose(py_result, sym_result)
 
 
@@ -43,8 +34,23 @@ class GarbageCollection(unittest.TestCase):
     def test_gc(self):
         def f(x, y):
             return [x, y]
+
         F = TT.transform(f)
         assert F(3, 4)[1].eval() == 4
+
+
+class AugAssign(unittest.TestCase):
+    # AugAssign doesn't pick up the assignment of shadowed variables,
+    # so they don't get updated. Make sure that the shadow is explicitly
+    # updated.
+    def test_aug_shadowing(self):
+        def f(x):
+            a = x
+            x += 1
+            return x
+
+        F = TT.transform(f)
+        assert F(1).eval() == 2
 
 
 class Python(unittest.TestCase):

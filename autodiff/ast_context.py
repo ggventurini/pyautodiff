@@ -253,4 +253,18 @@ class TheanoTransformer(ast_module.NodeTransformer):
 
         return new_node
 
+    def visit_AugAssign(self, node):
+        """
+        Inplace assigns circumvent shadowing, so we change them into regular assigns.
+        """
+        self.generic_visit(node)
+        new_node = ast_module.copy_location(
+            ast_module.Assign(
+                targets=[node.target],
+                value=ast_module.BinOp(left=ast_module.Name(ctx=ast_module.Load(),
+                                                            id=node.target.id),
+                                       right=node.value,
+                                       op=node.op)),
+            node)
+        return self.visit(new_node)
 
