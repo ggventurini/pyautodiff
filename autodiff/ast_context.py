@@ -127,9 +127,17 @@ class TheanoTransformer(ast_module.NodeTransformer):
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
 
-        self._nogc.append(x)
-        sym_x = theano.shared(x)
-        return self.smap.setdefault(id(x), sym_x)
+        if id(x) in self.smap:
+            if self.debug:
+                logger.debug('shadow: id of {0} found in smap; returning stored value.'.format(x))
+            return self.smap[id(x)]
+        else:
+            if self.debug:
+                logger.debug('shadow: id of {0} not in smap; returning new value.'.format(x))
+            self._nogc.append(x)
+            sym_x = theano.shared(x)
+            self.smap[id(x)] = theano.shared(x)
+            return sym_x
 
     def handle_functions(self, func):
         """
