@@ -72,20 +72,20 @@ def unshadow(x):
         return x
 
 
-class TheanoTransformer(ast_module.NodeTransformer):
+class Context(ast_module.NodeTransformer):
 
     def __init__(self):
-        super(TheanoTransformer, self).__init__()
-        self.smap = dict() # symbolic map
+        super(Context, self).__init__()
+        self.s_vars = dict() # symbolic map
         self._nogc = [] # ensure these id's do not get recycled by garbage collection
         self._noshadow = set()
 
     def transform(self, f):
-        self.smap.clear()
+        self.s_vars.clear()
         ast = self.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
         new_globals = f.func_globals.copy()
-        new_globals.update({'__TT' : self})
+        new_globals.update({'Context' : self})
         new_f = meta.decompiler.compile_func(
             ast, '<TheanoTransformer-AST>', new_globals)
         return new_f
@@ -100,19 +100,19 @@ class TheanoTransformer(ast_module.NodeTransformer):
                 attr=method_name,
                 ctx=ast_module.Load(),
                 value=ast_module.Name(
-                    ctx=ast_module.Load(), id='__TT')),
+                    ctx=ast_module.Load(), id='Context')),
             keywords=[],
             kwargs=None,
             starargs=None)
         return wrapped
 
     def getvar(self, var):
-        return self.smap.get(id(var), var)
+        return self.s_vars.get(id(var), var)
 
     def shadow(self, x):
         """
         Given a numerical variable x, return an equivalent Theano shared variable
-        and store the relationship in self.smap. Otherwise return x.
+        and store the relationship in self.s_vars. Otherwise return x.
         """
         if id(x) in self._noshadow:
             return x
@@ -132,12 +132,12 @@ class TheanoTransformer(ast_module.NodeTransformer):
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
 
-        if id(x) in self.smap:
-            return self.smap[id(x)]
+        if id(x) in self.s_vars:
+            return self.s_vars[id(x)]
         else:
             self._nogc.append(x)
             sym_x = theano.shared(x)
-            self.smap[id(x)] = theano.shared(x)
+            self.s_vars[id(x)] = theano.shared(x)
             return sym_x
 
     def handle_functions(self, func):
