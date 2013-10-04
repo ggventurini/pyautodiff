@@ -68,7 +68,8 @@ class TheanoTransformer(ast_module.NodeTransformer):
 
     def __init__(self):
         super(TheanoTransformer, self).__init__()
-        self.smap = dict()
+        self.smap = dict() # symbolic map
+        self._nogc = [] # ensure these id's do not get recycled by garbage collection
 
     def ast_wrap(self, node, method_name):
         wrapped = ast_module.Call(
@@ -91,20 +92,13 @@ class TheanoTransformer(ast_module.NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared variable
         and store the relationship in self.smap. Otherwise return x.
         """
-        print 'in shadow'
-        print x, id(x)
         if not isinstance(x, (int, float, np.ndarray)):
             return x
 
         # take special care with small ints, because CPYthon caches them.
         # This makes it impossible to tell one from the other.
         if isinstance(x, int) and -5 <= x <= 256:
-            print 'in int'
-            print x, id(x)
-            x2 = np.asarray(x)
-            x = x2
-            print x, id(x)
-            print 'done with int'
+            x = np.int_(x)
 
         elif isinstance(x, float):
             x = np.float_(x)
@@ -113,9 +107,9 @@ class TheanoTransformer(ast_module.NodeTransformer):
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
 
+        self._nogc.append(x)
         sym_x = theano.shared(x)
         return self.smap.setdefault(id(x), sym_x)
-
 
     def handle_functions(self, func):
         """

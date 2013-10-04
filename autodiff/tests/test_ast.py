@@ -27,11 +27,6 @@ TT = TheanoTransformer()
 # targs = [TT.shadow(v), [TT.shadow(a), TT.shadow(b)]]
 
 
-def test(x):
-    print x, id(x)
-    x = np.int_(x)
-    print x, id(x)
-
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
     dim = [[4] * nd for nd in var_ndim]
@@ -41,9 +36,11 @@ def checkfn(f, var_ndim, *args, **kwargs):
     sym_result = F(*(values + args)).eval()
     return np.allclose(py_result, sym_result)
 
-class BadAliasing(unittest.TestCase):
-    # shadowing is creating aliased variables
-    def test_aliasing(self):
+
+class GarbageCollection(unittest.TestCase):
+    # make sure shadowed variables aren't garbage-collected
+    # so their id's do not get reused
+    def test_gc(self):
         def f(x, y):
             return [x, y]
         F = TT.transform(f)
