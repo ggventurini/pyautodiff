@@ -205,20 +205,28 @@ class TheanoTransformer(ASTTransformer):
 
         Generally used to exchange NumPy functions for Theano equivalents.
         """
-        # ** ------------------------ __theano_op__
-        if hasattr(func, '__theano_op__'):
-            func = func.__theano_op__
         # ** ======================= first handle functions defined here!
 
         if getattr(func, '__module__', None) == __name__:
             return func
 
+        # ** ======================= __theano_op__
 
-        # ** ------------------------ array methods (with tensor instances)
+        elif hasattr(func, '__theano_op__'):
+            return func.__theano_op__
+
+        # ** ======================= array methods (with tensor instances)
+
         elif isvar(getattr(func, '__self__', None)):
             return self.handle_array_methods(func.__self__, func.__name__)
 
-        # ** ------------------------ type/casting functions
+        # ** ======================= Theano function
+
+        elif (getattr(func, '__module__', '').startswith('theano')):
+            return func
+
+        # ** ======================= type/casting functions
+
         elif type(func) is type:
             if func.__name__ in ['bool', 'bool_', 'bool8']:
                 logger.info('Warning: Theano has no bool type; upgrading to int8.')
@@ -250,9 +258,9 @@ class TheanoTransformer(ASTTransformer):
             else:
                 raise ValueError('Unsupported type: {0}'.format(func))
 
-        # ** ------------------------ numpy functions
-        elif ((getattr(func, '__module__', None)
-                and func.__module__.startswith('numpy'))
+        # ** ======================= numpy functions
+
+        elif (getattr(func, '__module__', '').startswith('numpy')
                or isinstance(func, np.ufunc)
                or str(func) == '<built-in function abs>'
                or str(func) == '<built-in function max>'
@@ -261,11 +269,12 @@ class TheanoTransformer(ASTTransformer):
             if func.__name__ in ('abs', 'absolute'):
                 return abs
             elif hasattr(T, func.__name__):
-                func = getattr(T, func.__name__)
+                return getattr(T, func.__name__)
             else:
                 raise ValueError('Unsupported function: {0}'.format(func))
 
-        # ** ------------------------ built-ins
+        # ** ======================= built-ins
+
         elif 'built-in' in str(func):
             if func.__name__ in ('range', 'xrange'):
                 def range_(*args):
