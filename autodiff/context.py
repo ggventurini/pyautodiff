@@ -284,7 +284,17 @@ class TheanoTransformer(ASTTransformer):
             else:
                 raise ValueError('Unsupported function: {0}'.format(func))
 
-        return func
+        # ** ======================= Anything else
+
+        else:
+            try:
+                # transform and recompile the function
+                t = TheanoTransformer(watcher=self.watcher)
+                new_func = t.recompile(func)
+                return new_func
+            except:
+                raise ValueError('Unsupported function: {0}'.format(func))
+
 
     def handle_array_methods(self, var, method_name):
         """

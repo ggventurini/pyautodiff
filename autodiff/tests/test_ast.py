@@ -2,11 +2,14 @@ import unittest
 import numpy as np
 import copy
 
+import autodiff
 import autodiff.utils as utils
 from autodiff.context import Context
 import autodiff.context as c
 
+
 context = Context()
+
 
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
@@ -45,9 +48,6 @@ class GarbageCollection(unittest.TestCase):
 
 
 class AugAssign(unittest.TestCase):
-    # AugAssign doesn't pick up the assignment of shadowed variables,
-    # so they don't get updated. Make sure that the shadow is explicitly
-    # updated.
     def test_aug_shadowing(self):
         def f(x):
             a = x
@@ -459,3 +459,12 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertRaises(TypeError, checkfn,
                           lambda x, a: x.var(a), [2], 0)
 
+class NestedFunctions(unittest.TestCase):
+    def test_nested_functions(self):
+        def g(x):
+            return x.swapaxes(1, 0)
+
+        def f(x):
+            return g(x)
+
+        self.assertTrue(checkfn(f, [2]))
