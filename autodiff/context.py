@@ -263,8 +263,8 @@ class TheanoTransformer(ASTTransformer):
                         dtype = dtype.__name__
                     except:
                         raise NotImplementedError('Unsupported dtype: {0}'.format(dtype))
-                if dtype == 'bool':
-                    dtype == 'int8'
+                if 'bool' in dtype:
+                    dtype = 'int8'
                     logger.info('Warning: Theano has no bool type; upgrading to int8.')
 
                 return var.astype(dtype)
