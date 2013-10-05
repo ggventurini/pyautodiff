@@ -80,8 +80,12 @@ class Context(object):
         self.borrowable = [id(b) for b in borrowable]
 
     def transform(self, f):
-        transformer = TheanoTransformer(watcher=self)
-        return transformer.transform(f)
+        t = TheanoTransformer(watcher=self)
+        return t.transform(f)
+
+    def recompile(self, f):
+        t = TheanoTransformer(watcher=self)
+        return t.recompile(f)
 
 
 class ASTTransformer(ast_module.NodeTransformer):
@@ -109,8 +113,12 @@ class ASTTransformer(ast_module.NodeTransformer):
         return wrapped
 
     def transform(self, f):
-        ast = self.visit(get_ast(f))
-        ast = ast_module.fix_missing_locations(ast)
+        f_ast = get_ast(f)
+        transformed_ast = self.visit(f_ast)
+        return ast_module.fix_missing_locations(transformed_ast)
+
+    def recompile(self, f):
+        ast = self.transform(f)
         new_globals = f.func_globals.copy()
         new_globals.update({'ASTTransformer' : self})
         new_f = meta.decompiler.compile_func(

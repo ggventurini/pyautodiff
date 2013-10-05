@@ -5,6 +5,7 @@ import theano.tensor as T
 import copy
 
 from autodiff.context import Context
+import autodiff.context as c
 
 
 context = Context()
@@ -18,7 +19,7 @@ def checkfn(f, var_ndim, *args, **kwargs):
     sym_values = tuple(copy.copy(v) for v in values)
     sym_args = tuple(copy.copy(a) for a in args)
 
-    F = context.transform(f)
+    F = context.recompile(f)
 
     py_result = override or f(*(values + args))
     sym_result = F(*(sym_values + args)).eval()
@@ -33,7 +34,7 @@ class GarbageCollection(unittest.TestCase):
         def f(x, y):
             return [x, y]
 
-        F = context.transform(f)
+        F = context.recompile(f)
         assert F(3, 4)[1].eval() == 4
 
 
@@ -47,7 +48,7 @@ class AugAssign(unittest.TestCase):
             x += 1
             return x
 
-        F = context.transform(f)
+        F = context.recompile(f)
         assert F(1).eval() == 2
 
 
