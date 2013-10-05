@@ -249,15 +249,32 @@ class TheanoTransformer(ASTTransformer):
         return func
 
     def handle_array_methods(self, var, method_name):
+        """
+        This method is called whenever:
+            1. An array method is requested that doesn't exist for Theano
+               variables (like _.swapaxes()). `handle_array_methods` is used
+               to supply a replacement method. Note that in this case,
+               `handle_array_methods` is called directly.
+            2. A method is requested that DOES exist for Theano variables. In
+               this case, `handle_array_methods` is called by `handle_functions`
+               prior to calling the method. `handle_array_methods` is used to
+               supply a replacement function that properly handles the supplied
+               arguments (since they are compliant with the Numpy signature,
+               not the Theano one).
+        """
+        # if we're not dealing with a Theano variable, nothing to do here.
         if not isvar(var):
             return getattr(var, method_name)
 
+        # Theano's reshape requires dim to be in a collection, unlike Numpy.
         if method_name == 'reshape':
             def reshape(*args, **kwargs):
                 if not isinstance(args[0], (list, tuple)):
                     args = [args]
                 return var.reshape(*args, **kwargs)
             return reshape
+
+        # Theano has no swapaxes method
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
                 axis1, axis2 = (unshadow(a) for a in args)
@@ -265,6 +282,8 @@ class TheanoTransformer(ASTTransformer):
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
             return swapaxes
+
+        # Theano doesn't process numpy dtype objects or 'bool'
         elif method_name == 'astype':
             def astype(*args, **kwargs):
                 dtype = kwargs.pop('dtype', None)
