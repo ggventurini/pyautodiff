@@ -208,6 +208,11 @@ class TheanoTransformer(ASTTransformer):
         # ** ------------------------ __theano_op__
         if hasattr(func, '__theano_op__'):
             func = func.__theano_op__
+        # ** ======================= first handle functions defined here!
+
+        if getattr(func, '__module__', None) == __name__:
+            return func
+
 
         # ** ------------------------ array methods (with tensor instances)
         elif isvar(getattr(func, '__self__', None)):
