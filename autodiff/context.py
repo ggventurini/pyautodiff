@@ -81,22 +81,54 @@ class Context(object):
         self._noshadow = set()
         self.borrowable = [id(b) for b in borrowable]
 
+    def getvar(self, var):
+        return self.s_vars.get(id(var), var)
+
     def transform(self, f):
-        self.s_vars.clear()
-        transformer = TheanoTransformer(self)
-        ast = transformer.visit(get_ast(f))
+        transformer = TheanoTransformer(watcher=self)
+        return transformer.transform(f)
+
+
+class ASTTransformer(ast_module.NodeTransformer):
+
+    def ast_wrap(self, method_name, args):
+        """
+        Allows Python methods to be applied to AST nodes at runtime.
+
+        `method_name` is a method of the ASTTransformer class that accepts Python
+        objects as arguments.
+
+        `args` are the AST nodes representing the arguments for `method_name` (not
+        including `self`!).
+
+        ast_wrap returns an `ast.Call()` node which calls the method on the specified
+        arguments at runtime.
+        """
+        if not isinstance(args, (list, tuple)):
+            args = [args]
+
+        wrapped = ast_module.Call(
+            args=args,
+            func=ast_module.Attribute(
+                attr=method_name,
+                ctx=ast_module.Load(),
+                value=ast_module.Name(
+                    ctx=ast_module.Load(), id='ASTTransformer')),
+            keywords=[],
+            kwargs=None,
+            starargs=None)
+        return wrapped
+
+    def transform(self, f):
+        ast = self.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
         new_globals = f.func_globals.copy()
-        new_globals.update({'TheanoTransformer' : transformer})
+        new_globals.update({'ASTTransformer' : self})
         new_f = meta.decompiler.compile_func(
             ast, '<Context-AST>', new_globals)
         return new_f
 
-    def getvar(self, var):
-        return self.s_vars.get(id(var), var)
-
-
-class TheanoTransformer(ast_module.NodeTransformer):
+class TheanoTransformer(ASTTransformer):
 
     def __init__(self, watcher):
         super(TheanoTransformer, self).__init__()
@@ -187,25 +219,10 @@ class TheanoTransformer(ast_module.NodeTransformer):
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
 
-    def ast_wrap(self, args, method_name):
-        if not isinstance(args, (list, tuple)):
-            args = [args]
-
-        wrapped = ast_module.Call(
-            args=args,
-            func=ast_module.Attribute(
-                attr=method_name,
-                ctx=ast_module.Load(),
-                value=ast_module.Name(
-                    ctx=ast_module.Load(), id='TheanoTransformer')),
-            keywords=[],
-            kwargs=None,
-            starargs=None)
-        return wrapped
 
     def visit_Num(self, node):
         # don't make changes because these are typically function arguments
-        # return self.ast_wrap(node, 'shadow')
+        # return self.ast_wrap('shadow', node)
         return node
 
     def visit_Name(self, node):
@@ -215,7 +232,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
         """
         self.generic_visit(node)
         if isinstance(node.ctx, ast_module.Load):
-            node = self.ast_wrap(node, 'shadow')
+            node = self.ast_wrap('shadow', node)
         return node
 
     def visit_Call(self, node):
@@ -224,7 +241,7 @@ class TheanoTransformer(ast_module.NodeTransformer):
         the 'handle_functions' method.
         """
         self.generic_visit(node)
-        node.func = self.ast_wrap(node.func, 'handle_functions')
+        node.func = self.ast_wrap('handle_functions', node.func)
         return node
 
     def visit_Compare(self, node):
