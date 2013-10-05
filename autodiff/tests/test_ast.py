@@ -1,22 +1,14 @@
 import unittest
 import numpy as np
-import theano
-import theano.tensor as T
 import copy
 
+import autodiff.utils as utils
 from autodiff.context import Context
 import autodiff.context as c
 
 
 context = Context()
 
-
-def f(x):
-    return x
-#     x.swapaxes
-
-
-F = context.recompile(f)
 
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
@@ -28,10 +20,19 @@ def checkfn(f, var_ndim, *args, **kwargs):
 
     F = context.recompile(f)
 
-    py_result = override or f(*(values + args))
-    sym_result = F(*(sym_values + args)).eval()
+    sym_vars = F(*(sym_values + args))
+    sym_result = [v.eval() for v in utils.as_seq(sym_vars)]
+    if len(sym_result) == 0:
+        sym_result = None
+    elif not isinstance(sym_vars, tuple):
+        sym_result = sym_result[0]
 
-    return np.allclose(py_result, sym_result)
+    py_result = override or f(*(values + args))
+
+    if sym_result is None:
+        return sym_result is None and py_result is None
+    else:
+        return np.allclose(py_result, sym_result)
 
 
 class GarbageCollection(unittest.TestCase):
@@ -87,6 +88,11 @@ class Python(unittest.TestCase):
             return x
         self.assertTrue(checkfn(f, [1], 3))
 
+    def test_pass(self):
+        def fn(x):
+            pass
+        self.assertTrue(checkfn(fn, [1]))
+
 
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
@@ -129,6 +135,7 @@ class BasicMath(unittest.TestCase):
 
         for d in range(3):
             for f in [iadd, isub, imul, idiv]:
+                print f, d
                 self.assertTrue(checkfn(f, [d]))
 
 
@@ -239,7 +246,6 @@ class NumpyFns(unittest.TestCase):
     def test_astype(self):
         self.assertTrue(checkfn(lambda x: x.astype('float32'), [2]))
 
-    @unittest.expectedFailure
     def test_astype_numpy_class(self):
         self.assertTrue(checkfn(lambda x: x.astype(np.float32), [2]))
 
@@ -428,11 +434,6 @@ class ArrayMethodsAttributes(unittest.TestCase):
             return x.T
         self.assertTrue(checkfn(fn, [1]))
         self.assertTrue(checkfn(fn, [2]))
-
-    @unittest.skip('skip trace')
-    def test_trace(self):
-        def fn(x):
-            pass
 
     def test_transpose(self):
         def fn(x):
