@@ -90,7 +90,8 @@ def _simple_call(func, args):
 
 class Context(object):
     def __init__(self, borrowable=()):
-        self.s_vars = dict() # symbolic map
+        self.s_vars = dict()
+        self.inplace_updates = dict()
         # FIXME do we need to hold on to all of these itermediates?
         # ensure these id's do not get recycled by garbage collection
         self._nogc = []
@@ -168,7 +169,12 @@ class TheanoTransformer(ASTTransformer):
             return x
 
         if not isinstance(x, (int, float, np.ndarray)):
-            return x
+            # if x is a Theano variable, it is possible that it was modified by
+            # an inplace Numpy operation, like array.sort(). Theano variables
+            # can't be updated inplace, so we keep track of inplace updates in
+            # a special dictionary. We check for updates before returning the
+            # variable.
+            return self.watcher.inplace_updates.get(id(x), x)
 
         # take special care with small ints, because CPython caches them.
         if isinstance(x, int) and -5 <= x <= 256:
@@ -302,6 +308,17 @@ class TheanoTransformer(ASTTransformer):
                                 'upgrading to int8.')
                 return var.astype(dtype)
             return astype
+
+        # Numpy's sort operates inplace, need to explicitly handle that using
+        # the inplace_updates dict.
+        elif method_name == 'sort':
+            def sort(*args, **kwargs):
+                sorted_var = var.sort(*args, **kwargs)
+                self.watcher.inplace_updates[id(var)] = sorted_var
+                return None
+            return sort
+
+
         else:
             return getattr(var, method_name)
 
