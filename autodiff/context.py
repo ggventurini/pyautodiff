@@ -292,5 +292,5 @@ class TheanoTransformer(ASTTransformer):
                                        right=node.value,
                                        op=node.op)),
             node)
-        return self.visit(new_node)
 
+        return new_node
