@@ -126,7 +126,7 @@ class ASTTransformer(ast_module.NodeTransformer):
             func=ast_module.Attribute(attr=method_name,
                                       ctx=ast_module.Load(),
                                       value=ast_module.Name(ctx=ast_module.Load(),
-                                                            id='__Context')),
+                                                            id='__C')),
             args=args)
 
         return wrapped
@@ -139,7 +139,7 @@ class ASTTransformer(ast_module.NodeTransformer):
     def recompile(self, f):
         ast = self.transform(f)
         new_globals = f.func_globals.copy()
-        new_globals.update({'__Context' : self})
+        new_globals.update({'__C' : self})
         return compile_func(ast, new_globals, '<Context-AST>')
 
 
@@ -205,52 +205,84 @@ class TheanoTransformer(ASTTransformer):
 
         Generally used to exchange NumPy functions for Theano equivalents.
         """
+        # ** ------------------------ __theano_op__
+        if hasattr(func, '__theano_op__'):
+            func = func.__theano_op__
 
-        # ** ------------------------
-        # if the function has a _theano_fn attribute, return that fn
-        if hasattr(func, '_theano_fn'):
-            func = func._theano_fn
-
-        # ** ------------------------
-        # handle casting functions
-        elif func.__name__ in ['bool', 'bool_', 'bool8']:
-            logger.info('Warning: Theano has no bool type; upgrading to int8.')
-            return lambda x : T.neq(x, 0)
-        elif func.__name__ in T.basic._cast_mapping.keys():
-            return lambda x : T.cast(x, dtype=func.__name__)
-        elif func.__name__ == 'float':
-            return lambda x : T.cast(x, dtype=theano.config.floatX)
-        elif func.__name__ == 'int':
-            dtype = 'int' + theano.config.floatX[-2:]
-            return lambda x : T.cast(x, dtype=dtype)
-
-        # ** ------------------------
-        # handle range/xrange
-        elif func.__name__ in ('range', 'xrange'):
-            return lambda *args : func(*(unshadow(a) for a in args))
-
-        # ** ------------------------
-        # handle numpy functions
-        elif ((getattr(func, '__module__', None)
-               and func.__module__.startswith('numpy'))
-               or isinstance(func, np.ufunc)):
-
-            # else:
-                # get the theano version
-            func = getattr(T, func.__name__, func)
-
-        # ** ------------------------
-        # handle array methods that suddenly have tensor instances
+        # ** ------------------------ array methods (with tensor instances)
         elif isvar(getattr(func, '__self__', None)):
             return self.handle_array_methods(func.__self__, func.__name__)
 
-        # ** ------------------------
-        # handle random numbers
-        elif ('method random of mtrand.RandomState' in str(func)
-              or 'method random_sample of mtrand.RandomState' in str(func)):
-            def rand_u(shape):
-                return global_randomstreams.uniform( low=0, high=1, size=shape)
-            return rand_u
+        # ** ------------------------ type/casting functions
+        elif type(func) is type:
+            if func.__name__ in ['bool', 'bool_', 'bool8']:
+                logger.info('Warning: Theano has no bool type; upgrading to int8.')
+                def bool_(x):
+                    return T.neq(x, 0)
+                return bool_
+            elif func.__name__ in T.basic._cast_mapping.keys():
+                def cast(x):
+                    return T.cast(x, dtype=func.__name__)
+                return cast
+            elif func.__name__ == 'float':
+                def float_(x):
+                    return T.cast(x, dtype=theano.config.floatX)
+                return float_
+            elif func.__name__ == 'int':
+                def int_(x):
+                    return T.cast(x, dtype='int' + theano.config.floatX[-2:])
+                return int_
+            elif func.__name__ == 'enumerate':
+                def enumerate_(iterable, start=0):
+                    if isvar(iterable):
+                        raise TypeError(
+                            'Called enumerate() on Tensor {0} but Tensors '
+                            'do not support iteration. Maybe try escaping '
+                            'the tensor?'.format(iterable))
+                    else:
+                        return enumerate(iterable, start=start)
+                return enumerate_
+            else:
+                raise ValueError('Unsupported type: {0}'.format(func))
+
+        # ** ------------------------ numpy functions
+        elif ((getattr(func, '__module__', None)
+                and func.__module__.startswith('numpy'))
+               or isinstance(func, np.ufunc)
+               or str(func) == '<built-in function abs>'
+               or str(func) == '<built-in function max>'
+               or str(func) == '<built-in function min>'
+               or str(func) == '<built-in function sum>'):
+            if func.__name__ in ('abs', 'absolute'):
+                return abs
+            elif hasattr(T, func.__name__):
+                func = getattr(T, func.__name__)
+            else:
+                raise ValueError('Unsupported function: {0}'.format(func))
+
+        # ** ------------------------ built-ins
+        elif 'built-in' in str(func):
+            if func.__name__ in ('range', 'xrange'):
+                def range_(*args):
+                    return func(*(unshadow(a) for a in args))
+                return range_
+            elif func.__name__ == 'zip':
+                def zip_(*args):
+                    if __builtin__.any(isvar(a) for a in args):
+                        raise TypeError(
+                            'Called zip() on Tensor but Tensors '
+                            'do not support iteration. Maybe try escaping '
+                            'the tensor?')
+                    else:
+                        return zip(*args)
+                return zip_
+            elif ('method random of mtrand.RandomState' in str(func)
+                  or 'method random_sample of mtrand.RandomState' in str(func)):
+                def rand_u(shape):
+                    return global_randomstreams.uniform( low=0, high=1, size=shape)
+                return rand_u
+            else:
+                raise ValueError('Unsupported function: {0}'.format(func))
 
         return func
 
@@ -318,13 +350,12 @@ class TheanoTransformer(ASTTransformer):
                 return None
             return sort
 
-
+        # ...Otherwise, try to access the method on the Theano variable
         else:
             return getattr(var, method_name)
 
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
-
 
     def visit_FunctionDef(self, node):
         """

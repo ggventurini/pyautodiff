@@ -6,9 +6,7 @@ import autodiff.utils as utils
 from autodiff.context import Context
 import autodiff.context as c
 
-
 context = Context()
-
 
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
@@ -91,6 +89,15 @@ class Python(unittest.TestCase):
     def test_pass(self):
         def fn(x):
             pass
+        self.assertTrue(checkfn(fn, [1]))
+
+    @unittest.expectedFailure
+    def test_enumerate(self):
+        def fn(x):
+            z = np.arange(x.shape[0])
+            for i, xi in enumerate(x):
+                z[i] += xi
+            return z
         self.assertTrue(checkfn(fn, [1]))
 
 
@@ -428,6 +435,10 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x.std(axis=1), [2]))
         self.assertRaises(TypeError, checkfn,
                           lambda x, a: x.std(a), [2], 0)
+
+    def test_size(self):
+        self.assertTrue(checkfn(lambda x : np.arange(x.size), [1]))
+        self.assertTrue(checkfn(lambda x : np.arange(x.size), [2]))
 
     def test_T(self):
         def fn(x):
