@@ -11,6 +11,13 @@ import autodiff.context as c
 context = Context()
 
 
+def f(x):
+    return x
+#     x.swapaxes
+
+
+F = context.recompile(f)
+
 def checkfn(f, var_ndim, *args, **kwargs):
     override = kwargs.pop('override', None)
     dim = [[4] * nd for nd in var_ndim]
@@ -249,4 +256,194 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.bool(x), [0]))
 
 
+class ArrayMethodsAttributes(unittest.TestCase):
+    """
+    Test for coverage of array methods and attributes
+    """
+
+    def test_argmax(self):
+        self.assertTrue(checkfn(lambda x: x.argmax(), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmax(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmax(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.argmax(a), [2], 0)
+
+    def test_argmin(self):
+        self.assertTrue(checkfn(lambda x: x.argmin(), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmin(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.argmin(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.argmin(a), [2], 0)
+
+    def test_argsort(self):
+        self.assertTrue(checkfn(lambda x: x.argsort(), [2]))
+        self.assertTrue(checkfn(lambda x: x.argsort(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.argsort(axis=1), [2]))
+        self.assertTrue(checkfn(
+            lambda x, a: x.argsort(a), [2], 0))
+
+    def test_clip(self):
+        def fn(x, a, b):
+            return x.clip(a, b)
+        self.assertTrue(checkfn(fn, [2], .4, .45))
+
+    def test_conj(self):
+        def fn(x):
+            return x.conj()
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_conjugate(self):
+        def fn(x):
+            return x.conjugate()
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_copy(self):
+        def fn(x):
+            return x.copy()
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_diagonal(self):
+        def fn(x):
+            return x.diagonal()
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_dot(self):
+        def fn(x, y):
+            return x.dot(y)
+        self.assertTrue(checkfn(fn, [2, 2]))
+        self.assertTrue(checkfn(fn, [1, 2]))
+
+    def test_imag(self):
+        def fn(x):
+            return x.imag
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_flatten(self):
+        def fn(x):
+            return x.flatten()
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_max(self):
+        self.assertTrue(checkfn(lambda x: x.max(), [2]))
+        self.assertTrue(checkfn(lambda x: x.max(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.max(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.max(a), [2], 0)
+
+    def test_mean(self):
+        self.assertTrue(checkfn(lambda x: x.mean(), [2]))
+        self.assertTrue(checkfn(lambda x: x.mean(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.mean(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.mean(a), [2], 0)
+
+    def test_min(self):
+        self.assertTrue(checkfn(lambda x: x.min(), [2]))
+        self.assertTrue(checkfn(lambda x: x.min(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.min(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.min(a), [2], 0)
+
+    def test_prod(self):
+        self.assertTrue(checkfn(lambda x: x.prod(), [2]))
+        self.assertTrue(checkfn(lambda x: x.prod(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.prod(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.prod(a), [2], 0)
+
+    def test_ravel(self):
+        def fn(x):
+            return x.ravel()
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_repeat(self):
+        def fn(x, repeats):
+            return x.repeat(repeats, axis=1)
+        self.assertTrue(checkfn(fn, [2], 5))
+
+    def test_real(self):
+        def fn(x):
+            return x.real
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_reshape(self):
+        def fn(x, shape):
+            return x.reshape(shape)
+        self.assertTrue(checkfn(fn, [2], [2, 8]))
+
+        def fn(x, s1, s2):
+            return x.reshape(s1, s2)
+        self.assertTrue(checkfn(fn, [2], 2, 8))
+        self.assertTrue(checkfn(fn, [2], 2, -1))
+
+    def test_sort(self):
+        def fn(x):
+            x.sort()
+            return x
+        self.assertTrue(checkfn(fn, [2]))
+
+        def fn(x):
+            x.sort(1)
+            return x
+        self.assertTrue(checkfn(fn, [2]))
+
+        def fn(x):
+            x.sort(axis=1)
+            return x
+        self.assertTrue(checkfn(fn, [2]))
+
+        def fn(x, a):
+            x.sort(a)
+            return x
+        self.assertTrue(checkfn(fn, [2], 0))
+
+    def test_sum(self):
+        self.assertTrue(checkfn(lambda x: x.sum(), [2]))
+        self.assertTrue(checkfn(lambda x: x.sum(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.sum(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.sum(a), [2], 0)
+
+    def test_swapaxes(self):
+        def fn(x, a1, a2):
+            return x.swapaxes(a1, a2)
+        self.assertTrue(checkfn(fn, [2], 0, 1))
+
+    def test_astype(self):
+        self.assertTrue(checkfn(lambda x: x.astype('int8'), [2]))
+        self.assertTrue(checkfn(lambda x: x.astype('float32'), [2]))
+        self.assertTrue(checkfn(lambda x: x.astype(np.float32), [2]))
+        self.assertTrue(checkfn(lambda x: x.astype(dtype='float32'), [2]))
+        self.assertTrue(checkfn(lambda x: x.astype(dtype=np.float32), [2]))
+
+    def test_std(self):
+        self.assertTrue(checkfn(lambda x: x.std(), [2]))
+        self.assertTrue(checkfn(lambda x: x.std(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.std(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.std(a), [2], 0)
+
+    def test_T(self):
+        def fn(x):
+            return x.T
+        self.assertTrue(checkfn(fn, [1]))
+        self.assertTrue(checkfn(fn, [2]))
+
+    @unittest.skip('skip trace')
+    def test_trace(self):
+        def fn(x):
+            pass
+
+    def test_transpose(self):
+        def fn(x):
+            return x.transpose()
+        self.assertTrue(checkfn(fn, [1]))
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_var(self):
+        self.assertTrue(checkfn(lambda x: x.var(), [2]))
+        self.assertTrue(checkfn(lambda x: x.var(1), [2]))
+        self.assertTrue(checkfn(lambda x: x.var(axis=1), [2]))
+        self.assertRaises(TypeError, checkfn,
+                          lambda x, a: x.var(a), [2], 0)
 

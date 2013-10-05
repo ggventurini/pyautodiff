@@ -220,6 +220,12 @@ class TheanoTransformer(ASTTransformer):
                 # get the theano version
             func = getattr(T, func.__name__, func)
 
+        # ** ------------------------
+        # handle array methods that suddenly have tensor instances
+        elif isvar(getattr(func, '__self__', None)):
+            return self.handle_array_methods(func.__self__, func.__name__)
+
+        # ** ------------------------
         # handle random numbers
         elif ('method random of mtrand.RandomState' in str(func)
               or 'method random_sample of mtrand.RandomState' in str(func)):
@@ -228,6 +234,43 @@ class TheanoTransformer(ASTTransformer):
             return rand_u
 
         return func
+
+    def handle_array_methods(self, var, method_name):
+        if not isvar(var):
+            return getattr(var, method_name)
+
+        if method_name == 'reshape':
+            def reshape(*args, **kwargs):
+                if not isinstance(args[0], (list, tuple)):
+                    args = [args]
+                return var.reshape(*args, **kwargs)
+            return reshape
+        elif method_name == 'swapaxes':
+            def swapaxes(*args, **kwargs):
+                axis1, axis2 = (unshadow(a) for a in args)
+                dims = range(var.ndim)
+                dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
+                return var.dimshuffle(*dims)
+            return swapaxes
+        elif method_name == 'astype':
+            def astype(*args, **kwargs):
+                dtype = kwargs.pop('dtype', None)
+                if not dtype:
+                    dtype = args[0]
+                if not isinstance(dtype, str):
+                    # get numpy dtype objects like np.float32
+                    try:
+                        dtype = dtype.__name__
+                    except:
+                        raise NotImplementedError('Unsupported dtype: {0}'.format(dtype))
+                if dtype == 'bool':
+                    dtype == 'int8'
+                    logger.info('Warning: Theano has no bool type; upgrading to int8.')
+
+                return var.astype(dtype)
+            return astype
+        else:
+            return getattr(var, method_name)
 
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
@@ -303,4 +346,16 @@ class TheanoTransformer(ASTTransformer):
                                        op=node.op)),
             node)
 
+        return new_node
+
+    def visit_Attribute(self, node):
+        self.generic_visit(node)
+        new_node = ast_module.copy_location(
+            _simple_call(args=[node.value,
+                               ast_module.Str(s=node.attr),
+                               self.ast_wrap('handle_array_methods',
+                                             [node.value, ast_module.Str(s=node.attr)])],
+                         func=ast_module.Name(ctx=ast_module.Load(),
+                                              id='getattr')),
+            node)
         return new_node
