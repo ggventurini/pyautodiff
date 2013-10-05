@@ -124,7 +124,7 @@ class ASTTransformer(ast_module.NodeTransformer):
             func=ast_module.Attribute(attr=method_name,
                                       ctx=ast_module.Load(),
                                       value=ast_module.Name(ctx=ast_module.Load(),
-                                                            id='ASTTransformer')),
+                                                            id='__Context')),
             args=args)
 
         return wrapped
@@ -137,7 +137,7 @@ class ASTTransformer(ast_module.NodeTransformer):
     def recompile(self, f):
         ast = self.transform(f)
         new_globals = f.func_globals.copy()
-        new_globals.update({'ASTTransformer' : self})
+        new_globals.update({'__Context' : self})
         return compile_func(ast, new_globals, '<Context-AST>')
 
 
