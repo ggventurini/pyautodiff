@@ -309,6 +309,50 @@ class TheanoTransformer(ASTTransformer):
     # ** AST Manipulation (Node Visitors)
 
 
+    def visit_FunctionDef(self, node):
+        """
+        When a function is defined, shadow each of its arguments immediately.
+
+        The AST is modified so that a function defined as:
+
+            def f(a, b=None, *c, **d):
+                ...
+
+        is changed via this method to:
+
+            def f(a, b=None, *c, **d):
+                a = a
+                b = b
+                c = c
+                d = d
+                ...
+
+        which is eventually transformed by the visitor to:
+
+            def f(a, b=None, *c, **d):
+                a = self.shadow(a)
+                b = self.shadow(b)
+                c = self.shadow(c)
+                d = self.shadow(d)
+                ...
+
+        This way, any future references to these variables will access their
+        shadowed values. This is important because inplace modifications do
+        not always force the `shadow` method to get called, and so the inplace
+        changes might not be reflected the next (and first!) time the variable
+        is loaded.
+        """
+        body = []
+        for param in node.args.args + [node.args.vararg] + [node.args.kwarg]:
+            if param:
+                body.append(ast_module.Assign(
+                    targets=[ast_module.Name(ctx=ast_module.Store(),
+                                             id=getattr(param, 'id', param))],
+                    value=ast_module.Name(ctx=ast_module.Load(),
+                                          id=getattr(param, 'id', param))))
+        node.body = body + node.body
+        return self.generic_visit(node)
+
     def visit_Num(self, node):
         # don't make changes because these are typically function arguments
         # return self.ast_wrap('shadow', node)
