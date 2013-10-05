@@ -72,56 +72,51 @@ def unshadow(x):
         return x
 
 
-class Context(ast_module.NodeTransformer):
-
-    def __init__(self):
-        super(Context, self).__init__()
+class Context(object):
+    def __init__(self, borrowable=()):
         self.s_vars = dict() # symbolic map
-        self._nogc = [] # ensure these id's do not get recycled by garbage collection
+        # FIXME do we need to hold on to all of these itermediates?
+        # ensure these id's do not get recycled by garbage collection
+        self._nogc = []
         self._noshadow = set()
+        self.borrowable = [id(b) for b in borrowable]
 
     def transform(self, f):
         self.s_vars.clear()
-        ast = self.visit(get_ast(f))
+        transformer = TheanoTransformer(self)
+        ast = transformer.visit(get_ast(f))
         ast = ast_module.fix_missing_locations(ast)
         new_globals = f.func_globals.copy()
-        new_globals.update({'Context' : self})
+        new_globals.update({'TheanoTransformer' : transformer})
         new_f = meta.decompiler.compile_func(
-            ast, '<TheanoTransformer-AST>', new_globals)
+            ast, '<Context-AST>', new_globals)
         return new_f
-
-    def ast_wrap(self, args, method_name):
-        if not isinstance(args, (list, tuple)):
-            args = [args]
-
-        wrapped = ast_module.Call(
-            args=args,
-            func=ast_module.Attribute(
-                attr=method_name,
-                ctx=ast_module.Load(),
-                value=ast_module.Name(
-                    ctx=ast_module.Load(), id='Context')),
-            keywords=[],
-            kwargs=None,
-            starargs=None)
-        return wrapped
 
     def getvar(self, var):
         return self.s_vars.get(id(var), var)
+
+
+class TheanoTransformer(ast_module.NodeTransformer):
+
+    def __init__(self, watcher):
+        super(TheanoTransformer, self).__init__()
+        self.watcher = watcher
+
+    # ** --------------------------------------------------------
+    # ** Direct Manipulation (Methods)
 
     def shadow(self, x):
         """
         Given a numerical variable x, return an equivalent Theano shared variable
         and store the relationship in self.s_vars. Otherwise return x.
         """
-        if id(x) in self._noshadow:
+        if id(x) in self.watcher._noshadow:
             return x
 
         if not isinstance(x, (int, float, np.ndarray)):
             return x
 
-        # take special care with small ints, because CPYthon caches them.
-        # This makes it impossible to tell one from the other.
+        # take special care with small ints, because CPython caches them.
         if isinstance(x, int) and -5 <= x <= 256:
             x = np.int_(x)
 
@@ -132,12 +127,12 @@ class Context(ast_module.NodeTransformer):
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
 
-        if id(x) in self.s_vars:
-            return self.s_vars[id(x)]
+        if id(x) in self.watcher.s_vars:
+            return self.watcher.s_vars[id(x)]
         else:
-            self._nogc.append(x)
+            self.watcher._nogc.append(x)
             sym_x = theano.shared(x)
-            self.s_vars[id(x)] = theano.shared(x)
+            self.watcher.s_vars[id(x)] = theano.shared(x)
             return sym_x
 
     def handle_functions(self, func):
@@ -147,10 +142,12 @@ class Context(ast_module.NodeTransformer):
         Generally used to exchange NumPy functions for Theano equivalents.
         """
 
+        # ** ------------------------
         # if the function has a _theano_fn attribute, return that fn
         if hasattr(func, '_theano_fn'):
             func = func._theano_fn
 
+        # ** ------------------------
         # handle casting functions
         elif func.__name__ in ['bool', 'bool_', 'bool8']:
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
@@ -163,21 +160,16 @@ class Context(ast_module.NodeTransformer):
             dtype = 'int' + theano.config.floatX[-2:]
             return lambda x : T.cast(x, dtype=dtype)
 
+        # ** ------------------------
         # handle range/xrange
         elif func.__name__ in ('range', 'xrange'):
             return lambda *args : func(*(unshadow(a) for a in args))
 
+        # ** ------------------------
         # handle numpy functions
         elif ((getattr(func, '__module__', None)
                and func.__module__.startswith('numpy'))
                or isinstance(func, np.ufunc)):
-
-            # if func.__name__ == 'reshape':
-                # return func
-                # def f(x, shape):
-                    # print shape
-                    # return T.reshape(x, shape)#[unshadow(s) for s in shape])
-                # return f
 
             # else:
                 # get the theano version
@@ -191,6 +183,25 @@ class Context(ast_module.NodeTransformer):
             return rand_u
 
         return func
+
+    # ** --------------------------------------------------------
+    # ** AST Manipulation (Node Visitors)
+
+    def ast_wrap(self, args, method_name):
+        if not isinstance(args, (list, tuple)):
+            args = [args]
+
+        wrapped = ast_module.Call(
+            args=args,
+            func=ast_module.Attribute(
+                attr=method_name,
+                ctx=ast_module.Load(),
+                value=ast_module.Name(
+                    ctx=ast_module.Load(), id='TheanoTransformer')),
+            keywords=[],
+            kwargs=None,
+            starargs=None)
+        return wrapped
 
     def visit_Num(self, node):
         # don't make changes because these are typically function arguments
@@ -213,9 +224,7 @@ class Context(ast_module.NodeTransformer):
         the 'handle_functions' method.
         """
         self.generic_visit(node)
-        node.func = self.ast_wrap(
-            self.ast_wrap(node.func, 'handle_functions'),
-            'shadow')
+        node.func = self.ast_wrap(node.func, 'handle_functions')
         return node
 
     def visit_Compare(self, node):
