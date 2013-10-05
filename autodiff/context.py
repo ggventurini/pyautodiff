@@ -50,6 +50,23 @@ def print_source(ast):
         ast = get_ast(ast.__call__)
     meta.asttools.python_source(ast)
 
+def compile_func(ast, new_globals=None, file_name=None):
+    global_dict = globals().copy()
+    if new_globals is not None:
+        global_dict.update(new_globals)
+    if file_name is None:
+        file_name = '<Context-AST>'
+    if not isinstance(ast, ast_module.FunctionDef):
+        ast = ast_module.fix_missing_locations(
+            ast_module.FunctionDef(name='<tmp_fn>',
+                                   args=ast_module.arguments(args=[],
+                                                             defaults=[],
+                                                             kwarg=None,
+                                                             vararg=None),
+                                   body=[ast_module.Return(ast)],
+                                   decorator_list=[]))
+    return meta.decompiler.compile_func(ast, file_name, global_dict)
+
 def unshadow(x):
     if isvar(x):
         try:
@@ -121,9 +138,7 @@ class ASTTransformer(ast_module.NodeTransformer):
         ast = self.transform(f)
         new_globals = f.func_globals.copy()
         new_globals.update({'ASTTransformer' : self})
-        new_f = meta.decompiler.compile_func(
-            ast, '<Context-AST>', new_globals)
-        return new_f
+        return compile_func(ast, new_globals, '<Context-AST>')
 
 
 class TheanoTransformer(ASTTransformer):
