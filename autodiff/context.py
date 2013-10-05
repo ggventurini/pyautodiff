@@ -13,19 +13,11 @@ logger = logging.getLogger('autodiff')
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 global_randomstreams = RandomStreams(seed=123)
 
-
-def istensor(x):
-    tensortypes = (theano.tensor.TensorConstant,
-                   theano.tensor.TensorVariable)
-    return isinstance(x, tensortypes)
-
-
 def isvar(x):
     vartypes = (theano.tensor.sharedvar.SharedVariable,
                 theano.tensor.TensorConstant,
                 theano.tensor.TensorVariable)
     return isinstance(x, vartypes)
-
 
 def get_ast(func, flags=0):
     func_def = meta.decompiler.decompile_func(func)
@@ -37,14 +29,12 @@ def get_ast(func, flags=0):
     assert isinstance(func_def, ast_module.FunctionDef)
     return func_def
 
-
 def get_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
     elif callable(ast):
         ast = get_ast(ast.__call__)
     return meta.asttools.dump_python_source(ast)
-
 
 def print_ast(ast):
     if hasattr(ast, 'func_code'):
@@ -53,14 +43,12 @@ def print_ast(ast):
         ast = get_ast(ast.__call__)
     meta.asttools.print_ast(ast)
 
-
 def print_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
     elif callable(ast):
         ast = get_ast(ast.__call__)
     meta.asttools.python_source(ast)
-
 
 def unshadow(x):
     if isvar(x):
@@ -81,6 +69,7 @@ def _simple_call(func, args):
                            starargs=None)
     return call
 
+
 class Context(object):
     def __init__(self, borrowable=()):
         self.s_vars = dict() # symbolic map
@@ -89,9 +78,6 @@ class Context(object):
         self._nogc = []
         self._noshadow = set()
         self.borrowable = [id(b) for b in borrowable]
-
-    def getvar(self, var):
-        return self.s_vars.get(id(var), var)
 
     def transform(self, f):
         transformer = TheanoTransformer(watcher=self)
