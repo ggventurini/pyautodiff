@@ -5,6 +5,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 
+import autodiff.utils as utils
 
 logger = logging.getLogger('autodiff')
 
@@ -150,7 +151,15 @@ class TheanoTransformer(ASTTransformer):
     # ** --------------------------------------------------------
     # ** Direct Manipulation (Methods)
 
-    def shadow(self, x):
+    def shadow(self, args):
+        """
+        Helper function for `_shadow` that calls it on a flattened version of
+        its argument.
+        """
+        shadow_vars = [self._shadow(x) for x in utils.flat_from_doc(args)]
+        return utils.doc_from_flat(args, shadow_vars)
+
+    def _shadow(self, x):
         """
         Given a numerical variable x, return an equivalent Theano shared variable
         and store the relationship in self.s_vars. Otherwise return x.
@@ -172,13 +181,17 @@ class TheanoTransformer(ASTTransformer):
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
 
-        if id(x) in self.watcher.s_vars:
-            return self.watcher.s_vars[id(x)]
-        else:
+        if id(x) not in self.watcher.s_vars:
+            # add to _nogc to ensure that the id won't be reused
             self.watcher._nogc.append(x)
+            # create symbolic version
             sym_x = theano.shared(x)
+            # store symbolic version
             self.watcher.s_vars[id(x)] = theano.shared(x)
+            # return symbolic version
             return sym_x
+        else:
+            return self.watcher.s_vars[id(x)]
 
     def handle_functions(self, func):
         """
