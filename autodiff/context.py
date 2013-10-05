@@ -71,6 +71,15 @@ def unshadow(x):
     else:
         return x
 
+def _simple_call(func, args):
+    if not isinstance(args, (list, tuple)):
+        args = [args]
+    call = ast_module.Call(args=args,
+                           func=func,
+                           keywords=[],
+                           kwargs=None,
+                           starargs=None)
+    return call
 
 class Context(object):
     def __init__(self, borrowable=()):
@@ -104,19 +113,13 @@ class ASTTransformer(ast_module.NodeTransformer):
         ast_wrap returns an `ast.Call()` node which calls the method on the specified
         arguments at runtime.
         """
-        if not isinstance(args, (list, tuple)):
-            args = [args]
+        wrapped = _simple_call(
+            func=ast_module.Attribute(attr=method_name,
+                                      ctx=ast_module.Load(),
+                                      value=ast_module.Name(ctx=ast_module.Load(),
+                                                            id='ASTTransformer')),
+            args=args)
 
-        wrapped = ast_module.Call(
-            args=args,
-            func=ast_module.Attribute(
-                attr=method_name,
-                ctx=ast_module.Load(),
-                value=ast_module.Name(
-                    ctx=ast_module.Load(), id='ASTTransformer')),
-            keywords=[],
-            kwargs=None,
-            starargs=None)
         return wrapped
 
     def transform(self, f):
@@ -127,6 +130,7 @@ class ASTTransformer(ast_module.NodeTransformer):
         new_f = meta.decompiler.compile_func(
             ast, '<Context-AST>', new_globals)
         return new_f
+
 
 class TheanoTransformer(ASTTransformer):
 
@@ -267,15 +271,12 @@ class TheanoTransformer(ASTTransformer):
             # Is, IsNot, In, Not In
             return node
 
-        new_node = ast_module.Call(args=[node.left] + node.comparators,
-                                   func=ast_module.Attribute(
-                                       attr=theano_op,
-                                       ctx=ast_module.Load(),
-                                       value=ast_module.Name(
-                                           ctx=ast_module.Load(), id='T')),
-                                   keywords=[],
-                                   kwargs=None,
-                                   starargs=None)
+        new_node = _simple_call(args=[node.left] + node.comparators,
+                                func=ast_module.Attribute(
+                                    attr=theano_op,
+                                    ctx=ast_module.Load(),
+                                    value=ast_module.Name(ctx=ast_module.Load(),
+                                                          id='T')))
 
         return new_node
 
