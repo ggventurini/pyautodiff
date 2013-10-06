@@ -13,7 +13,7 @@ logger = logging.getLogger('autodiff')
 
 # XXX FIXME This will not do - seed must be exposed.
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-global_randomstreams = RandomStreams(seed=123)
+global_randomstreams = RandomStreams(seed=np.random.randint(1, 999999))
 
 def isvar(x):
     vartypes = (theano.tensor.sharedvar.SharedVariable,
