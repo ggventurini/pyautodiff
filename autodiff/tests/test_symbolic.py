@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import theano.tensor
 
-from autodiff.symbolic import Symbolic, Function, Gradient
+import autodiff
+from autodiff.symbolic import Symbolic#, Function, Gradient
 from autodiff import tag
 
 
@@ -17,11 +18,38 @@ def checkfn(symF, *args, **kwargs):
 
 class TestSymbolic(unittest.TestCase):
     def test_trace(self):
-        def f1(x):
+        def f(x):
             return x * 5 + 10 * np.ones((3, 4))
         s = Symbolic()
         x = np.random.random((3, 4))
-        self.assertTrue(np.allclose(s.trace(f1, x).eval(), f1(x)))
+        self.assertTrue(np.allclose(s.trace(f, x).eval(), f(x)))
+
+    def test_compile_function(self):
+        def f(x):
+            return x * 5 + 10 * np.ones((3, 4))
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        o = s.trace(f, x)
+        F = s.compile_function(x, o)
+        self.assertTrue(np.allclose(F(x), f(x)))
+
+    def test_compile_gradient(self):
+        def f(x):
+            return x ** 2
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        o = s.trace(f, x)
+        F = s.compile_gradient(x, o)
+        self.assertTrue(np.allclose(F(x), 2 * x))
+
+    def test_compile_function_gradient(self):
+        def f(x):
+            return x ** 2
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        o = s.trace(f, x)
+        F = s.compile_function_gradient(x, o)
+        self.assertTrue(np.allclose(F(x), [f(x), 2 * x]))
 
     def test_multiple_trace(self):
         def f1(x):
