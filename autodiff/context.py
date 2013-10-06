@@ -106,6 +106,9 @@ class Context(object):
         t = TheanoTransformer(watcher=self)
         return t.recompile(f)
 
+    def reset(self):
+        self.s_vars.clear()
+        self.inplace_updates.clear()
 
 class ASTTransformer(NodeTransformer):
 
