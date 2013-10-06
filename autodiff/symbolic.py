@@ -1,6 +1,6 @@
 import numpy as np
 import theano
-import theano.tensor as tt
+import theano.tensor as T
 import types
 import inspect
 
