@@ -202,7 +202,7 @@ class TheanoTransformer(ASTTransformer):
             else:
                 sym_x = theano.shared(x)
             # store symbolic version
-            self.watcher.s_vars[id(x)] = theano.shared(x)
+            self.watcher.s_vars[id(x)] = sym_x
             # return symbolic version
             return sym_x
         else:
