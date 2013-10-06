@@ -6,6 +6,7 @@ import theano
 import theano.tensor as T
 
 import autodiff.utils as utils
+import autodiff.functions
 
 logger = logging.getLogger('autodiff')
 
@@ -68,12 +69,12 @@ def compile_func(ast, new_globals=None, file_name=None):
                                    decorator_list=[]))
     return meta.decompiler.compile_func(ast, file_name, global_dict)
 
-def unshadow(x):
+def escape(x):
     if isvar(x):
         try:
             return x.eval()
         except:
-            return x
+            raise ValueError('Could not escape {0}'.format(x))
     else:
         return x
 
@@ -218,6 +219,17 @@ class TheanoTransformer(ASTTransformer):
         if getattr(func, '__module__', None) == __name__:
             return func
 
+        # ** ======================= special autodiff functions
+
+        elif func is autodiff.functions.escape:
+            return escape
+
+        elif func is autodiff.functions.tag:
+            def tag(obj, tag):
+                self.watcher.s_vars[tag] = obj
+                return obj
+            return tag
+
         # ** ======================= __theano_op__
 
         elif hasattr(func, '__theano_op__'):
@@ -291,7 +303,7 @@ class TheanoTransformer(ASTTransformer):
             # ranges
             if func.__name__ in ('range', 'xrange'):
                 def range_(*args):
-                    return func(*(unshadow(a) for a in args))
+                    return func(*(escape(a) for a in args))
                 return range_
 
             # zip
@@ -386,7 +398,7 @@ class TheanoTransformer(ASTTransformer):
         # Theano has no swapaxes method
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
-                axis1, axis2 = (unshadow(a) for a in args)
+                axis1, axis2 = (escape(a) for a in args)
                 dims = range(var.ndim)
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
@@ -536,7 +548,6 @@ class TheanoTransformer(ASTTransformer):
     #     self.generic_visit(node)
     #     new_node = ast_module.copy_location(
     #         ast_module.Assign(
-    #                                                         id=node.target.id),
     #               targets=[node.target],
     #               value=ast_module.BinOp(
     #                  left=ast_module.Name(ctx=ast_module.Load(),

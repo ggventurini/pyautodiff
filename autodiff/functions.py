@@ -44,3 +44,6 @@ def tag(obj, tag):
 
     """
     return obj
+
+def escape(obj):
+    return obj
