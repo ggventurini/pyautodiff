@@ -24,6 +24,15 @@ class TestSymbolic(unittest.TestCase):
         x = np.random.random((3, 4))
         self.assertTrue(np.allclose(s.trace(f, x).eval(), f(x)))
 
+    def test_trace_method(self):
+        class Test(object):
+            def test(self, x):
+                return x + 1
+        t = Test()
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        self.assertTrue(np.allclose(s.trace(t.test, x).eval(), t.test(x)))
+
     def test_compile_function(self):
         def f(x):
             return x * 5 + 10 * np.ones((3, 4))

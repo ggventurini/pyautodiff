@@ -546,3 +546,33 @@ class ArraySubscripts(unittest.TestCase):
             x[1:3, 1:4] = o
             return x
         self.assertTrue(checkfn(f, [2]))
+
+
+class TestMethods(unittest.TestCase):
+    def test_instance_method(self):
+        class Test(object):
+            def test(self, x):
+                return x * 2
+
+        t = Test()
+        self.assertTrue(checkfn(t.test, [2]))
+
+    def test_class_method(self):
+        class Test(object):
+            @classmethod
+            def test(cls, x):
+                return x * 2
+
+        t = Test()
+        self.assertTrue(checkfn(t.test, [2]))
+        self.assertTrue(checkfn(Test.test, [2]))
+
+    def test_static_method(self):
+        class Test(object):
+            @staticmethod
+            def test(x):
+                return x * 2
+
+        t = Test()
+        self.assertTrue(checkfn(t.test, [2]))
+        self.assertTrue(checkfn(Test.test, [2]))

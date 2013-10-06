@@ -2,6 +2,7 @@ import logging
 import meta
 from ast import *
 import numpy as np
+import types
 import theano
 import theano.tensor as T
 
@@ -144,7 +145,12 @@ class ASTTransformer(NodeTransformer):
             func_globals.update((v, c.cell_contents) for v, c in
                                 zip(f.func_code.co_freevars, f.func_closure))
         func_globals.update({'__ctx' : self})
-        return compile_func(ast, func_globals, '<Context-AST [__ctx]>')
+        new_f = compile_func(ast, func_globals, '<Context-AST [__ctx]>')
+        if isinstance(f, types.MethodType):
+            new_f = types.MethodType(new_f,
+                                     f.im_self,
+                                     f.im_class)
+        return new_f
 
 
 class TheanoTransformer(ASTTransformer):
