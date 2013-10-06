@@ -30,6 +30,8 @@ def checkfn(f, var_ndim, *args, **kwargs):
 
     py_result = override or f(*(values + args))
 
+    context.reset()
+
     if sym_result is None:
         return sym_result is None and py_result is None
     else:
@@ -469,4 +471,78 @@ class NestedFunctions(unittest.TestCase):
         def f(x):
             return g(x)
 
+        self.assertTrue(checkfn(f, [2]))
+
+class ArraySubscripts(unittest.TestCase):
+    def test_indexing(self):
+        self.assertTrue(checkfn(lambda x : x[2], [1]))
+        self.assertTrue(checkfn(lambda x : x[-2], [1]))
+        self.assertTrue(checkfn(lambda x : x[2], [2]))
+        self.assertTrue(checkfn(lambda x : x[-2], [2]))
+        self.assertTrue(checkfn(lambda x : x[2, 2], [2]))
+        self.assertTrue(checkfn(lambda x : x[-2, -2], [2]))
+
+    def test_slicing(self):
+        self.assertTrue(checkfn(lambda x : x[1:3], [1]))
+        self.assertTrue(checkfn(lambda x : x[1:-1], [1]))
+        self.assertTrue(checkfn(lambda x : x[1:3], [2]))
+        self.assertTrue(checkfn(lambda x : x[1:-1], [2]))
+        self.assertTrue(checkfn(lambda x : x[1:3, 1:3], [2]))
+        self.assertTrue(checkfn(lambda x : x[1:-1, 1:-1], [2]))
+
+    def test_index_and_slice(self):
+        self.assertTrue(checkfn(lambda x : x[1:3, 2], [2]))
+
+    def test_index_assign(self):
+        def f():
+            x = np.ones((3, 4))
+            x[2] = 100
+            return x
+        self.assertTrue(checkfn(f, []))
+
+        def f():
+            x = np.ones((3, 4))
+            x[2, 2] = 100
+            return x
+        self.assertTrue(checkfn(f, []))
+
+        def f():
+            x = np.ones((3, 4))
+            x[2, 2] += 100
+            return x
+        self.assertTrue(checkfn(f, []))
+
+        def f(x):
+            x[2, 2] = 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
+
+        def f(x):
+            x[2, 2] += 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
+
+    def test_slice_assign(self):
+        def f():
+            x = np.ones((3, 4))
+            x[2:3] = 100
+            return x
+        self.assertTrue(checkfn(f, []))
+
+        def f():
+            x = np.ones((3, 4))
+            x[2:3, 2:3] += 100
+            return x
+        self.assertTrue(checkfn(f, []))
+
+        def f(x):
+            x[2:3, 2:3] += 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
+
+    def test_array_assign(self):
+        def f(x):
+            o = np.ones((2, 3))
+            x[1:3, 1:4] = o
+            return x
         self.assertTrue(checkfn(f, [2]))
