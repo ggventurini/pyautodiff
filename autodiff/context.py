@@ -138,9 +138,12 @@ class ASTTransformer(ast_module.NodeTransformer):
 
     def recompile(self, f):
         ast = self.transform(f)
-        new_globals = f.func_globals.copy()
-        new_globals.update({'__C' : self})
-        return compile_func(ast, new_globals, '<Context-AST>')
+        func_globals = f.func_globals.copy()
+        if f.func_closure:
+            func_globals.update((v, c.cell_contents) for v, c in
+                                zip(f.func_code.co_freevars, f.func_closure))
+        func_globals.update({'__C' : self})
+        return compile_func(ast, func_globals, '<Context-AST>')
 
 
 class TheanoTransformer(ASTTransformer):

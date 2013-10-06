@@ -462,7 +462,9 @@ class ArrayMethodsAttributes(unittest.TestCase):
 class NestedFunctions(unittest.TestCase):
     def test_nested_functions(self):
         def g(x):
-            return x.swapaxes(1, 0)
+            def h(x):
+                return x.swapaxes(1, 0)
+            return h(x)
 
         def f(x):
             return g(x)
