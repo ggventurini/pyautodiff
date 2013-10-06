@@ -161,8 +161,8 @@ class TheanoTransformer(ASTTransformer):
         Helper function for `_shadow` that calls it on a flattened version of
         its argument.
         """
-        shadow_vars = [self._shadow(x) for x in utils.flat_from_doc(args)]
-        return utils.doc_from_flat(args, shadow_vars)
+        shadow_vars = [self._shadow(x) for x in utils.flatten(args)]
+        return utils.unflatten(args, shadow_vars)
 
     def _shadow(self, x):
 
