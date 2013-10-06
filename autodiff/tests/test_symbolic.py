@@ -15,6 +15,108 @@ def checkfn(symF, *args, **kwargs):
 #========= Tests
 
 
+class TestSymbolic(unittest.TestCase):
+    def test_trace(self):
+        def f1(x):
+            return x * 5 + 10 * np.ones((3, 4))
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        self.assertTrue(np.allclose(s.trace(f1, x).eval(), f1(x)))
+
+    def test_multiple_trace(self):
+        def f1(x):
+            return x + 1.0
+
+        def f2(x):
+            return x * 2.0
+
+        def f3(x):
+            return x ** 2
+        s = Symbolic()
+        x = np.random.random((3, 4))
+        o1 = s.trace(f1, x)
+        o2 = s.trace(f2, o1)
+        o3 = s.trace(f3, o2)
+
+        # test function
+        f = s.compile_function(x, o3)
+        self.assertTrue(np.allclose(f(x), f3(f2(f1(x)))))
+
+        # test gradient
+        o4 = s.trace(lambda x: x.sum(), o3)
+        g = s.compile_gradient(x, o4, wrt=x)
+        self.assertTrue(np.allclose(g(x), 8 * (x+1)))
+
+    def test_symbolic_readme(self):
+        """ the README example"""
+
+        # -- a vanilla function
+        def f1(x):
+            return x + 2
+
+        # -- a function referencing a global variable
+        y = np.random.random(10)
+
+        def f2(x):
+            return x * y
+
+        # -- a function with a local variable
+        def f3(x):
+            z = tag(np.ones(10), 'local_var')
+            return (x + z) ** 2
+
+        # -- create a general symbolic tracer and apply
+        #    it to the three functions
+        x = np.random.random(10)
+        tracer = Symbolic()
+
+        out1 = tracer.trace(f1, x)
+        out2 = tracer.trace(f2, out1)
+        out3 = tracer.trace(f3, out2)
+
+        # -- compile a function representing f(x, y, z) = out3
+        new_fn = tracer.compile_function(inputs=[x, y, 'local_var'],
+                                         outputs=out3)
+
+        # -- compile the gradient of f(x) = out3, with respect to y
+        fn_grad = tracer.compile_gradient(inputs=x,
+                                          outputs=out3,
+                                          wrt=y,
+                                          reduction=theano.tensor.sum)
+
+        assert fn_grad  # to stop flake error
+
+        self.assertTrue(np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x)))))
+
+    def test_class(self):
+        class Test(object):
+            def f(self, x):
+                return x + 100.0
+
+            @classmethod
+            def g(cls, x):
+                return x + 100.0
+
+            @staticmethod
+            def h(x):
+                return x + 100.0
+
+        t = Test()
+        s = Symbolic()
+        x = 1.0
+        o = s.trace(t.f, x)
+        f = s.compile_function(x, o)
+        assert(f(2.0) == 102.0)
+
+        o = s.trace(t.g, x)
+        f = s.compile_function(x, o)
+        assert(f(2.0) == 102.0)
+
+        o = s.trace(t.h, x)
+        f = s.compile_function(x, o)
+        assert(f(2.0) == 102.0)
+
+
 class TestFunction(unittest.TestCase):
     def test_sig_no_arg(self):
         # single arg, no default
@@ -269,98 +371,3 @@ class TestGradient(unittest.TestCase):
 
         g = Gradient(fn, wrt=b)
         self.assertTrue(np.allclose(g(a, b), a))
-
-
-class TestSymbolic(unittest.TestCase):
-    def test_symbolic(self):
-        def f1(x):
-            return x + 1.0
-
-        def f2(x):
-            return x * 2.0
-
-        def f3(x):
-            return x ** 2
-        s = Symbolic()
-        x = np.random.random((3, 4))
-        o1 = s.trace(f1, x)
-        o2 = s.trace(f2, o1)
-        o3 = s.trace(f3, o2)
-
-        # test function
-        f = s.compile_function(x, o3)
-        self.assertTrue(np.allclose(f(x), f3(f2(f1(x)))))
-
-        # test gradient
-        o4 = s.trace(lambda x: x.sum(), o3)
-        g = s.compile_gradient(x, o4, wrt=x)
-        self.assertTrue(np.allclose(g(x), 8 * (x+1)))
-
-    def test_symbolic_readme(self):
-        """ the README example"""
-
-        # -- a vanilla function
-        def f1(x):
-            return x + 2
-
-        # -- a function referencing a global variable
-        y = np.random.random(10)
-
-        def f2(x):
-            return x * y
-
-        # -- a function with a local variable
-        def f3(x):
-            z = tag(np.ones(10), 'local_var')
-            return (x + z) ** 2
-
-        # -- create a general symbolic tracer and apply
-        #    it to the three functions
-        x = np.random.random(10)
-        tracer = Symbolic()
-
-        out1 = tracer.trace(f1, x)
-        out2 = tracer.trace(f2, out1)
-        out3 = tracer.trace(f3, out2)
-
-        # -- compile a function representing f(x, y, z) = out3
-        new_fn = tracer.compile_function(inputs=[x, y, 'local_var'],
-                                         outputs=out3)
-
-        # -- compile the gradient of f(x) = out3, with respect to y
-        fn_grad = tracer.compile_gradient(inputs=x,
-                                          outputs=out3,
-                                          wrt=y,
-                                          reduction=theano.tensor.sum)
-
-        assert fn_grad  # to stop flake error
-
-        self.assertTrue(np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x)))))
-
-    def test_class(self):
-        class Test(object):
-            def f(self, x):
-                return x + 100.0
-
-            @classmethod
-            def g(cls, x):
-                return x + 100.0
-
-            @staticmethod
-            def h(x):
-                return x + 100.0
-
-        t = Test()
-        s = Symbolic()
-        x = 1.0
-        o = s.trace(t.f, x)
-        f = s.compile_function(x, o)
-        assert(f(2.0) == 102.0)
-
-        o = s.trace(t.g, x)
-        f = s.compile_function(x, o)
-        assert(f(2.0) == 102.0)
-
-        o = s.trace(t.h, x)
-        f = s.compile_function(x, o)
-        assert(f(2.0) == 102.0)
