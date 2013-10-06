@@ -298,8 +298,6 @@ class TheanoTransformer(ASTTransformer):
                 def rand_u(shape):
                     return global_randomstreams.uniform( low=0, high=1, size=shape)
                 return rand_u
-            else:
-                raise ValueError('Unsupported function: {0}'.format(func))
 
         # ** ======================= Anything else
 
@@ -311,6 +309,10 @@ class TheanoTransformer(ASTTransformer):
                 return new_func
             except:
                 raise ValueError('Unsupported function: {0}'.format(func))
+
+        # ** ======================= Catchall
+
+        return func
 
 
     def handle_array_methods(self, var, method_name):
