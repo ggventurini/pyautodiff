@@ -164,10 +164,12 @@ class TheanoTransformer(ASTTransformer):
         return utils.doc_from_flat(args, shadow_vars)
 
     def _shadow(self, x):
+
         """
-        Given a numerical variable x, return an equivalent Theano shared variable
-        and store the relationship in self.s_vars. Otherwise return x.
+        Given a numerical variable x, return an equivalent Theano shared
+        variable and store the relationship in self.s_vars. Otherwise return x.
         """
+
         if id(x) in self.watcher._noshadow:
             return x
 
@@ -225,14 +227,16 @@ class TheanoTransformer(ASTTransformer):
 
         # ** ======================= Theano function
 
-        elif (getattr(func, '__module__', '').startswith('theano')):
+        elif (getattr(func, '__module__', None)
+              and getattr(func, '__module__').startswith('theano')):
             return func
 
         # ** ======================= type/casting functions
 
         elif type(func) is type:
             if func.__name__ in ['bool', 'bool_', 'bool8']:
-                logger.info('Warning: Theano has no bool type; upgrading to int8.')
+                logger.info('Warning: Theano has no bool type; '
+                            'upgrading to int8.')
                 def bool_(x):
                     return T.neq(x, 0)
                 return bool_
@@ -263,12 +267,13 @@ class TheanoTransformer(ASTTransformer):
 
         # ** ======================= numpy functions
 
-        elif (getattr(func, '__module__', '').startswith('numpy')
-               or isinstance(func, np.ufunc)
-               or str(func) == '<built-in function abs>'
-               or str(func) == '<built-in function max>'
-               or str(func) == '<built-in function min>'
-               or str(func) == '<built-in function sum>'):
+        elif (getattr(func, '__module__', None)
+              and getattr(func, '__module__').startswith('numpy')
+              or isinstance(func, np.ufunc)
+              or str(func) == '<built-in function abs>'
+              or str(func) == '<built-in function max>'
+              or str(func) == '<built-in function min>'
+              or str(func) == '<built-in function sum>'):
             if func.__name__ in ('abs', 'absolute'):
                 return abs
             elif hasattr(T, func.__name__):
@@ -278,11 +283,15 @@ class TheanoTransformer(ASTTransformer):
 
         # ** ======================= built-ins
 
-        elif 'built-in' in str(func):
+        elif '<built-in' in str(func):
+
+            # ranges
             if func.__name__ in ('range', 'xrange'):
                 def range_(*args):
                     return func(*(unshadow(a) for a in args))
                 return range_
+
+            # zip
             elif func.__name__ == 'zip':
                 def zip_(*args):
                     if __builtin__.any(isvar(a) for a in args):
