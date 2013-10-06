@@ -58,7 +58,10 @@ def copy_function(fn):
 
 
 class Symbolic(object):
-    def __init__(self, context=None, borrowable=None):
+    def __init__(self,
+                 borrow=None,
+                 force_floatX=False,
+                 context=None):
         """
         Arguments
         ---------
@@ -69,9 +72,16 @@ class Symbolic(object):
             memory location. This means that *inplace* operations on the Python
             (likely NumPy) object will affect the symbolic function.
 
+        force_floatX : bool
+            If True, floats and float NumPy ndarrays will be cast to the dtype
+            specified at theano.config.floatX when forming symbolic shared
+            variables, if they do not have it already. Objects in `borrowable`
+            are never cast.
+
         """
         if context is None:
-            self.context = Context(borrowable=utils.as_seq(borrowable, tuple))
+            self.context = Context(borrowable=utils.as_seq(borrow, tuple),
+                                   force_floatX=force_floatX)
         elif isinstance(context, Context):
             self.context = context
         else:
@@ -80,7 +90,7 @@ class Symbolic(object):
 
     @property
     def s_vars(self):
-        return self.context.s_vars
+        return self.context.svars
 
     def trace(self, fn, *args, **kwargs):
         fn_copy = copy_function(fn)
@@ -211,7 +221,8 @@ class Function(Symbolic):
     """
     def __init__(self,
                  pyfn,
-                 borrowable=None,
+                 borrow=None,
+                 force_floatX=False,
                  context=None,
                  use_cache=True):
         """
@@ -223,14 +234,21 @@ class Function(Symbolic):
             to build symbolic representations of any variables referenced in or
             created by this function.
 
-        borrowable : tuple of objects
+        borrow : tuple of objects
             If an object in this tuple is encountered while tracing the
             function, then its symbolic representation will alias that object's
             memory location. This means that *inplace* operations on the Python
             (likely NumPy) object will affect the symbolic function.
 
+        force_floatX : bool
+            If True, floats and float NumPy ndarrays will be cast to the dtype
+            specified at theano.config.floatX when forming symbolic shared
+            variables, if they do not have it already. Objects in `borrowable`
+            are never cast.
+
         """
-        super(Function, self).__init__(borrowable=borrowable,
+        super(Function, self).__init__(borrow=borrow,
+                                       force_floatX=force_floatX,
                                        context=context)
 
         # if the pyfn is an autodiff Function, get the pyfn
@@ -356,10 +374,12 @@ class Gradient(Function):
     def __init__(self,
                  pyfn,
                  wrt=None,
-                 borrowable=None,
+                 borrow=None,
+                 force_floatX=False,
                  context=None):
         super(Gradient, self).__init__(pyfn=pyfn,
-                                       borrowable=borrowable,
+                                       borrow=borrow,
+                                       force_floatX=force_floatX,
                                        context=context)
         self.wrt = utils.as_seq(wrt, tuple)
 
@@ -476,14 +496,16 @@ class VectorArg(Function):
                  compile_fn=False,
                  compile_grad=False,
                  compile_hv=False,
-                 borrowable=None,
+                 borrow=None,
+                 force_floatX=False,
                  context=None):
         if not (compile_fn or compile_grad or compile_hv):
             raise ValueError('At least one of \'compile_fn\', '
                              '\'compile_grad\', or \'compile_hv\' '
                              'must be True.')
         super(VectorArg, self).__init__(pyfn=pyfn,
-                                        borrowable=borrowable,
+                                        borrow=borrow,
+                                        force_floatX=force_floatX,
                                         context=context)
 
         self.compile_fn = compile_fn
