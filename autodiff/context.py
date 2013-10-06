@@ -8,18 +8,17 @@ import theano.tensor as T
 import autodiff.utils as utils
 import autodiff.functions
 
+# import with triple underscore to use [hopefully] safely in ASTs
+# basically, need to make sure that these modules aren't overwritten
+import autodiff.utils as ___utils
+import theano.tensor as ___T
+
 logger = logging.getLogger('autodiff')
 
 
 # XXX FIXME This will not do - seed must be exposed.
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 global_randomstreams = RandomStreams(seed=np.random.randint(1, 999999))
-
-def isvar(x):
-    vartypes = (theano.tensor.sharedvar.SharedVariable,
-                theano.tensor.TensorConstant,
-                theano.tensor.TensorVariable)
-    return isinstance(x, vartypes)
 
 def get_ast(func, flags=0):
     func_def = meta.decompiler.decompile_func(func)
@@ -69,7 +68,7 @@ def compile_func(ast, new_globals=None, file_name=None):
     return meta.decompiler.compile_func(ast, file_name, global_dict)
 
 def escape(x):
-    if isvar(x):
+    if utils.isvar(x):
         try:
             return x.eval()
         except:
@@ -128,7 +127,7 @@ class ASTTransformer(NodeTransformer):
         wrapped = _simple_call(func=Attribute(attr=method_name,
                                               ctx=Load(),
                                               value=Name(ctx=Load(),
-                                                         id='__C')),
+                                                         id='__ctx')),
                                args=args)
 
         return wrapped
@@ -144,8 +143,8 @@ class ASTTransformer(NodeTransformer):
         if f.func_closure:
             func_globals.update((v, c.cell_contents) for v, c in
                                 zip(f.func_code.co_freevars, f.func_closure))
-        func_globals.update({'__C' : self})
-        return compile_func(ast, func_globals, '<Context-AST>')
+        func_globals.update({'__ctx' : self})
+        return compile_func(ast, func_globals, '<Context-AST [__ctx]>')
 
 
 class TheanoTransformer(ASTTransformer):
@@ -244,7 +243,7 @@ class TheanoTransformer(ASTTransformer):
 
         # ** ======================= array methods (with tensor instances)
 
-        elif isvar(getattr(func, '__self__', None)):
+        elif utils.isvar(getattr(func, '__self__', None)):
             return self.handle_array_methods(func.__self__, func.__name__)
 
         # ** ======================= Theano function
@@ -276,7 +275,7 @@ class TheanoTransformer(ASTTransformer):
                 return int_
             elif func.__name__ == 'enumerate':
                 def enumerate_(iterable, start=0):
-                    if isvar(iterable):
+                    if utils.isvar(iterable):
                         raise TypeError(
                             'Called enumerate() on Tensor {0} but Tensors '
                             'do not support iteration. Maybe try escaping '
@@ -316,7 +315,7 @@ class TheanoTransformer(ASTTransformer):
             # zip
             elif func.__name__ == 'zip':
                 def zip_(*args):
-                    if __builtin__.any(isvar(a) for a in args):
+                    if __builtin__.any(utils.isvar(a) for a in args):
                         raise TypeError(
                             'Called zip() on Tensor but Tensors '
                             'do not support iteration. Maybe try escaping '
@@ -391,7 +390,7 @@ class TheanoTransformer(ASTTransformer):
                not the Theano one).
         """
         # if we're not dealing with a Theano variable, nothing to do here.
-        if not isvar(var):
+        if not utils.isvar(var):
             return getattr(var, method_name)
 
         # Theano's reshape requires dim to be in a collection, unlike Numpy.
@@ -451,6 +450,40 @@ class TheanoTransformer(ASTTransformer):
         old_tensor = tensor_subscripted.owner.inputs[0]
         new_tensor = T.set_subtensor(tensor_subscripted, value)
         self.update_inplace(old_tensor, new_tensor)
+
+    def _assign_TO_subtensor(self, node):
+        """
+        Helper function for assigning to subscripts. Called by both Assign
+        and AugAssign.
+        """
+        # version of subscript with Load() context
+        if isinstance(node, Assign):
+            load_subscript = Subscript(ctx=Load(),
+                                       slice=node.targets[0].slice,
+                                       value=node.targets[0].value)
+            value = node.value
+        elif isinstance(node, AugAssign):
+            load_subscript = Subscript(ctx=Load(),
+                                       slice=node.target.slice,
+                                       value=node.target.value)
+            value = BinOp(left=load_subscript,
+                          right=node.value,
+                          op=node.op)
+
+        set_subtensor = Expr(self.ast_wrap(
+                             'handle_set_subtensor', [load_subscript, value]))
+
+        # check if the assignee is a tensor; if so, call handle_subtensor
+        tensor_switch = If(test=_simple_call(
+                                Attribute(attr='isvar',
+                                          ctx=Load(),
+                                          value=Name(ctx=Load(),
+                                                     id='___utils')),
+                                load_subscript),
+                           body=[set_subtensor],
+                           orelse=[node])
+
+        return tensor_switch
 
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
@@ -548,7 +581,7 @@ class TheanoTransformer(ASTTransformer):
                                 func=Attribute(attr=theano_op,
                                                ctx=Load(),
                                                value=Name(ctx=Load(),
-                                                          id='T')))
+                                                          id='___T')))
 
         return new_node
 
@@ -561,22 +594,7 @@ class TheanoTransformer(ASTTransformer):
         # if assigning to a subscript, build an if statement to check if the
         # variable is a Tensor and call set_subtensor appropriately.
         if isinstance(node.targets[0], Subscript):
-
-            # version of subscript with Load() context
-            load_subscript = Subscript(ctx=Load(),
-                                       slice=node.targets[0].slice,
-                                       value=node.targets[0].value)
-
-            set_subtensor = Expr(self.ast_wrap('handle_set_subtensor',
-                                               [load_subscript, node.value]))
-
-            # check if the assignee is a tensor; if so, call handle_subtensor
-            tensor_switch = If(test=_simple_call(Name(ctx=Load(), id='isvar'),
-                                                 load_subscript),
-                               body=[set_subtensor],
-                               orelse=[node])
-
-            return tensor_switch
+            return self._assign_TO_subtensor(node)
         else:
             return node
 
@@ -589,26 +607,7 @@ class TheanoTransformer(ASTTransformer):
         # if assigning to a subscript, build an if statement to check if the
         # variable is a Tensor and call set_subtensor appropriately.
         if isinstance(node.target, Subscript):
-
-            # version of subscript with Load() context
-            load_subscript = Subscript(ctx=Load(),
-                                       slice=node.target.slice,
-                                       value=node.target.value)
-
-            new_value = BinOp(left=load_subscript,
-                              right=node.value,
-                              op=node.op)
-
-            set_subtensor = Expr(self.ast_wrap('handle_set_subtensor',
-                                               [load_subscript, new_value]))
-
-            # check if the assignee is a tensor; if so, call handle_subtensor
-            tensor_switch = If(test=_simple_call(Name(ctx=Load(), id='isvar'),
-                                                 load_subscript),
-                               body=[set_subtensor],
-                               orelse=[node])
-
-            return tensor_switch
+            return self._assign_TO_subtensor(node)
         else:
             return node
 

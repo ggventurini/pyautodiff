@@ -1,6 +1,7 @@
 import gc
 import opcode
 import inspect
+import theano
 
 from autodiff.compat import OrderedDict, getcallargs
 
@@ -159,6 +160,15 @@ def doc_from_flat(doc, flat):
         return rval, pos
     return doc_from_flat_inner(doc, 0)[0]
 
+
+def isvar(x):
+    """
+    Type test for Theano variables.
+    """
+    vartypes = (theano.tensor.sharedvar.SharedVariable,
+                theano.tensor.TensorConstant,
+                theano.tensor.TensorVariable)
+    return isinstance(x, vartypes)
 
 # -- picklable decorated function
 class post_collect(object):
