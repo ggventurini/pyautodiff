@@ -1,6 +1,6 @@
 import logging
 import meta
-import ast as ast_module
+from ast import *
 import numpy as np
 import theano
 import theano.tensor as T
@@ -23,12 +23,12 @@ def isvar(x):
 
 def get_ast(func, flags=0):
     func_def = meta.decompiler.decompile_func(func)
-    if isinstance(func_def, ast_module.Lambda):
-        func_def = ast_module.FunctionDef(
+    if isinstance(func_def, Lambda):
+        func_def = FunctionDef(
             name='<lambda>', args=func_def.args,
-            body=[ast_module.Return(func_def.body)],
+            body=[Return(func_def.body)],
             decorator_list=[])
-    assert isinstance(func_def, ast_module.FunctionDef)
+    assert isinstance(func_def, FunctionDef)
     return func_def
 
 def get_source(ast):
@@ -58,15 +58,14 @@ def compile_func(ast, new_globals=None, file_name=None):
         global_dict.update(new_globals)
     if file_name is None:
         file_name = '<Context-AST>'
-    if not isinstance(ast, ast_module.FunctionDef):
-        ast = ast_module.fix_missing_locations(
-            ast_module.FunctionDef(name='<tmp_fn>',
-                                   args=ast_module.arguments(args=[],
-                                                             defaults=[],
-                                                             kwarg=None,
-                                                             vararg=None),
-                                   body=[ast_module.Return(ast)],
-                                   decorator_list=[]))
+    if not isinstance(ast, FunctionDef):
+        ast = fix_missing_locations(FunctionDef(name='<tmp_fn>',
+                                                args=arguments(args=[],
+                                                               defaults=[],
+                                                               kwarg=None,
+                                                               vararg=None),
+                                                body=[Return(ast)],
+                                                decorator_list=[]))
     return meta.decompiler.compile_func(ast, file_name, global_dict)
 
 def escape(x):
@@ -81,11 +80,11 @@ def escape(x):
 def _simple_call(func, args):
     if not isinstance(args, (list, tuple)):
         args = [args]
-    call = ast_module.Call(args=args,
-                           func=func,
-                           keywords=[],
-                           kwargs=None,
-                           starargs=None)
+    call = Call(args=args,
+                func=func,
+                keywords=[],
+                kwargs=None,
+                starargs=None)
     return call
 
 
@@ -108,34 +107,33 @@ class Context(object):
         return t.recompile(f)
 
 
-class ASTTransformer(ast_module.NodeTransformer):
+class ASTTransformer(NodeTransformer):
 
     def ast_wrap(self, method_name, args):
         """
         Allows Python methods to be applied to AST nodes at runtime.
 
-        `method_name` is a method of the ASTTransformer class that accepts Python
-        objects as arguments.
+        `method_name` is a method of the ASTTransformer class that accepts
+        Python objects as arguments.
 
-        `args` are the AST nodes representing the arguments for `method_name` (not
-        including `self`!).
+        `args` are the AST nodes representing the arguments for `method_name`
+        (not including `self`!).
 
-        ast_wrap returns an `ast.Call()` node which calls the method on the specified
-        arguments at runtime.
+        ast_wrap returns an `ast.Call()` node which calls the method on the
+        specified arguments at runtime.
         """
-        wrapped = _simple_call(
-            func=ast_module.Attribute(attr=method_name,
-                                      ctx=ast_module.Load(),
-                                      value=ast_module.Name(ctx=ast_module.Load(),
-                                                            id='__C')),
-            args=args)
+        wrapped = _simple_call(func=Attribute(attr=method_name,
+                                              ctx=Load(),
+                                              value=Name(ctx=Load(),
+                                                         id='__C')),
+                               args=args)
 
         return wrapped
 
     def transform(self, f):
         f_ast = get_ast(f)
         transformed_ast = self.visit(f_ast)
-        return ast_module.fix_missing_locations(transformed_ast)
+        return fix_missing_locations(transformed_ast)
 
     def recompile(self, f):
         ast = self.transform(f)
@@ -476,11 +474,9 @@ class TheanoTransformer(ASTTransformer):
         body = []
         for param in node.args.args + [node.args.vararg] + [node.args.kwarg]:
             if param:
-                body.append(ast_module.Assign(
-                    targets=[ast_module.Name(ctx=ast_module.Store(),
-                                             id=getattr(param, 'id', param))],
-                    value=ast_module.Name(ctx=ast_module.Load(),
-                                          id=getattr(param, 'id', param))))
+                body.append(Assign(
+                    targets=[Name(ctx=Store(), id=getattr(param, 'id', param))],
+                    value=Name(ctx=Load(), id=getattr(param, 'id', param))))
         node.body = body + node.body
         return self.generic_visit(node)
 
@@ -495,7 +491,7 @@ class TheanoTransformer(ASTTransformer):
         'shadow' method on its value.
         """
         self.generic_visit(node)
-        if isinstance(node.ctx, ast_module.Load):
+        if isinstance(node.ctx, Load):
             node = self.ast_wrap('shadow', node)
         return node
 
@@ -515,27 +511,26 @@ class TheanoTransformer(ASTTransformer):
         """
         self.generic_visit(node)
         op = node.ops[0]
-        if isinstance(op, ast_module.Gt):
+        if isinstance(op, Gt):
             theano_op = 'gt'
-        elif isinstance(op, ast_module.GtE):
+        elif isinstance(op, GtE):
             theano_op = 'ge'
-        elif isinstance(op, ast_module.Lt):
+        elif isinstance(op, Lt):
             theano_op = 'lt'
-        elif isinstance(op, ast_module.LtE):
+        elif isinstance(op, LtE):
             theano_op = 'le'
-        elif isinstance(op, ast_module.Eq):
+        elif isinstance(op, Eq):
             theano_op = 'eq'
-        elif isinstance(op, ast_module.NotEq):
+        elif isinstance(op, NotEq):
             theano_op = 'neq'
         else:
             # Is, IsNot, In, Not In
             return node
 
         new_node = _simple_call(args=[node.left] + node.comparators,
-                                func=ast_module.Attribute(
-                                    attr=theano_op,
-                                    ctx=ast_module.Load(),
-                                    value=ast_module.Name(ctx=ast_module.Load(),
+                                func=Attribute(attr=theano_op,
+                                               ctx=Load(),
+                                               value=Name(ctx=Load(),
                                                           id='T')))
 
         return new_node
@@ -560,13 +555,9 @@ class TheanoTransformer(ASTTransformer):
 
     def visit_Attribute(self, node):
         self.generic_visit(node)
-        new_node = ast_module.copy_location(
-            _simple_call(args=[node.value,
-                               ast_module.Str(s=node.attr),
+        new_node = _simple_call(args=[node.value,
+                               Str(s=node.attr),
                                self.ast_wrap('handle_array_methods',
-                                             [node.value,
-                                              ast_module.Str(s=node.attr)])],
-                         func=ast_module.Name(ctx=ast_module.Load(),
-                                              id='getattr')),
-            node)
+                                             [node.value, Str(s=node.attr)])],
+                         func=Name(ctx=Load(), id='getattr'))
         return new_node
