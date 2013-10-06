@@ -195,8 +195,11 @@ class TheanoTransformer(ASTTransformer):
         if id(x) not in self.watcher.s_vars:
             # add to _nogc to ensure that the id won't be reused
             self.watcher._nogc.append(x)
-            # create symbolic version
-            sym_x = theano.shared(x)
+            # create symbolic version:
+            if isinstance(x, np.ndarray) and id(x) in self.watcher.borrowable:
+               sym_x = theano.shared(x, borrow=True)
+            else:
+                sym_x = theano.shared(x)
             # store symbolic version
             self.watcher.s_vars[id(x)] = theano.shared(x)
             # return symbolic version
