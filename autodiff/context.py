@@ -530,16 +530,19 @@ class TheanoTransformer(ASTTransformer):
 
     # def visit_AugAssign(self, node):
     #     """
-    #     Inplace assigns circumvent shadowing, so we change them into regular assigns.
+    #     Inplace assigns circumvent shadowing,
+    #     so we change them into regular assigns.
     #     """
     #     self.generic_visit(node)
     #     new_node = ast_module.copy_location(
     #         ast_module.Assign(
-    #             targets=[node.target],
-    #             value=ast_module.BinOp(left=ast_module.Name(ctx=ast_module.Load(),
     #                                                         id=node.target.id),
-    #                                    right=node.value,
-    #                                    op=node.op)),
+    #               targets=[node.target],
+    #               value=ast_module.BinOp(
+    #                  left=ast_module.Name(ctx=ast_module.Load(),
+    #                                        id=node.target.id),
+    #                   right=node.value,
+    #                   op=node.op)),
     #         node)
 
     #     return new_node
@@ -550,7 +553,8 @@ class TheanoTransformer(ASTTransformer):
             _simple_call(args=[node.value,
                                ast_module.Str(s=node.attr),
                                self.ast_wrap('handle_array_methods',
-                                             [node.value, ast_module.Str(s=node.attr)])],
+                                             [node.value,
+                                              ast_module.Str(s=node.attr)])],
                          func=ast_module.Name(ctx=ast_module.Load(),
                                               id='getattr')),
             node)
