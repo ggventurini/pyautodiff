@@ -28,7 +28,7 @@ def clean_int_args(*args, **kwargs):
     return clean_args, clean_kwargs
 
 
-def copy_function(fn):
+def clean_function_defaults(fn):
     """
     Copy a function (or method) and replace int defaults with traceable int16
     objects.
@@ -83,7 +83,7 @@ class Symbolic(object):
         return self.context.s_vars
 
     def trace(self, fn, *args, **kwargs):
-        fn_copy = copy_function(fn)
+        fn_copy = clean_function_defaults(fn)
         clean_args, clean_kwargs = clean_int_args(*args, **kwargs)
         return self.context.call(fn_copy, clean_args, clean_kwargs)
 
@@ -237,7 +237,7 @@ class Function(Symbolic):
         if isinstance(pyfn, Function):
             pyfn = pyfn.pyfn
 
-        self._pyfn = copy_function(pyfn)
+        self._pyfn = clean_function_defaults(pyfn)
 
         self.s_inputs = ()
         self.s_outputs = ()
