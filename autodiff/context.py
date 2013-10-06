@@ -209,6 +209,12 @@ class TheanoTransformer(ASTTransformer):
         else:
             return self.watcher.s_vars[id(x)]
 
+    def update_inplace(self, obj, value):
+        """
+        Object `obj` is updated inplace with value `value`.
+        """
+        self.watcher.inplace_updates[id(obj)] = value
+
     def handle_functions(self, func):
         """
         Given some function for, return another function.
@@ -430,7 +436,7 @@ class TheanoTransformer(ASTTransformer):
         elif method_name == 'sort':
             def sort(*args, **kwargs):
                 sorted_var = var.sort(*args, **kwargs)
-                self.watcher.inplace_updates[id(var)] = sorted_var
+                self.update_inplace(var, sorted_var)
                 return None
             return sort
 
