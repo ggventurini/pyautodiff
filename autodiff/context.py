@@ -302,11 +302,41 @@ class TheanoTransformer(ASTTransformer):
                     else:
                         return zip(*args)
                 return zip_
+
+            # uniform random numbers (np.random.uniform)
+            elif 'method uniform of mtrand.RandomState' in str(func):
+                def rand_u(low=0.0, high=1.0, size=1):
+                    return global_randomstreams.uniform(low=low,
+                                                        high=high,
+                                                        size=size)
+                return rand_u
+
+            # standard uniform random numbers (np.random.random)
             elif ('method random of mtrand.RandomState' in str(func)
                   or 'method random_sample of mtrand.RandomState' in str(func)):
-                def rand_u(shape):
-                    return global_randomstreams.uniform( low=0, high=1, size=shape)
+                def rand_u(size):
+                    return global_randomstreams.uniform(size=size)
                 return rand_u
+
+            # normal random numbers (np.random.normal)
+            elif 'method normal of mtrand.RandomState' in str(func):
+                def rand_n(loc=0.0, scale=1.0, size=None):
+                    return global_randomstreams.normal(avg=loc,
+                                                       std=scale,
+                                                       size=size)
+                return rand_n
+
+            # standard normal random numbers (np.random.randn)
+            elif 'method randn of mtrand.RandomState' in str(func):
+                def rand_n(*size):
+                    return global_randomstreams.normal(size=size)
+                return rand_n
+
+            # binomial random numbers (np.random.binomial)
+            elif 'method binomial randn of mtrand.RandomState' in str(func):
+                def rand_b(n, p, size=None):
+                    return global_randomstreams.binomial(n=n, p=p, size=size)
+                return rand_b
 
         # ** ======================= Anything else
 
