@@ -451,6 +451,40 @@ class TheanoTransformer(ASTTransformer):
         new_tensor = T.set_subtensor(tensor_subscripted, value)
         self.update_inplace(old_tensor, new_tensor)
 
+    def _assign_TO_subtensor(self, node):
+        """
+        Helper function for assigning to subscripts. Called by both Assign
+        and AugAssign.
+        """
+        # version of subscript with Load() context
+        if isinstance(node, Assign):
+            load_subscript = Subscript(ctx=Load(),
+                                       slice=node.targets[0].slice,
+                                       value=node.targets[0].value)
+            value = node.value
+        elif isinstance(node, AugAssign):
+            load_subscript = Subscript(ctx=Load(),
+                                       slice=node.target.slice,
+                                       value=node.target.value)
+            value = BinOp(left=load_subscript,
+                          right=node.value,
+                          op=node.op)
+
+        set_subtensor = Expr(self.ast_wrap(
+                             'handle_set_subtensor', [load_subscript, value]))
+
+        # check if the assignee is a tensor; if so, call handle_subtensor
+        tensor_switch = If(test=_simple_call(
+                                Attribute(attr='isvar',
+                                          ctx=Load(),
+                                          value=Name(ctx=Load(),
+                                                     id='___utils')),
+                                load_subscript),
+                           body=[set_subtensor],
+                           orelse=[node])
+
+        return tensor_switch
+
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
 
@@ -560,22 +594,7 @@ class TheanoTransformer(ASTTransformer):
         # if assigning to a subscript, build an if statement to check if the
         # variable is a Tensor and call set_subtensor appropriately.
         if isinstance(node.targets[0], Subscript):
-
-            # version of subscript with Load() context
-            load_subscript = Subscript(ctx=Load(),
-                                       slice=node.targets[0].slice,
-                                       value=node.targets[0].value)
-
-            set_subtensor = Expr(self.ast_wrap('handle_set_subtensor',
-                                               [load_subscript, node.value]))
-
-            # check if the assignee is a tensor; if so, call handle_subtensor
-            tensor_switch = If(test=_simple_call(Name(ctx=Load(), id='isvar'),
-                                                 load_subscript),
-                               body=[set_subtensor],
-                               orelse=[node])
-
-            return tensor_switch
+            return self._assign_TO_subtensor(node)
         else:
             return node
 
@@ -588,26 +607,7 @@ class TheanoTransformer(ASTTransformer):
         # if assigning to a subscript, build an if statement to check if the
         # variable is a Tensor and call set_subtensor appropriately.
         if isinstance(node.target, Subscript):
-
-            # version of subscript with Load() context
-            load_subscript = Subscript(ctx=Load(),
-                                       slice=node.target.slice,
-                                       value=node.target.value)
-
-            new_value = BinOp(left=load_subscript,
-                              right=node.value,
-                              op=node.op)
-
-            set_subtensor = Expr(self.ast_wrap('handle_set_subtensor',
-                                               [load_subscript, new_value]))
-
-            # check if the assignee is a tensor; if so, call handle_subtensor
-            tensor_switch = If(test=_simple_call(Name(ctx=Load(), id='isvar'),
-                                                 load_subscript),
-                               body=[set_subtensor],
-                               orelse=[node])
-
-            return tensor_switch
+            return self._assign_TO_subtensor(node)
         else:
             return node
 
