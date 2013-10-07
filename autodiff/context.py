@@ -435,9 +435,9 @@ class TheanoTransformer(NodeTransformer):
             except:
                 raise ValueError('Unsupported function: {0}'.format(func))
 
-        # ** ======================= Catchall
+        # ** ======================= Catchall (shouldn't be called)
 
-        return func
+        raise ValueError('Function handling failed: {0}'.format(func))
 
 
     def handle_array_methods(self, var, method_name):
