@@ -568,6 +568,81 @@ class TheanoTransformer(NodeTransformer):
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
 
+    def visit_Assign(self, node):
+        """
+        Care must be taken when assigning to subscripts of Tensor variables.
+        """
+        self.generic_visit(node)
+
+        # if assigning to a subscript, build an if statement to check if the
+        # variable is a Tensor and call set_subtensor appropriately.
+        if isinstance(node.targets[0], Subscript):
+            return self._assign_TO_subtensor(node)
+        else:
+            return node
+
+    def visit_Attribute(self, node):
+        self.generic_visit(node)
+        new_node = _simple_call(args=[node.value,
+                                Str(s=node.attr),
+                                self.ast_wrap('handle_array_methods',
+                                              [node.value, Str(s=node.attr)])],
+                                func=Name(ctx=Load(), id='getattr'))
+        return new_node
+
+    def visit_AugAssign(self, node):
+        """
+        Care must be taken when assigning to subscripts of Tensor variables.
+        """
+        self.generic_visit(node)
+
+        # if assigning to a subscript, build an if statement to check if the
+        # variable is a Tensor and call set_subtensor appropriately.
+        if isinstance(node.target, Subscript):
+            return self._assign_TO_subtensor(node)
+        else:
+            return node
+
+    def visit_Call(self, node):
+        """
+        Whenever a function is called, first pass it to
+        the 'handle_functions' method.
+        """
+        self.generic_visit(node)
+        node.func = self.ast_wrap('handle_functions', node.func)
+        return node
+
+    def visit_Compare(self, node):
+        """
+        Theano operators must be called as functions.
+        This replaces literal operators with the appropriate functions.
+        """
+        self.generic_visit(node)
+        op = node.ops[0]
+        if isinstance(op, Gt):
+            theano_op = 'gt'
+        elif isinstance(op, GtE):
+            theano_op = 'ge'
+        elif isinstance(op, Lt):
+            theano_op = 'lt'
+        elif isinstance(op, LtE):
+            theano_op = 'le'
+        elif isinstance(op, Eq):
+            theano_op = 'eq'
+        elif isinstance(op, NotEq):
+            theano_op = 'neq'
+        else:
+            # Is, IsNot, In, Not In
+            return node
+
+        new_node = _simple_call(args=[node.left] + node.comparators,
+                                func=Attribute(attr=theano_op,
+                                               ctx=Load(),
+                                               value=Name(ctx=Load(),
+                                                          id='___T')))
+
+        return new_node
+
     def visit_FunctionDef(self, node):
         """
         When a function is defined, shadow each of its arguments immediately.
@@ -636,11 +711,6 @@ class TheanoTransformer(NodeTransformer):
         node.body = body + node.body
         return node
 
-    def visit_Num(self, node):
-        # don't make changes because these are typically function arguments
-        # return self.ast_wrap('shadow', node)
-        return node
-
     def visit_Name(self, node):
         """
         Whenever a literal variable name is loaded, call the
@@ -651,77 +721,7 @@ class TheanoTransformer(NodeTransformer):
             node = self.ast_wrap('shadow', node)
         return node
 
-    def visit_Call(self, node):
-        """
-        Whenever a function is called, first pass it to
-        the 'handle_functions' method.
-        """
-        self.generic_visit(node)
-        node.func = self.ast_wrap('handle_functions', node.func)
+    def visit_Num(self, node):
+        # don't shadow because these are typically function arguments
+        # node = self.ast_wrap('shadow', node)
         return node
-
-    def visit_Compare(self, node):
-        """
-        Theano operators must be called as functions.
-        This replaces literal operators with the appropriate functions.
-        """
-        self.generic_visit(node)
-        op = node.ops[0]
-        if isinstance(op, Gt):
-            theano_op = 'gt'
-        elif isinstance(op, GtE):
-            theano_op = 'ge'
-        elif isinstance(op, Lt):
-            theano_op = 'lt'
-        elif isinstance(op, LtE):
-            theano_op = 'le'
-        elif isinstance(op, Eq):
-            theano_op = 'eq'
-        elif isinstance(op, NotEq):
-            theano_op = 'neq'
-        else:
-            # Is, IsNot, In, Not In
-            return node
-
-        new_node = _simple_call(args=[node.left] + node.comparators,
-                                func=Attribute(attr=theano_op,
-                                               ctx=Load(),
-                                               value=Name(ctx=Load(),
-                                                          id='___T')))
-
-        return new_node
-
-    def visit_Assign(self, node):
-        """
-        Care must be taken when assigning to subscripts of Tensor variables.
-        """
-        self.generic_visit(node)
-
-        # if assigning to a subscript, build an if statement to check if the
-        # variable is a Tensor and call set_subtensor appropriately.
-        if isinstance(node.targets[0], Subscript):
-            return self._assign_TO_subtensor(node)
-        else:
-            return node
-
-    def visit_AugAssign(self, node):
-        """
-        Care must be taken when assigning to subscripts of Tensor variables.
-        """
-        self.generic_visit(node)
-
-        # if assigning to a subscript, build an if statement to check if the
-        # variable is a Tensor and call set_subtensor appropriately.
-        if isinstance(node.target, Subscript):
-            return self._assign_TO_subtensor(node)
-        else:
-            return node
-
-    def visit_Attribute(self, node):
-        self.generic_visit(node)
-        new_node = _simple_call(args=[node.value,
-                                Str(s=node.attr),
-                                self.ast_wrap('handle_array_methods',
-                                              [node.value, Str(s=node.attr)])],
-                                func=Name(ctx=Load(), id='getattr'))
-        return new_node
