@@ -363,7 +363,11 @@ class TheanoTransformer(NodeTransformer):
             # like Numpy; this change shouldn't be needed afterward.
             elif func.__name__ in ('ones', 'zeros'):
                 def alloc(shp, dtype=None):
-                    return getattr(T, func.__name__)(utils.as_seq(shp), dtype)
+                    if (not isinstance(shp, (list, tuple))
+                            and not utils.isvar(shp)):
+                        shp = [shp]
+                    return getattr(T, func.__name__)(shp, dtype)
+                return alloc
 
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)

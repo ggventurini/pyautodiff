@@ -273,6 +273,9 @@ class NumpyFns(unittest.TestCase):
     def test_alloc(self):
         self.assertTrue(checkfn(lambda : np.ones(5), []))
         self.assertTrue(checkfn(lambda : np.ones((2,5)), []))
+        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [0]))
+        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [1]))
+        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [2]))
 
 
 class ArrayMethodsAttributes(unittest.TestCase):
