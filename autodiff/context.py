@@ -353,8 +353,18 @@ class TheanoTransformer(NodeTransformer):
               or str(func) == '<built-in function max>'
               or str(func) == '<built-in function min>'
               or str(func) == '<built-in function sum>'):
+
+            # abs
             if func.__name__ in ('abs', 'absolute'):
                 return abs
+
+            # ones/zeros
+            # FIXME submitted a PR to Theano to make syntax more
+            # like Numpy; this change shouldn't be needed afterward.
+            elif func.__name__ in ('ones', 'zeros'):
+                def alloc(shp, dtype=None):
+                    return getattr(T, func.__name__)(utils.as_seq(shp), dtype)
+
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)
             else:
