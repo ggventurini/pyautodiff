@@ -22,6 +22,7 @@ logger = logging.getLogger('autodiff')
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 global_randomstreams = RandomStreams(seed=np.random.randint(1, 999999))
 
+
 def get_ast(func, flags=0):
     func_def = meta.decompiler.decompile_func(func)
     if isinstance(func_def, Lambda):
@@ -32,12 +33,14 @@ def get_ast(func, flags=0):
     assert isinstance(func_def, FunctionDef)
     return func_def
 
+
 def get_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
     elif callable(ast):
         ast = get_ast(ast.__call__)
     return meta.asttools.dump_python_source(ast)
+
 
 def print_ast(ast):
     if hasattr(ast, 'func_code'):
@@ -46,12 +49,14 @@ def print_ast(ast):
         ast = get_ast(ast.__call__)
     meta.asttools.print_ast(ast)
 
+
 def print_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
     elif callable(ast):
         ast = get_ast(ast.__call__)
     meta.asttools.python_source(ast)
+
 
 def compile_func(ast, new_globals=None, file_name=None):
     global_dict = globals().copy()
@@ -69,6 +74,7 @@ def compile_func(ast, new_globals=None, file_name=None):
                                                 decorator_list=[]))
     return meta.decompiler.compile_func(ast, file_name, global_dict)
 
+
 def escape(x):
     if utils.isvar(x):
         try:
@@ -77,6 +83,7 @@ def escape(x):
             raise ValueError('Could not escape {0}'.format(x))
     else:
         return x
+
 
 def _simple_call(func, args):
     if not isinstance(args, (list, tuple)):
@@ -443,7 +450,6 @@ class TheanoTransformer(NodeTransformer):
 
         raise ValueError('Function handling failed: {0}'.format(func))
 
-
     def handle_array_methods(self, var, method_name):
         """
         This method is called whenever:
@@ -543,14 +549,14 @@ class TheanoTransformer(NodeTransformer):
                              'handle_set_subtensor', [load_subscript, value]))
 
         # check if the assignee is a tensor; if so, call handle_subtensor
-        tensor_switch = If(test=_simple_call(
-                                Attribute(attr='isvar',
-                                          ctx=Load(),
-                                          value=Name(ctx=Load(),
-                                                     id='___utils')),
-                                load_subscript),
-                           body=[set_subtensor],
-                           orelse=[node])
+        tensor_switch = If(
+            test=_simple_call(Attribute(attr='isvar',
+                                        ctx=Load(),
+                                        value=Name(ctx=Load(),
+                                                   id='___utils')),
+                              load_subscript),
+            body=[set_subtensor],
+            orelse=[node])
 
         return tensor_switch
 
@@ -709,8 +715,8 @@ class TheanoTransformer(NodeTransformer):
     def visit_Attribute(self, node):
         self.generic_visit(node)
         new_node = _simple_call(args=[node.value,
-                               Str(s=node.attr),
-                               self.ast_wrap('handle_array_methods',
-                                             [node.value, Str(s=node.attr)])],
-                         func=Name(ctx=Load(), id='getattr'))
+                                Str(s=node.attr),
+                                self.ast_wrap('handle_array_methods',
+                                              [node.value, Str(s=node.attr)])],
+                                func=Name(ctx=Load(), id='getattr'))
         return new_node
