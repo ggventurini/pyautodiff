@@ -137,12 +137,38 @@ class Context(object):
 
         return new_f
 
+    def get_symbolic(self, x):
+        """
+        Attempts to retrieve the symbolic version of x.
+
+        if x is an numeric object (int, float, numpy array), it must have been
+        traced by the context during recompiled function execution.
+
+        if x is a string, it must have been tagged with
+        autodiff.functions.tag().
+        """
+        if isinstance(x, basestring):
+            if x in self.s_vars:
+                return self.s_vars[x]
+            elif x in self.tags:
+                return self.tags[x]
+            else:
+                raise ValueError(
+                    'Requested the symbolic variable of tag `{0}`'
+                    ', but `{0}` was not tagged.'.format(x))
+        elif utils.isvar(x):
+            return x
+        elif id(x) in self.s_vars:
+            return self.s_vars[id(x)]
+        else:
+            raise ValueError(
+                'Requested the symbolic variable shadowing object {0}'
+                ', but it was not traced.'.format(repr(x)))
+
     def reset(self):
         self.s_vars.clear()
         self.inplace_updates.clear()
         self.tags.clear()
-
-    # def get_symbolic(self, x):
 
 
 class TheanoTransformer(NodeTransformer):
@@ -252,11 +278,19 @@ class TheanoTransformer(NodeTransformer):
         elif func is autodiff.functions.tag:
             def tag(obj, tag):
                 assert isinstance(tag, basestring)
-                if tag in self.context.tags:
-                    logger.warning('{0}: {1} was tagged as {2}, but {2} '
-                                   'is already assigned. The old tag will be '
-                                   'overwritten.'.format(self, obj, tag))
-                self.context.tags[tag] = obj
+                if tag in self.context.s_vars:
+                    logger.warning(
+                        '{0} was tagged as {1}, but {1} is a top-level '
+                        'function argument. The tag will not be '
+                        'available.'.format(self, obj, tag))
+                else:
+                    if tag in self.context.tags:
+                        logger.warning(
+                            '{0} was tagged as {1}, but {1} was already '
+                            'tagged. Note that the new tag will overwrite '
+                            'the old one.'.format(self, obj, tag))
+
+                    self.context.tags[tag] = obj
                 return obj
             return tag
 

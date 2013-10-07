@@ -83,30 +83,7 @@ class Symbolic(object):
         return self.context.s_vars
 
     def get_symbolic(self, x):
-        """
-        Attempts to retrieve the symbolic version of x.
-
-        if x is an numeric object (int, float, numpy array), it must have been
-        traced by the Symbolic class.
-
-        if x is a string, it must have been tagged with
-        autodiff.functions.tag().
-        """
-        if isinstance(x, basestring):
-            if x in self.s_vars:
-                return self.s_vars[x]
-            else:
-                raise ValueError(
-                    'Requested the symbolic variable of tag `{0}`'
-                    ', but `{0}` was not traced.'.format(x))
-        elif utils.isvar(x):
-            return x
-        elif id(x) in self.s_vars:
-            return self.s_vars[id(x)]
-        else:
-            raise ValueError(
-                'Requested the symbolic variable shadowing object {0}'
-                ', but it was not traced.'.format(repr(x)))
+        return self.context.get_symbolic(x)
 
     def trace(self, fn, *args, **kwargs):
         """
