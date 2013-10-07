@@ -239,8 +239,100 @@ class Symbolic(object):
                                on_unused_input='ignore')
 
 class Function(Symbolic):
-    pass
+    """
+    A Symbolic tracer which is specialized for a specific function, passed at
+    initialization.
+    """
+    def __init__(self, pyfn, borrowable=None, context=None, use_cache=True):
+        super(Function, self).__init__(borrowable=borrowable, context=context)
 
+        # if the fn is an autodiff Function class, get its own fn
+        if isinstance(pyfn, Function):
+            pyfn = pyfn.pyfn
+
+        self._pyfn = copy_function(pyfn)
+        self._symfn = self.context.recompile(self.pyfn)
+
+        self._cache = dict()
+        self.use_cache = use_cache
+        self.argspec = inspect.getargspec(self.pyfn)
+
+        # set the instance docstring to look like that of the function
+        ds = 'AutoDiff class: {0}\n\nWrapped docstring:\n\n'.format(
+            self.__class__.__name__)
+        if self.pyfn.__doc__ is not None:
+            fn_ds = self.pyfn.__doc__
+        else:
+            fn_ds = '[no docstring found]\n '
+        self.__doc__ = ds + fn_ds
+
+    @property
+    def pyfn(self):
+        return self._pyfn
+
+    @property
+    def symfn(self):
+        return self._symfn
+
+    @property
+    def cache(self):
+        return self._cache
+
+    def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
+
+    def __get__(self, instance, owner=None):
+        """
+        Necessary descriptor for decorator compatibility.
+
+        At decoration time, methods have not been bound. However, when bound
+        methods are accessed, the __get__ method is called, so we can monitor
+        that call and bind the method as necessary.
+        """
+        if instance is not None:
+            method = self.pyfn.__get__(instance, owner)
+            self._pyfn = method
+        return self
+
+    def trace(self, *args, **kwargs):
+        """
+        Given args and kwargs, call the Python function and get its
+        symbolic representation.
+
+        A dictionary of shadowed symbolic variables is maintained:
+            self.s_vars   : {id(obj) : sym_var}
+                            Contains all symbolic variables traced during
+                            function execution, indexed by the id of the
+                            corresponding Python object.
+
+        Additionally, self.s_inputs and self.s_outputs are lists of symbolic
+        arguments and results, respectively.
+        """
+
+        # clean args and kwargs
+        c_args, c_kwargs = clean_int_args(*args, **kwargs)
+
+        # call the symfn
+        results = self.symfn(*c_args, **c_kwargs)
+
+        # get a tuple of the symbolic inputs
+        # but avoid 'self' and 'cls' bound arguments
+        callargs = utils.orderedcallargs(self.pyfn, *c_args, **c_kwargs)
+        all_args = utils.flatten(callargs)
+        if (inspect.ismethod(self.pyfn) or
+           (len(all_args) > 0 and type(all_args[0]) is type)):
+            all_args = all_args[1:]
+        self.s_inputs = tuple(self.s_vars[id(a)] for a in all_args)
+
+        # get a tuple of the symbolic outputs
+        self.s_outputs = utils.as_seq(results, tuple)
+
+        # update variable names where possible
+        for name, arg in callargs.iteritems():
+            if self.s_vars.get(id(arg), None) in self.s_inputs:
+                self.s_vars[name] = self.s_vars[id(arg)]
+
+        return results
 
 class Gradient(Function):
     pass
