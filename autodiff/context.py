@@ -438,6 +438,10 @@ class TheanoTransformer(NodeTransformer):
                     return global_randomstreams.binomial(n=n, p=p, size=size)
                 return rand_b
 
+            # anything else (like getattr)
+            else:
+                return func
+
         # ** ======================= Anything else
 
         else:
@@ -448,7 +452,8 @@ class TheanoTransformer(NodeTransformer):
 
         # ** ======================= Catchall (shouldn't be called)
 
-        raise ValueError('Function handling failed: {0}'.format(func))
+        raise ValueError(
+            'handle_functions: No case matched function {0}'.format(func))
 
     def handle_array_methods(self, var, method_name):
         """
