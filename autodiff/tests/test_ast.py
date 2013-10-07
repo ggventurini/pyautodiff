@@ -93,14 +93,13 @@ class Python(unittest.TestCase):
             pass
         self.assertTrue(checkfn(fn, [1]))
 
-    @unittest.expectedFailure
     def test_enumerate(self):
         def fn(x):
             z = np.arange(x.shape[0])
             for i, xi in enumerate(x):
                 z[i] += xi
             return z
-        self.assertTrue(checkfn(fn, [1]))
+        self.assertRaises(TypeError, checkfn, fn, [1])
 
 
 class BasicMath(unittest.TestCase):
