@@ -13,6 +13,7 @@ import autodiff.functions
 # basically, need to make sure that these modules aren't overwritten
 import autodiff.utils as ___utils
 import theano.tensor as ___T
+import autodiff.functions as ___functions
 
 logger = logging.getLogger('autodiff')
 
@@ -89,34 +90,72 @@ def _simple_call(func, args):
 
 
 class Context(object):
+
     def __init__(self, borrowable=()):
         self.s_vars = dict()
         self.inplace_updates = dict()
+        self.tags = dict()
         # FIXME do we need to hold on to all of these itermediates?
         # ensure these id's do not get recycled by garbage collection
         self._nogc = []
         self._noshadow = set()
+        self._top_node = None
         self.borrowable = [id(b) for b in borrowable]
 
-    def transform(self, f):
-        t = TheanoTransformer(watcher=self)
-        return t.transform(f)
+    def recompile(self, f, nested=False):
+        """
+        Accepts a function f that operates on numerical objects and
+        returns a function that operates on Theano objects.
 
-    def recompile(self, f):
-        t = TheanoTransformer(watcher=self)
-        return t.recompile(f)
+        nested : bool
+            `recompile` resets the context and sets the 'top_node' of the
+            function, which helps in tracing arguments. By passing nested=True,
+            this reset can be bypassed. This is used, for example, when
+            transforming nested functions. In this case, we want to use the
+            same context but keep it when calling recompile.
+        """
+        transformer = TheanoTransformer(context=self)
+        f_ast = get_ast(f)
+
+        if not nested:
+            self._top_node = f_ast
+            self.inplace_updates.clear()
+            self.tags.clear()
+
+        transformed_ast = fix_missing_locations(transformer.visit(f_ast))
+
+        func_globals = f.func_globals.copy()
+        func_globals.update({'___ctx' : transformer})
+        if f.func_closure:
+            func_globals.update((v, c.cell_contents) for v, c in
+                                zip(f.func_code.co_freevars, f.func_closure))
+
+        new_f = compile_func(transformed_ast, func_globals, repr(self))
+
+        if isinstance(f, types.MethodType):
+            new_f = types.MethodType(new_f, f.im_self, f.im_class)
+
+        return new_f
 
     def reset(self):
         self.s_vars.clear()
         self.inplace_updates.clear()
+        self.tags.clear()
 
-class ASTTransformer(NodeTransformer):
+    # def get_symbolic(self, x):
+
+
+class TheanoTransformer(NodeTransformer):
+
+    def __init__(self, context):
+        super(TheanoTransformer, self).__init__()
+        self.context = context
 
     def ast_wrap(self, method_name, args):
         """
         Allows Python methods to be applied to AST nodes at runtime.
 
-        `method_name` is a method of the ASTTransformer class that accepts
+        `method_name` is a method of the TheanoTransformer class that accepts
         Python objects as arguments.
 
         `args` are the AST nodes representing the arguments for `method_name`
@@ -128,36 +167,10 @@ class ASTTransformer(NodeTransformer):
         wrapped = _simple_call(func=Attribute(attr=method_name,
                                               ctx=Load(),
                                               value=Name(ctx=Load(),
-                                                         id='__ctx')),
+                                                         id='___ctx')),
                                args=args)
 
         return wrapped
-
-    def transform(self, f):
-        f_ast = get_ast(f)
-        transformed_ast = self.visit(f_ast)
-        return fix_missing_locations(transformed_ast)
-
-    def recompile(self, f):
-        ast = self.transform(f)
-        func_globals = f.func_globals.copy()
-        if f.func_closure:
-            func_globals.update((v, c.cell_contents) for v, c in
-                                zip(f.func_code.co_freevars, f.func_closure))
-        func_globals.update({'__ctx' : self})
-        new_f = compile_func(ast, func_globals, '<Context-AST [__ctx]>')
-        if isinstance(f, types.MethodType):
-            new_f = types.MethodType(new_f,
-                                     f.im_self,
-                                     f.im_class)
-        return new_f
-
-
-class TheanoTransformer(ASTTransformer):
-
-    def __init__(self, watcher):
-        super(TheanoTransformer, self).__init__()
-        self.watcher = watcher
 
     # ** --------------------------------------------------------
     # ** Direct Manipulation (Methods)
@@ -177,7 +190,7 @@ class TheanoTransformer(ASTTransformer):
         variable and store the relationship in self.s_vars. Otherwise return x.
         """
 
-        if id(x) in self.watcher._noshadow:
+        if id(x) in self.context._noshadow:
             return x
 
         if not isinstance(x, (int, float, np.ndarray)):
@@ -186,7 +199,7 @@ class TheanoTransformer(ASTTransformer):
             # can't be updated inplace, so we keep track of inplace updates in
             # a special dictionary. We check for updates before returning the
             # variable.
-            return self.watcher.inplace_updates.get(id(x), x)
+            return self.context.inplace_updates.get(id(x), x)
 
         # take special care with small ints, because CPython caches them.
         if isinstance(x, int) and -5 <= x <= 256:
@@ -199,26 +212,26 @@ class TheanoTransformer(ASTTransformer):
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
 
-        if id(x) not in self.watcher.s_vars:
+        if id(x) not in self.context.s_vars:
             # add to _nogc to ensure that the id won't be reused
-            self.watcher._nogc.append(x)
+            self.context._nogc.append(x)
             # create symbolic version:
-            if isinstance(x, np.ndarray) and id(x) in self.watcher.borrowable:
+            if isinstance(x, np.ndarray) and id(x) in self.context.borrowable:
                 sym_x = theano.shared(x, borrow=True)
             else:
                 sym_x = theano.shared(x)
             # store symbolic version
-            self.watcher.s_vars[id(x)] = sym_x
+            self.context.s_vars[id(x)] = sym_x
             # return symbolic version
             return sym_x
         else:
-            return self.watcher.s_vars[id(x)]
+            return self.context.s_vars[id(x)]
 
     def update_inplace(self, obj, value):
         """
         Object `obj` is updated inplace with value `value`.
         """
-        self.watcher.inplace_updates[id(obj)] = value
+        self.context.inplace_updates[id(obj)] = value
 
     def handle_functions(self, func):
         """
@@ -238,7 +251,12 @@ class TheanoTransformer(ASTTransformer):
 
         elif func is autodiff.functions.tag:
             def tag(obj, tag):
-                self.watcher.s_vars[tag] = obj
+                assert isinstance(tag, basestring)
+                if tag in self.context.tags:
+                    logger.warning('{0}: {1} was tagged as {2}, but {2} '
+                                   'is already assigned. The old tag will be '
+                                   'overwritten.'.format(self, obj, tag))
+                self.context.tags[tag] = obj
                 return obj
             return tag
 
@@ -369,10 +387,7 @@ class TheanoTransformer(ASTTransformer):
 
         else:
             try:
-                # transform and recompile the function
-                t = TheanoTransformer(watcher=self.watcher)
-                new_func = t.recompile(func)
-                return new_func
+                return self.context.recompile(func, nested=True)
             except:
                 raise ValueError('Unsupported function: {0}'.format(func))
 
@@ -510,6 +525,8 @@ class TheanoTransformer(ASTTransformer):
                 b = b
                 c = c
                 d = d
+                tag(a, 'a')
+                tag(b, 'b')
                 ...
 
         which is eventually transformed by the visitor to:
@@ -519,6 +536,8 @@ class TheanoTransformer(ASTTransformer):
                 b = self.shadow(b)
                 c = self.shadow(c)
                 d = self.shadow(d)
+                tag(a, 'a')
+                tag(b, 'b')
                 ...
 
         This way, any future references to these variables will access their
@@ -527,14 +546,36 @@ class TheanoTransformer(ASTTransformer):
         changes might not be reflected the next (and first!) time the variable
         is loaded.
         """
+        self.generic_visit(node)
         body = []
-        for param in node.args.args + [node.args.vararg] + [node.args.kwarg]:
+        # assign args and tags
+        for param in node.args.args:
+            body.append(self.visit(Assign(
+                targets=[Name(ctx=Store(), id=param.id)],
+                value=Name(ctx=Load(), id=param.id))))
+
+
+        # shadow all varargs and kwargs, if possible.
+        for param in [node.args.vararg, node.args.kwarg]:
             if param:
-                body.append(Assign(
-                    targets=[Name(ctx=Store(), id=getattr(param, 'id', param))],
-                    value=Name(ctx=Load(), id=getattr(param, 'id', param))))
+                body.append(self.visit(Assign(
+                    targets=[Name(ctx=Store(), id=param)],
+                    value=Name(ctx=Load(), id=param))))
+
+
+        # if this is the top-level function definition, tag all arguments
+        if node is self.context._top_node:
+            for param in node.args.args:
+                body.append(self.visit(Expr(_simple_call(
+                    args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
+                    func=Attribute(attr='tag',
+                                   ctx=Load(),
+                                   value=Name(ctx=Load(),
+                                              id='___functions'))))))
+            self.context._top_node = None
+
         node.body = body + node.body
-        return self.generic_visit(node)
+        return node
 
     def visit_Num(self, node):
         # don't make changes because these are typically function arguments
