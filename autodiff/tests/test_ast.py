@@ -591,6 +591,16 @@ class ArraySubscripts(unittest.TestCase):
             return x
         self.assertTrue(checkfn(f, [2]))
 
+    def test_nested_assign(self):
+        def f(x):
+            x[2:4][1,2] = 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
+
+        def f(x):
+            x[2:4][1,2] += 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
 
 class TestMethods(unittest.TestCase):
     def test_instance_method(self):
