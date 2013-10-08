@@ -694,28 +694,28 @@ class TheanoTransformer(NodeTransformer):
         body = []
         # assign args and tags
         for param in node.args.args:
-            body.append(self.visit(Assign(
+            body.append(Assign(
                 targets=[Name(ctx=Store(), id=param.id)],
-                value=Name(ctx=Load(), id=param.id))))
+                value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
 
         # shadow all varargs and kwargs, if possible.
         for param in [node.args.vararg, node.args.kwarg]:
             if param:
-                body.append(self.visit(Assign(
+                body.append(Assign(
                     targets=[Name(ctx=Store(), id=param)],
-                    value=Name(ctx=Load(), id=param))))
+                value=self.ast_wrap('shadow', Name(ctx=Load(), id=param))))
 
 
         # if this is the top-level function definition, tag all arguments
         if node is self.context._top_node:
             for param in node.args.args:
-                body.append(self.visit(Expr(_simple_call(
-                    args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
+                body.append(Expr(_simple_call(
+                    args=[self.ast_wrap('shadow', Name(ctx=Load(), id=param.id)), Str(s=param.id)],
                     func=Attribute(attr='tag',
                                    ctx=Load(),
                                    value=Name(ctx=Load(),
-                                              id='___functions'))))))
+                                              id='___functions')))))
             self.context._top_node = None
 
         node.body = body + node.body
