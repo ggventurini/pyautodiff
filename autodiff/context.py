@@ -442,6 +442,13 @@ class TheanoTransformer(NodeTransformer):
             else:
                 return func
 
+        # ** ======================= Misc
+
+        elif (('ipdb' in getattr(func, '__module__', '')
+              or 'pdb' in getattr(func, '__module__', ''))
+              and func.__name__ == 'set_trace'):
+            return func
+
         # ** ======================= Anything else
 
         else:
