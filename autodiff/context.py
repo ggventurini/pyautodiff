@@ -176,6 +176,9 @@ class Context(object):
         self.s_vars.clear()
         self.inplace_updates.clear()
         self.tags.clear()
+        self._nogc = []
+        self._noshadow = set()
+        self._top_node = None
 
 
 class TheanoTransformer(NodeTransformer):
