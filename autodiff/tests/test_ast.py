@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import copy
+import __builtin__
 
 import autodiff
 import autodiff.utils as utils
@@ -93,13 +94,50 @@ class Python(unittest.TestCase):
             pass
         self.assertTrue(checkfn(fn, [1]))
 
+    def test_for(self):
+        def f():
+            x = 0
+            for i in range(5):
+                x += i
+            return x
+        self.assertTrue(checkfn(fn, [1]))
+
     def test_enumerate(self):
-        def fn(x):
+        def f1(x):
+            z = np.arange(x.shape[0])
+            for i, xi in enumerate(range(4)):
+                z[i] += xi
+            return z
+        self.assertTrue(checkfn(f1, [1]))
+
+        def f2(x):
             z = np.arange(x.shape[0])
             for i, xi in enumerate(x):
                 z[i] += xi
             return z
-        self.assertRaises(TypeError, checkfn, fn, [1])
+        self.assertRaises(TypeError, checkfn, f2, [1])
+
+    def test_sum(self):
+        def f():
+            x = np.ones(5)
+            y = np.ones(5) * 5
+            return __builtin__.sum([x, y])
+        self.assertTrue(checkfn(f, []))
+
+    def test_max(self):
+        def f():
+            x = np.ones(5)
+            y = np.ones(5) * 5
+            return __builtin__.max([x, y])
+        self.assertTrue(checkfn(f, []))
+
+    def test_min(self):
+        def f():
+            x = np.ones(5)
+            y = np.ones(5) * 5
+            return __builtin__.min([x, y])
+        self.assertTrue(checkfn(f, []))
+
 
 
 class BasicMath(unittest.TestCase):
