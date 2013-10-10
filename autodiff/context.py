@@ -133,6 +133,12 @@ class Context(object):
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
 
+        # func_globals = dict((k, transformer.shadow(v)) for (k, v) in f.func_globals.iteritems())
+        # func_globals.update({'___ctx' : transformer})
+        # if f.func_closure:
+        #     func_globals.update((v, transformer.shadow(c.cell_contents)) for v, c in
+        #                         zip(f.func_code.co_freevars, f.func_closure))
+
         func_globals = f.func_globals.copy()
         func_globals.update({'___ctx' : transformer})
         if f.func_closure:
