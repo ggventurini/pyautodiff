@@ -102,7 +102,6 @@ class Context(object):
 
     def __init__(self, borrowable=()):
         self.s_vars = dict()
-        self.inplace_updates = dict()
         self.tags = dict()
         # FIXME do we need to hold on to all of these itermediates?
         # ensure these id's do not get recycled by garbage collection
@@ -128,7 +127,6 @@ class Context(object):
 
         if not nested:
             self._top_node = f_ast
-            self.inplace_updates.clear()
             self.tags.clear()
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
@@ -182,11 +180,11 @@ class Context(object):
 
     def reset(self):
         self.s_vars.clear()
-        self.inplace_updates.clear()
         self.tags.clear()
         self._nogc = []
         self._noshadow = set()
         self._top_node = None
+
 
 
 class TheanoTransformer(NodeTransformer):
@@ -248,7 +246,7 @@ class TheanoTransformer(NodeTransformer):
             # can't be updated inplace, so we keep track of inplace updates in
             # a special dictionary. We check for updates before returning the
             # variable.
-            return self.context.inplace_updates.get(id(x), x)
+            return x
 
         # take special care with small ints, because CPython caches them.
         if isinstance(x, int) and -5 <= x <= 256:
@@ -276,11 +274,12 @@ class TheanoTransformer(NodeTransformer):
         else:
             return self.context.s_vars[id(x)]
 
-    def update_inplace(self, obj, value):
+    def update_inplace(self, obj, new_value):
         """
-        Object `obj` is updated inplace with value `value`.
+        Object `obj` is updated inplace with value `value`; they must be
+        compatible. This is basically a hack to mimic inplace operations.
         """
-        self.context.inplace_updates[id(obj)] = value
+        raise ValueError('cant update inplace')
 
     def handle_functions(self, func):
         """
@@ -539,14 +538,11 @@ class TheanoTransformer(NodeTransformer):
                 return var.astype(dtype)
             return astype
 
-        # Numpy's sort operates inplace, need to explicitly handle that using
-        # the inplace_updates dict.
         elif method_name == 'sort':
-            def sort(*args, **kwargs):
-                sorted_var = var.sort(*args, **kwargs)
-                self.update_inplace(var, sorted_var)
+            def sort_(*args, **kwargs):
+                raise ValueError('cant sort inplace')
                 return None
-            return sort
+            return sort_
 
         # ...Otherwise, try to access the method on the Theano variable
         else:
