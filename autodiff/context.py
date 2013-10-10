@@ -690,6 +690,8 @@ class TheanoTransformer(NodeTransformer):
                 d = self.shadow(d)
                 tag(a, 'a')
                 tag(b, 'b')
+                for k, v in d.items():
+                    tag(v, k)
                 ...
 
         This way, any future references to these variables will access their
@@ -699,34 +701,56 @@ class TheanoTransformer(NodeTransformer):
         is loaded.
         """
         self.generic_visit(node)
-        body = []
-        # assign args and tags
+        assigns = []
+        tags = []
+
+        # shadow and tag args
         for param in node.args.args:
-            body.append(Assign(
+            assigns.append(Assign(
                 targets=[Name(ctx=Store(), id=param.id)],
                 value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
-
-        # shadow all varargs and kwargs, if possible.
-        for param in [node.args.vararg, node.args.kwarg]:
-            if param:
-                body.append(Assign(
-                    targets=[Name(ctx=Store(), id=param)],
-                value=self.ast_wrap('shadow', Name(ctx=Load(), id=param))))
-
-
-        # if this is the top-level function definition, tag all arguments
-        if node is self.context._top_node:
-            for param in node.args.args:
-                body.append(Expr(_simple_call(
-                    args=[self.ast_wrap('shadow', Name(ctx=Load(), id=param.id)), Str(s=param.id)],
+            if node is self.context._top_node:
+                tags.append(Expr(value=_simple_call(
+                    args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
                     func=Attribute(attr='tag',
                                    ctx=Load(),
                                    value=Name(ctx=Load(),
                                               id='___functions')))))
-            self.context._top_node = None
+                self.context._top_node = None
 
-        node.body = body + node.body
+        # shadow the varargs
+        if node.args.vararg:
+            assigns.append(Assign(
+                targets=[Name(ctx=Store(), id=node.args.vararg)],
+                value=self.ast_wrap('shadow', Name(ctx=Load(),
+                                                   id=node.args.vararg))))
+
+        # shadow and tag the kwargs
+        if node.args.kwarg:
+            assigns.append(Assign(
+                targets=[Name(ctx=Store(), id=node.args.kwarg)],
+                value=self.ast_wrap('shadow', Name(ctx=Load(),
+                                                   id=node.args.kwarg))))
+
+            tags.append(For(
+                body=[Expr(value=_simple_call(
+                    args=[Name(ctx=Load(), id='v'),
+                          Name(ctx=Load(), id='k')],
+                    func=Attribute(attr='tag',
+                                   ctx=Load(),
+                                   value=Name(ctx=Load(),
+                                              id='___functions'))))],
+                iter=_simple_call(
+                    func=Attribute(attr='iteritems',
+                                   ctx=Load(),
+                                   value=Name(ctx=Load(),
+                                              id=node.args.kwarg))),
+                orelse=[],
+                target=Tuple(ctx=Store(), elts=[Name(ctx=Store(), id='k'),
+                                                Name(ctx=Store(), id='v')])))
+
+        node.body = assigns + tags + node.body
         return node
 
     def visit_Name(self, node):
@@ -735,8 +759,8 @@ class TheanoTransformer(NodeTransformer):
         'shadow' method on its value.
         """
         self.generic_visit(node)
-        if isinstance(node.ctx, Load):
-            node = self.ast_wrap('shadow', node)
+        # if isinstance(node.ctx, Load):
+            # node = self.ast_wrap('shadow', node)
         return node
 
     def visit_Num(self, node):
