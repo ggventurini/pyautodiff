@@ -232,7 +232,7 @@ class TheanoTransformer(NodeTransformer):
         except:
             return args
 
-    def _shadow(self, x):
+    def _shadow_inner(self, x):
 
         """
         Given a numerical variable x, return an equivalent Theano shared
