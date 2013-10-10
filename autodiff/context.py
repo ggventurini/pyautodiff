@@ -684,17 +684,6 @@ class TheanoTransformer(NodeTransformer):
         is changed via this method to:
 
             def f(a, b=None, *c, **d):
-                a = a
-                b = b
-                c = c
-                d = d
-                tag(a, 'a')
-                tag(b, 'b')
-                ...
-
-        which is eventually transformed by the visitor to:
-
-            def f(a, b=None, *c, **d):
                 a = self.shadow(a)
                 b = self.shadow(b)
                 c = self.shadow(c)
