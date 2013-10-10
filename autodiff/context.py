@@ -76,13 +76,15 @@ def compile_func(ast, new_globals=None, file_name=None):
 
 
 def escape(x):
-    if utils.isvar(x):
-        try:
-            return x.eval()
-        except:
-            raise ValueError('Could not escape {0}'.format(x))
-    else:
-        return x
+    def _escape(x):
+        if utils.isvar(x):
+            try:
+                return x.eval()
+            except:
+                raise ValueError('Could not escape {0}'.format(x))
+        else:
+            return x
+    return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
 
 
 def _simple_call(func, args):

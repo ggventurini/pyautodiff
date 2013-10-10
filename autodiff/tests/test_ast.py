@@ -2,14 +2,33 @@ import unittest
 import numpy as np
 import copy
 import __builtin__
-
+import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
 from autodiff.context import Context
 import autodiff.context as c
 
+reload(autodiff)
+reload(autodiff.context)
+from autodiff.context import Context
+
 
 context = Context()
+t = c.TheanoTransformer(context)
+
+
+
+w = np.ones(3)
+z = w
+
+def f(x, y):
+    return x > y
+
+F = context.recompile(f)
+F(w, w)
+
+
+
 
 
 def checkfn(f, var_ndim, *args, **kwargs):
@@ -138,6 +157,14 @@ class Python(unittest.TestCase):
             return __builtin__.min([x, y])
         self.assertTrue(checkfn(f, []))
 
+    def test_isinstance(self):
+        def f(x):
+            if isinstance(x, int):
+                return 1
+            elif isinstance(x, float):
+                return -1
+        self.assertTrue(checkfn(f, [], 1))
+        self.assertTrue(checkfn(f, [], 1.0))
 
 
 class BasicMath(unittest.TestCase):
@@ -505,7 +532,13 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertRaises(TypeError, checkfn,
                           lambda x, a: x.var(a), [2], 0)
 
-class NestedFunctions(unittest.TestCase):
+class Namespaces(unittest.TestCase):
+    def test_global(self):
+        x = np.ones((3, 4))
+        def f():
+            return x.swapaxes(0, 1)
+        self.assertTrue(checkfn(f, []))
+
     def test_nested_functions(self):
         def g(x):
             def h(x):
