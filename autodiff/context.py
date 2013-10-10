@@ -454,6 +454,12 @@ class TheanoTransformer(NodeTransformer):
                     return global_randomstreams.binomial(n=n, p=p, size=size)
                 return rand_b
 
+            # isinstance
+            elif func is isinstance:
+                def isinstance_(obj, types):
+                    return isinstance(escape(obj), escape(types))
+                return isinstance_
+
             # anything else (like getattr)
             else:
                 return func
