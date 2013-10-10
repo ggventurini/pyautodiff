@@ -224,8 +224,13 @@ class TheanoTransformer(NodeTransformer):
         Helper function for `_shadow` that calls it on a flattened version of
         its argument.
         """
-        shadow_vars = [self._shadow(x) for x in utils.flatten(args)]
-        return utils.unflatten(args, shadow_vars)
+        shadow_vars = [self._shadow_inner(x) for x in utils.flatten(args)]
+        # sometimes unflatten fails with certain dict subtypes (like
+        # matplotlib.RcParams!), so catch the error and skip shadowing.
+        try:
+            return utils.unflatten(args, shadow_vars)
+        except:
+            return args
 
     def _shadow(self, x):
 
