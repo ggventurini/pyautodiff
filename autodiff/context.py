@@ -20,7 +20,7 @@ logger = logging.getLogger('autodiff')
 
 # XXX FIXME This will not do - seed must be exposed.
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-global_randomstreams = RandomStreams(seed=np.random.randint(1, 999999))
+global_randomstreams = RandomStreams(seed=12345)#np.random.randint(1, 999999))
 
 
 def get_ast(func, flags=0):
