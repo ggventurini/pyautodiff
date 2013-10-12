@@ -540,8 +540,10 @@ class TheanoTransformer(NodeTransformer):
 
         elif method_name == 'sort':
             def sort_(*args, **kwargs):
-                raise ValueError('cant sort inplace')
-                return None
+                raise ValueError(
+                    'Calling an array\'s `sort()` method is not supported '
+                    'because in NumPy it is an inplace operation, but in '
+                    'Theano it is not. Please use numpy.sort() instead.')
             return sort_
 
         # ...Otherwise, try to access the method on the Theano variable
