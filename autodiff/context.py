@@ -565,13 +565,8 @@ class TheanoTransformer(NodeTransformer):
         else:
             return getattr(var, method_name)
 
-    def handle_set_subtensor(self, tensor_subscripted, value):
         """
-        Helper function for handling set_subtensor's inplace update
         """
-        old_tensor = tensor_subscripted.owner.inputs[0]
-        new_tensor = T.set_subtensor(tensor_subscripted, value)
-        self.update_inplace(old_tensor, new_tensor)
 
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
