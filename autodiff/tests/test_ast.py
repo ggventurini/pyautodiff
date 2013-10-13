@@ -322,6 +322,10 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x : np.ones(x.shape), [1]))
         self.assertTrue(checkfn(lambda x : np.ones(x.shape), [2]))
 
+    def test_sort(self):
+        self.assertTrue(checkfn(lambda x : np.sort(x), [2]))
+        self.assertTrue(checkfn(lambda x : np.sort(x, 0), [2]))
+
 
 class ArrayMethodsAttributes(unittest.TestCase):
     """
@@ -447,22 +451,22 @@ class ArrayMethodsAttributes(unittest.TestCase):
         def fn(x):
             x.sort()
             return x
-        self.assertTrue(checkfn(fn, [2]))
+        self.assertRaises(ValueError, checkfn, fn, [2])
 
         def fn(x):
             x.sort(1)
             return x
-        self.assertTrue(checkfn(fn, [2]))
+        self.assertRaises(ValueError, checkfn, fn, [2])
 
         def fn(x):
             x.sort(axis=1)
             return x
-        self.assertTrue(checkfn(fn, [2]))
+        self.assertRaises(ValueError, checkfn, fn, [2])
 
         def fn(x, a):
             x.sort(a)
             return x
-        self.assertTrue(checkfn(fn, [2], 0))
+        self.assertRaises(ValueError, checkfn, fn, [2], 0)
 
     def test_sum(self):
         self.assertTrue(checkfn(lambda x: x.sum(), [2]))
