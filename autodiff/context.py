@@ -87,7 +87,7 @@ def escape(x):
     return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
 
 
-def _simple_call(func, args):
+def simple_Call(func, args):
     if not isinstance(args, (list, tuple)):
         args = [args]
     call = Call(args=args,
@@ -206,7 +206,7 @@ class TheanoTransformer(NodeTransformer):
         ast_wrap returns an `ast.Call()` node which calls the method on the
         specified arguments at runtime.
         """
-        wrapped = _simple_call(func=Attribute(attr=method_name,
+        wrapped = simple_Call(func=Attribute(attr=method_name,
                                               ctx=Load(),
                                               value=Name(ctx=Load(),
                                                          id='___ctx')),
@@ -610,7 +610,7 @@ class TheanoTransformer(NodeTransformer):
 
     def visit_Attribute(self, node):
         self.generic_visit(node)
-        new_node = _simple_call(args=[node.value,
+        new_node = simple_Call(args=[node.value,
                                 Str(s=node.attr),
                                 self.ast_wrap('handle_array_methods',
                                               [node.value, Str(s=node.attr)])],
@@ -662,7 +662,7 @@ class TheanoTransformer(NodeTransformer):
             # Is, IsNot, In, Not In
             return node
 
-        new_node = _simple_call(args=[node.left] + node.comparators,
+        new_node = simple_Call(args=[node.left] + node.comparators,
                                 func=Attribute(attr=theano_op,
                                                ctx=Load(),
                                                value=Name(ctx=Load(),
@@ -709,7 +709,7 @@ class TheanoTransformer(NodeTransformer):
                 value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
             if node is self.context._top_node:
-                tags.append(Expr(value=_simple_call(
+                tags.append(Expr(value=simple_Call(
                     args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
                     func=Attribute(attr='tag',
                                    ctx=Load(),
@@ -732,14 +732,14 @@ class TheanoTransformer(NodeTransformer):
                                                    id=node.args.kwarg))))
 
             tags.append(For(
-                body=[Expr(value=_simple_call(
+                body=[Expr(value=simple_Call(
                     args=[Name(ctx=Load(), id='v'),
                           Name(ctx=Load(), id='k')],
                     func=Attribute(attr='tag',
                                    ctx=Load(),
                                    value=Name(ctx=Load(),
                                               id='___functions'))))],
-                iter=_simple_call(
+                iter=simple_Call(
                     func=Attribute(attr='iteritems',
                                    ctx=Load(),
                                    value=Name(ctx=Load(),
