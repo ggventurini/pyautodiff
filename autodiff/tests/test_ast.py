@@ -104,7 +104,13 @@ class Python(unittest.TestCase):
             for i in range(5):
                 x += i
             return x
-        self.assertTrue(checkfn(fn, [1]))
+        self.assertTrue(checkfn(f))
+
+        def f(x):
+            for i in range(5):
+                x += i
+            return x
+        self.assertTrue(checkfn(f, [1]))
 
     def test_enumerate(self):
         def f1(x):
@@ -130,18 +136,23 @@ class Python(unittest.TestCase):
 
     def test_max(self):
         def f():
-            x = np.ones(5)
-            y = np.ones(5) * 5
-            return __builtin__.max([x, y])
+            x = np.arange(5)
+            return __builtin__.max(x)
         self.assertTrue(checkfn(f, []))
+
+        def f(x):
+            return __builtin__.max(x)
+        self.assertTrue(checkfn(f, [1]))
 
     def test_min(self):
         def f():
-            x = np.ones(5)
-            y = np.ones(5) * 5
-            return __builtin__.min([x, y])
+            x = np.arange(5)
+            return __builtin__.min(x)
         self.assertTrue(checkfn(f, []))
 
+        def f(x):
+            return __builtin__.min(x)
+        self.assertTrue(checkfn(f, [1]))
     def test_isinstance(self):
         def f(x):
             if isinstance(x, int):
