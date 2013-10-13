@@ -267,9 +267,6 @@ class TheanoTransformer(NodeTransformer):
         if isinstance(x, int) and -5 <= x <= 256:
             x = np.int_(x)
 
-        elif isinstance(x, float):
-            x = np.float_(x)
-
         if getattr(x, 'dtype', None) == bool:
             logger.info('Warning: Theano has no bool type; upgrading to int8.')
             x = x.astype('int8')
