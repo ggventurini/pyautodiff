@@ -763,14 +763,12 @@ class TheanoTransformer(NodeTransformer):
                 targets=[Name(ctx=Store(), id=param.id)],
                 value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
-            if node is self.context._top_node:
-                tags.append(Expr(value=simple_Call(
-                    args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
-                    func=Attribute(attr='tag',
-                                   ctx=Load(),
-                                   value=Name(ctx=Load(),
-                                              id='___functions')))))
-                self.context._top_node = None
+            tags.append(Expr(value=simple_Call(
+                args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
+                func=Attribute(attr='tag',
+                               ctx=Load(),
+                               value=Name(ctx=Load(),
+                                          id='___functions')))))
 
         # shadow the varargs
         if node.args.vararg:
@@ -803,7 +801,12 @@ class TheanoTransformer(NodeTransformer):
                 target=Tuple(ctx=Store(), elts=[Name(ctx=Store(), id='k'),
                                                 Name(ctx=Store(), id='v')])))
 
-        node.body = assigns + tags + node.body
+        if node is self.context._top_node:
+            node.body = assigns + tags + node.body
+            self.context._top_node = None
+        else:
+            node.body = assigns + tags + node.body
+
         return node
 
     def visit_Name(self, node):
