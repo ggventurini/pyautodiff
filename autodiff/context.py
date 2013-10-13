@@ -88,6 +88,10 @@ def escape(x):
 
 
 def simple_Call(func, args):
+    """
+    Simple alias for building Call nodes that doesn't require specification of
+    keywords, kwargs or starargs.
+    """
     if not isinstance(args, (list, tuple)):
         args = [args]
     call = Call(args=args,
@@ -96,6 +100,7 @@ def simple_Call(func, args):
                 kwargs=None,
                 starargs=None)
     return call
+
 
 def isvar_ast(name):
     """
@@ -662,8 +667,10 @@ class TheanoTransformer(NodeTransformer):
 
     def visit_Call(self, node):
         """
-        Whenever a function is called, first pass it to
-        the 'handle_functions' method.
+        Whenever a function is called, first pass it to the 'handle_functions'
+        method. This method examines the function and modifies it prior to
+        calling it. For example, it might replace `numpy.ones` with
+        `theano.ones`.
         """
         self.generic_visit(node)
         node.func = self.ast_wrap('handle_functions', node.func)
