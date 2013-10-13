@@ -565,8 +565,21 @@ class TheanoTransformer(NodeTransformer):
         else:
             return getattr(var, method_name)
 
+    def handle_comparison(self, operator, left, right):
         """
+        This method is called whenever an 'eq' or 'neq' operator is
+        encountered with a single rhs comparator, since tensors do not properly
+        resolve == and !=.
         """
+        if utils.isvar(left) or utils.isvar(right):
+            return getattr(T, operator)(left, right)
+        elif operator == 'eq':
+            return left == right
+        elif operator == 'neq':
+            return left != right
+        else:
+            raise ValueError(
+                'Not sure how to handle operator: {0}'.format(operator))
 
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
@@ -673,34 +686,44 @@ class TheanoTransformer(NodeTransformer):
 
     def visit_Compare(self, node):
         """
-        Theano operators must be called as functions.
-        This replaces literal operators with the appropriate functions.
+        Replaces comparison operators with Theano functions, if either argument
+        is a tensor variable. Only applies to '==' and '!=' since those are not
+        handled well by Tensors.
+
+        Given:
+
+            x == y
+
+        Becomes:
+
+            ___ctx.handle_comparison('eq', x, y)
+
+        Which internally performs:
+
+            if utils.isvar(x) or utils.isvar(y):
+                T.eq(x, y)
+            else:
+                x == y
+
+        The function call is required to allow seamless replacement of the
+        comparison in places like if statements, where the nested if would raise
+        a syntax error.
         """
         self.generic_visit(node)
-        op = node.ops[0]
-        if isinstance(op, Gt):
-            theano_op = 'gt'
-        elif isinstance(op, GtE):
-            theano_op = 'ge'
-        elif isinstance(op, Lt):
-            theano_op = 'lt'
-        elif isinstance(op, LtE):
-            theano_op = 'le'
-        elif isinstance(op, Eq):
-            theano_op = 'eq'
-        elif isinstance(op, NotEq):
-            theano_op = 'neq'
+
+        if isinstance(node.ops[0], Eq):
+            theano_op = Str(s='eq')
+        elif isinstance(node.ops[0], NotEq):
+            theano_op = Str(s='neq')
         else:
-            # Is, IsNot, In, Not In
+            # Gt, GtE, Lt, LtE, Is, IsNot, In, Not In
             return node
 
-        new_node = simple_Call(args=[node.left] + node.comparators,
-                                func=Attribute(attr=theano_op,
-                                               ctx=Load(),
-                                               value=Name(ctx=Load(),
-                                                          id='___T')))
-
-        return new_node
+        if len(node.comparators) == 1:
+            return self.ast_wrap('handle_comparison',
+                                 [theano_op, node.left, node.comparators[0]])
+        else:
+            return node
 
     def visit_FunctionDef(self, node):
         """
