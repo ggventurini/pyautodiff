@@ -97,6 +97,16 @@ def simple_Call(func, args):
                 starargs=None)
     return call
 
+def isvar_ast(name):
+    """
+    Wraps a Name node in a call to utils.isvar.
+    """
+    isvar = simple_Call(args=utils.as_seq(name),
+                        func=Attribute(attr='isvar',
+                                       ctx=Load(),
+                                       value=Name(ctx=Load(), id='___utils')))
+    return isvar
+
 
 class Context(object):
 
@@ -609,14 +619,12 @@ class TheanoTransformer(NodeTransformer):
             # wrap set_subtensor statements in Assign to root tensor
             assign_subtensor = Assign(targets=[Name(ctx=Store(), id=tensor.id)],
                                       value=set_subt)
-            check_var = If(
-                test=simple_Call(args=[tensor],
-                                 func=Attribute(attr='isvar',
-                                                ctx=Load(),
-                                                value=Name(ctx=Load(),
-                                                           id='___utils'))),
-                body=[assign_subtensor],
-                orelse=[node])
+
+            # wrap assign_subtensor in If to ensure that the modification
+            # is only applied to tensor args
+            check_var = If(test=isvar_ast(tensor),
+                           body=[assign_subtensor],
+                           orelse=[node])
             return check_var
         else:
             return node
