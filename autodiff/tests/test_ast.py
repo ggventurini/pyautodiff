@@ -8,27 +8,8 @@ import autodiff.utils as utils
 from autodiff.context import Context
 import autodiff.context as c
 
-reload(autodiff)
-reload(autodiff.context)
-from autodiff.context import Context
-
 
 context = Context()
-t = c.TheanoTransformer(context)
-
-
-
-w = np.ones(3)
-z = w
-
-def f(x, y):
-    return x > y
-
-F = context.recompile(f)
-F(w, w)
-
-
-
 
 
 def checkfn(f, var_ndim, *args, **kwargs):
