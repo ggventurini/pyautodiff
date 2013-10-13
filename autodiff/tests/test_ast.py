@@ -12,8 +12,11 @@ import autodiff.context as c
 context = Context()
 
 
-def checkfn(f, var_ndim, *args, **kwargs):
+
+
+def checkfn(f, var_ndim=None, *args, **kwargs):
     override = kwargs.pop('override', None)
+    var_ndim = utils.as_seq(var_ndim)
     dim = [[4] * nd for nd in var_ndim]
     values = tuple([np.random.random(d) for d in dim])
     # make shallow copies to avoid inplace corruption
@@ -23,7 +26,8 @@ def checkfn(f, var_ndim, *args, **kwargs):
     F = context.recompile(f)
 
     sym_vars = F(*(sym_values + args))
-    sym_result = [v.eval() for v in utils.as_seq(sym_vars)]
+    sym_result = [v.eval() if utils.isvar(v) else v
+                  for v in utils.as_seq(sym_vars)]
     if len(sym_result) == 0:
         sym_result = None
     elif not isinstance(sym_vars, tuple):
