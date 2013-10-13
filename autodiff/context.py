@@ -310,7 +310,18 @@ class TheanoTransformer(NodeTransformer):
         # ** ======================= special autodiff functions
 
         elif func is autodiff.functions.escape:
+            # escapes a variable from Tensor representation
             return escape
+
+        elif func is autodiff.functions.escaped_call:
+            # call a function on escaped arguments, without transforming the AST
+            def escaped_call(fn, *args, **kwargs):
+                esc_args = utils.unflatten(
+                    args, [escape(a) for a in utils.flatten(args)])
+                esc_kwargs = utils.unflatten(
+                    kwargs, [escape(a) for a in utils.flatten(kwargs)])
+                return fn(*esc_args, **esc_kwargs)
+            return escaped_call
 
         elif func is autodiff.functions.tag:
             def tag(obj, tag):
