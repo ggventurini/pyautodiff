@@ -558,53 +558,66 @@ class TheanoTransformer(NodeTransformer):
         new_tensor = T.set_subtensor(tensor_subscripted, value)
         self.update_inplace(old_tensor, new_tensor)
 
-    def _assign_TO_subtensor(self, node):
-        """
-        Helper function for assigning to subscripts. Called by both Assign
-        and AugAssign.
-        """
-        # version of subscript with Load() context
-        if isinstance(node, Assign):
-            load_subscript = Subscript(ctx=Load(),
-                                       slice=node.targets[0].slice,
-                                       value=node.targets[0].value)
-            value = node.value
-        elif isinstance(node, AugAssign):
-            load_subscript = Subscript(ctx=Load(),
-                                       slice=node.target.slice,
-                                       value=node.target.value)
-            value = BinOp(left=load_subscript,
-                          right=node.value,
-                          op=node.op)
-
-        set_subtensor = Expr(self.ast_wrap(
-                             'handle_set_subtensor', [load_subscript, value]))
-
-        # check if the assignee is a tensor; if so, call handle_subtensor
-        tensor_switch = If(
-            test=_simple_call(Attribute(attr='isvar',
-                                        ctx=Load(),
-                                        value=Name(ctx=Load(),
-                                                   id='___utils')),
-                              load_subscript),
-            body=[set_subtensor],
-            orelse=[node])
-
-        return tensor_switch
-
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
 
     def visit_Assign(self, node):
         """
-        Care must be taken when assigning to subscripts of Tensor variables.
+        Applies the following transformations:
+
+        - Transform subscripts. Tensor variables do not support inplace
+          assignment, so subscript assigns must be changed to call the
+          `set_subtensor` function.
+
+            Statements of the form:
+                x[a:b][c] = y
+            Become:
+                if utils.isvar(x):
+                    x = T.set_subtensor(x[a:b], T.set_subtensor(x[a:b][c], y))
+                else:
+                    x[a:b][c] = y
+
         """
         self.generic_visit(node)
 
-        # if assigning to a subscript, build an if statement to check if the
-        # variable is a Tensor and call set_subtensor appropriately.
+        # handle subscripted assignment for tensor variables
         if isinstance(node.targets[0], Subscript):
-            return self._assign_TO_subtensor(node)
+
+            # helper function to transform subscript into (possibly nested)
+            # T.set_subtensor statements
+            def build_subt(subscript, value):
+                subscript_load = Subscript(ctx=Load(),
+                                           slice=subscript.slice,
+                                           value=subscript.value)
+                set_subtensor = simple_Call(
+                    args=[subscript_load, value],
+                    func=Attribute(attr='set_subtensor',
+                                   ctx=Load(),
+                                   value=Name(ctx=Load(), id='___T')))
+                if isinstance(subscript.value, Subscript):
+                    set_subtensor = build_subt(subscript.value, set_subtensor)
+                return set_subtensor
+
+            # get root tensor; check for nested subscripts
+            tensor = node.targets[0]
+            while not isinstance(tensor, Name):
+                tensor = tensor.value
+
+            # transform subscript into set_subtensor
+            set_subt = build_subt(subscript=node.targets[0], value=node.value)
+
+            # wrap set_subtensor statements in Assign to root tensor
+            assign_subtensor = Assign(targets=[Name(ctx=Store(), id=tensor.id)],
+                                      value=set_subt)
+            check_var = If(
+                test=simple_Call(args=[tensor],
+                                 func=Attribute(attr='isvar',
+                                                ctx=Load(),
+                                                value=Name(ctx=Load(),
+                                                           id='___utils'))),
+                body=[assign_subtensor],
+                orelse=[node])
+            return check_var
         else:
             return node
 
@@ -619,15 +632,24 @@ class TheanoTransformer(NodeTransformer):
 
     def visit_AugAssign(self, node):
         """
-        Care must be taken when assigning to subscripts of Tensor variables.
+        See documentation for self.visit_Assign() for information on
+        transformations applied here.
         """
-        self.generic_visit(node)
 
-        # if assigning to a subscript, build an if statement to check if the
-        # variable is a Tensor and call set_subtensor appropriately.
         if isinstance(node.target, Subscript):
-            return self._assign_TO_subtensor(node)
+            # apply op directly
+            value = BinOp(left=Subscript(ctx=Load(),
+                                         slice=node.target.slice,
+                                         value=node.target.value),
+                          right=node.value,
+                          op=node.op)
+
+            # farm out the work to visit_Assign
+            assign_node = self.visit_Assign(Assign(targets=[node.target],
+                                                   value=value))
+            return assign_node
         else:
+            self.generic_visit(node)
             return node
 
     def visit_Call(self, node):
