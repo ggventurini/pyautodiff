@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 import copy
-
+import __builtin__
+import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
 from autodiff.context import Context
@@ -93,14 +94,58 @@ class Python(unittest.TestCase):
             pass
         self.assertTrue(checkfn(fn, [1]))
 
-    @unittest.expectedFailure
+    def test_for(self):
+        def f():
+            x = 0
+            for i in range(5):
+                x += i
+            return x
+        self.assertTrue(checkfn(fn, [1]))
+
     def test_enumerate(self):
-        def fn(x):
+        def f1(x):
+            z = np.arange(x.shape[0])
+            for i, xi in enumerate(range(4)):
+                z[i] += xi
+            return z
+        self.assertTrue(checkfn(f1, [1]))
+
+        def f2(x):
             z = np.arange(x.shape[0])
             for i, xi in enumerate(x):
                 z[i] += xi
             return z
-        self.assertTrue(checkfn(fn, [1]))
+        self.assertRaises(TypeError, checkfn, f2, [1])
+
+    def test_sum(self):
+        def f():
+            x = np.ones(5)
+            y = np.ones(5) * 5
+            return __builtin__.sum([x, y])
+        self.assertTrue(checkfn(f, []))
+
+    def test_max(self):
+        def f():
+            x = np.ones(5)
+            y = np.ones(5) * 5
+            return __builtin__.max([x, y])
+        self.assertTrue(checkfn(f, []))
+
+    def test_min(self):
+        def f():
+            x = np.ones(5)
+            y = np.ones(5) * 5
+            return __builtin__.min([x, y])
+        self.assertTrue(checkfn(f, []))
+
+    def test_isinstance(self):
+        def f(x):
+            if isinstance(x, int):
+                return 1
+            elif isinstance(x, float):
+                return -1
+        self.assertTrue(checkfn(f, [], 1))
+        self.assertTrue(checkfn(f, [], 1.0))
 
 
 class BasicMath(unittest.TestCase):
@@ -269,6 +314,13 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.int16(x), [2]))
         self.assertTrue(checkfn(lambda x: np.bool_(x), [2]))
         self.assertTrue(checkfn(lambda x: np.bool(x), [0]))
+
+    def test_alloc(self):
+        self.assertTrue(checkfn(lambda : np.ones(5), []))
+        self.assertTrue(checkfn(lambda : np.ones((2,5)), []))
+        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [0]))
+        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [1]))
+        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [2]))
 
 
 class ArrayMethodsAttributes(unittest.TestCase):
@@ -461,7 +513,13 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertRaises(TypeError, checkfn,
                           lambda x, a: x.var(a), [2], 0)
 
-class NestedFunctions(unittest.TestCase):
+class Namespaces(unittest.TestCase):
+    def test_global(self):
+        x = np.ones((3, 4))
+        def f():
+            return x.swapaxes(0, 1)
+        self.assertTrue(checkfn(f, []))
+
     def test_nested_functions(self):
         def g(x):
             def h(x):
@@ -546,3 +604,43 @@ class ArraySubscripts(unittest.TestCase):
             x[1:3, 1:4] = o
             return x
         self.assertTrue(checkfn(f, [2]))
+
+    def test_nested_assign(self):
+        def f(x):
+            x[2:4][1,2] = 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
+
+        def f(x):
+            x[2:4][1,2] += 100
+            return x
+        self.assertTrue(checkfn(f, [2]))
+
+class TestMethods(unittest.TestCase):
+    def test_instance_method(self):
+        class Test(object):
+            def test(self, x):
+                return x * 2
+
+        t = Test()
+        self.assertTrue(checkfn(t.test, [2]))
+
+    def test_class_method(self):
+        class Test(object):
+            @classmethod
+            def test(cls, x):
+                return x * 2
+
+        t = Test()
+        self.assertTrue(checkfn(t.test, [2]))
+        self.assertTrue(checkfn(Test.test, [2]))
+
+    def test_static_method(self):
+        class Test(object):
+            @staticmethod
+            def test(x):
+                return x * 2
+
+        t = Test()
+        self.assertTrue(checkfn(t.test, [2]))
+        self.assertTrue(checkfn(Test.test, [2]))

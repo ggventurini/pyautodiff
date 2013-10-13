@@ -41,7 +41,7 @@ def expandedcallargs(fn, *args, **kwargs):
     and kwargs are not nested. The args are ordered by their position in the
     function signature.
     """
-    return tuple(flat_from_doc(orderedcallargs(fn, *args, **kwargs)))
+    return tuple(flatten(orderedcallargs(fn, *args, **kwargs)))
 
 
 def as_seq(x, seq_type=None):
@@ -99,66 +99,65 @@ def itercode(code):
             i = dst if abs_rel == 'abs' else i + dst
 
 
-def flat_from_doc(doc):
-    """Iterate over the elements of a nested document in a consistent order,
+def flatten(container):
+    """Iterate over the elements of a [nested] container in a consistent order,
     unpacking dictionaries, lists, and tuples.
 
     Returns a list.
 
-    Note that doc_from_flat(doc, flat_from_doc(doc)) == doc
-    """
+    Note that unflatten(container, flatten(container)) == container    """
     rval = []
-    if isinstance(doc, (list, tuple)):
-        for d_i in doc:
-            rval.extend(flat_from_doc(d_i))
-    elif isinstance(doc, dict):
-        if isinstance(doc, OrderedDict):
-            sortedkeys = doc.iterkeys()
+    if isinstance(container, (list, tuple)):
+        for d_i in container:
+            rval.extend(flatten(d_i))
+    elif isinstance(container, dict):
+        if isinstance(container, OrderedDict):
+            sortedkeys = container.iterkeys()
         else:
-            sortedkeys = sorted(doc.iterkeys())
+            sortedkeys = sorted(container.iterkeys())
         for k in sortedkeys:
             if isinstance(k, (tuple, dict)):
                 # -- if keys are tuples containing ndarrays, should
                 #    they be traversed also?
                 raise NotImplementedError(
                     'potential ambiguity in container key', k)
-            rval.extend(flat_from_doc(doc[k]))
+            rval.extend(flatten(container[k]))
     else:
-        rval.append(doc)
+        rval.append(container)
     return rval
 
 
-def doc_from_flat(doc, flat):
-    """Iterate over a nested document, building a clone from the elements of
+def unflatten(container, flat):
+    """Iterate over a [nested] container, building a clone from the elements of
     flat.
 
-    Returns object with same type as doc.
+    Returns object with same type as container.
 
-    Note that doc_from_flat(doc, flat_from_doc(doc)) == doc
+    Note that unflatten(container, flatten(container)) == container
     """
-    def doc_from_flat_inner(doc, pos):
-        if isinstance(doc, (list, tuple)):
+    def unflatten_inner(container, pos):
+        if isinstance(container, (list, tuple)):
             rval = []
-            for d_i in doc:
-                d_i_clone, pos = doc_from_flat_inner(d_i, pos)
+            for d_i in container:
+                d_i_clone, pos = unflatten_inner(d_i, pos)
                 rval.append(d_i_clone)
-            rval = type(doc)(rval)
+            rval = type(container)(rval)
 
-        elif isinstance(doc, dict):
-            rval = type(doc)()
-            if isinstance(doc, OrderedDict):
-                sortedkeys = doc.iterkeys()
+        elif isinstance(container, dict):
+            rval = type(container)()
+            if isinstance(container, OrderedDict):
+                sortedkeys = container.iterkeys()
             else:
-                sortedkeys = sorted(doc.iterkeys())
+                sortedkeys = sorted(container.iterkeys())
             for k in sortedkeys:
-                v_clone, pos = doc_from_flat_inner(doc[k], pos)
+                v_clone, pos = unflatten_inner(container[k], pos)
                 rval[k] = v_clone
 
         else:
             rval = flat[pos]
             pos += 1
         return rval, pos
-    return doc_from_flat_inner(doc, 0)[0]
+    return unflatten_inner(container, 0)[0]
 
 
 def isvar(x):
