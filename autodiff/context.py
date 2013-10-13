@@ -82,6 +82,8 @@ def escape(x):
                 return x.eval()
             except:
                 raise ValueError('Could not escape {0}'.format(x))
+        elif isinstance(x, ShadowClass):
+            return x._obj__
         else:
             return x
     return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
@@ -111,6 +113,7 @@ def isvar_ast(name):
                                        ctx=Load(),
                                        value=Name(ctx=Load(), id='___utils')))
     return isvar
+
 
 
 class Context(object):
@@ -146,17 +149,19 @@ class Context(object):
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
 
-        # func_globals = dict((k, transformer.shadow(v)) for (k, v) in f.func_globals.iteritems())
-        # func_globals.update({'___ctx' : transformer})
-        # if f.func_closure:
-        #     func_globals.update((v, transformer.shadow(c.cell_contents)) for v, c in
-        #                         zip(f.func_code.co_freevars, f.func_closure))
-
-        func_globals = f.func_globals.copy()
+        func_globals = dict(
+            (k, transformer.shadow(v)) for (k, v) in f.func_globals.iteritems())
         func_globals.update({'___ctx' : transformer})
         if f.func_closure:
-            func_globals.update((v, c.cell_contents) for v, c in
-                                zip(f.func_code.co_freevars, f.func_closure))
+            func_globals.update(
+                (v, transformer.shadow(c.cell_contents))
+                for v, c in zip(f.func_code.co_freevars, f.func_closure))
+
+        # func_globals = f.func_globals.copy()
+        # func_globals.update({'___ctx' : transformer})
+        # if f.func_closure:
+        #     func_globals.update((v, c.cell_contents) for v, c in
+        #                         zip(f.func_code.co_freevars, f.func_closure))
 
         new_f = compile_func(transformed_ast, func_globals, repr(self))
 
@@ -188,6 +193,11 @@ class Context(object):
             return x
         elif id(x) in self.s_vars:
             return self.s_vars[id(x)]
+        elif isinstance(x, int) and -5 <= x <= 256:
+            raise ValueError(
+                'Small integers (-5 <= x <= 256) can not be shadowed due to '
+                'CPython caching. Try casting the variable as a NumPy int type '
+                'or array before tracing: {0}'.format(x))
         else:
             raise ValueError(
                 'Requested the symbolic variable shadowing object {0}'
@@ -201,6 +211,63 @@ class Context(object):
         self._top_node = None
 
 
+class ShadowClass(object):
+    """
+    A class that [almost] transparently wraps other objects, shadowing any
+    requested attributes and function calls. Attributes can not be set.
+    """
+    __wraps__ = None
+    __ignore__ = ['__class__',
+                  '__mro__',
+                  '__repr__',
+                  '__new__',
+                  '__init__',
+                  '__dict__',
+                  '__name__',
+                  '__setattr__',
+                  '__getattr__',
+                  '__getattribute__',
+                  '__shadow__']
+
+    def __init__(_self, obj):
+        if _self.__wraps__ is None:
+            raise TypeError('__wraps__ not set.')
+        assert isinstance(obj, _self.__wraps__)
+        _self.__dict__['_obj__'] = obj
+        _self.__dict__['_context__'] = self.context
+
+    def __setattr__(SetComp, name, value):
+         raise TypeError(
+            'To protect code integrity, attributes of shadowed objects '
+            'can not be set: {0}'.format(_self._obj__))
+
+    def __getattr__(_self, name):
+        attr = getattr(_self._obj__, name)
+        return _self._context__.shadow(attr)
+
+    def __call__(_self, *args, **kwargs):
+        rval = _self._obj__.__call__(*args, **kwargs)
+        return _self._context__.shadow(rval)
+
+    class __metaclass__(type):
+        def __init__(cls, name, bases, dct):
+
+            def make_proxy(name):
+                def proxy(_self, *args):
+                    return _self._context__.shadow(getattr(_self._obj__, name))
+                return proxy
+
+            type.__init__(cls, name, bases, dct)
+            if cls.__wraps__:
+                for name in dir(cls.__wraps__):
+                    if name.startswith("__"):
+                        if (name not in cls.__ignore__
+                            and name not in dct):
+                            attr = getattr(cls.__wraps__, name, None)
+                            try:
+                                setattr(cls, name, property(make_proxy(name)))
+                            except:
+                                pass
 
 class TheanoTransformer(NodeTransformer):
 
@@ -255,36 +322,39 @@ class TheanoTransformer(NodeTransformer):
         if id(x) in self.context._noshadow:
             return x
 
-        if not isinstance(x, (int, float, np.ndarray)):
-            # if x is a Theano variable, it is possible that it was modified by
-            # an inplace Numpy operation, like array.sort(). Theano variables
-            # can't be updated inplace, so we keep track of inplace updates in
-            # a special dictionary. We check for updates before returning the
-            # variable.
+        if utils.isvar(x):
             return x
 
-        # take special care with small ints, because CPython caches them.
-        if isinstance(x, int) and -5 <= x <= 256:
-            x = np.int_(x)
+        if isinstance(x, (int, float, np.ndarray)):
+            # take special care with small ints, because CPython caches them.
+            if isinstance(x, int) and -5 <= x <= 256:
+                x = np.int_(x)
 
-        if getattr(x, 'dtype', None) == bool:
-            logger.info('Warning: Theano has no bool type; upgrading to int8.')
-            x = x.astype('int8')
+            if getattr(x, 'dtype', None) == bool:
+                logger.info('Warning: Theano has no bool type; upgrading to int8.')
+                x = x.astype('int8')
 
-        if id(x) not in self.context.s_vars:
-            # add to _nogc to ensure that the id won't be reused
-            self.context._nogc.append(x)
-            # create symbolic version:
-            if isinstance(x, np.ndarray) and id(x) in self.context.borrowable:
-                sym_x = theano.shared(x, borrow=True)
+            if id(x) not in self.context.s_vars:
+                # add to _nogc to ensure that the id won't be reused
+                self.context._nogc.append(x)
+                # create symbolic version:
+                if isinstance(x, np.ndarray) and id(x) in self.context.borrowable:
+                    sym_x = theano.shared(x, borrow=True)
+                else:
+                    sym_x = theano.shared(x)
+                # store symbolic version
+                self.context.s_vars[id(x)] = sym_x
+                # return symbolic version
+                return sym_x
             else:
-                sym_x = theano.shared(x)
-            # store symbolic version
-            self.context.s_vars[id(x)] = sym_x
-            # return symbolic version
-            return sym_x
+                return self.context.s_vars[id(x)]
         else:
-            return self.context.s_vars[id(x)]
+            try:
+                class Shadow(ShadowClass):
+                    __wraps__ = x.__class__
+                return Shadow(x)
+            except:
+                return x
 
     def update_inplace(self, obj, new_value):
         """

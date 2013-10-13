@@ -116,11 +116,11 @@ def flatten(container):
         else:
             sortedkeys = sorted(container.iterkeys())
         for k in sortedkeys:
-            if isinstance(k, (tuple, dict)):
-                # -- if keys are tuples containing ndarrays, should
-                #    they be traversed also?
-                raise NotImplementedError(
-                    'potential ambiguity in container key', k)
+            # if isinstance(k, (tuple, dict)):
+                # # -- if keys are tuples containing ndarrays, should
+                # #    they be traversed also?
+                # raise NotImplementedError(
+                    # 'potential ambiguity in container key', k)
             rval.extend(flatten(container[k]))
     else:
         rval.append(container)

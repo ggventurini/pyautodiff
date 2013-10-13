@@ -5,13 +5,11 @@ import __builtin__
 import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
-from autodiff.context import Context
 import autodiff.context as c
 
 
-context = Context()
 
-
+context = autodiff.context.Context()
 
 
 def checkfn(f, var_ndim=None, *args, **kwargs):
