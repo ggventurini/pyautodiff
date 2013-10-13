@@ -386,10 +386,8 @@ class TheanoTransformer(NodeTransformer):
         elif (getattr(func, '__module__', None)
               and getattr(func, '__module__').startswith('numpy')
               or isinstance(func, np.ufunc)
-              or str(func) == '<built-in function abs>'
               or str(func) == '<built-in function max>'
-              or str(func) == '<built-in function min>'
-              or str(func) == '<built-in function sum>'):
+              or str(func) == '<built-in function min>'):
 
             # abs
             if func.__name__ in ('abs', 'absolute'):
