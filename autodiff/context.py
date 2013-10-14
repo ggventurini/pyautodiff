@@ -77,7 +77,9 @@ def compile_func(ast, new_globals=None, file_name=None):
 
 def escape(x):
     def _escape(x):
-        if utils.isvar(x):
+        if isinstance(x, theano.tensor.sharedvar.SharedVariable):
+            return x.get_value()
+        elif utils.isvar(x):
             try:
                 return x.eval()
             except:
