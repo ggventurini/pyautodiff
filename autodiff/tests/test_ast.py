@@ -20,12 +20,13 @@ def checkfn(f, var_ndim=None, *args, **kwargs):
     dim = [[4] * nd for nd in var_ndim]
     values = tuple([np.random.random(d) for d in dim])
     # make shallow copies to avoid inplace corruption
-    sym_values = tuple(copy.copy(v) for v in values)
-    sym_args = tuple(copy.copy(a) for a in args)
+    sym_values = copy.copy(values)
+    sym_args = copy.copy(args)
+    sym_kwargs = copy.copy(kwargs)
 
     F = context.recompile(f)
 
-    sym_vars = F(*(sym_values + args))
+    sym_vars = F(*(sym_values + sym_args), **sym_kwargs)
     sym_result = [v.eval() if utils.isvar(v) else v
                   for v in utils.as_seq(sym_vars)]
     if len(sym_result) == 0:
@@ -33,7 +34,7 @@ def checkfn(f, var_ndim=None, *args, **kwargs):
     elif not isinstance(sym_vars, tuple):
         sym_result = sym_result[0]
 
-    py_result = override or f(*(values + args))
+    py_result = override or f(*(values + args), **kwargs)
 
     if sym_result is None:
         return sym_result is None and py_result is None
@@ -62,6 +63,104 @@ class AugAssign(unittest.TestCase):
         F = context.recompile(f)
         assert F(1).eval() == 2
 
+class Signatures(unittest.TestCase):
+    def test_sig_no_arg(self):
+        def fn():
+            return 1
+        self.assertTrue(checkfn(fn))
+
+    def test_sig_one_arg(self):
+        def fn(x):
+            return x
+        self.assertRaises(TypeError, f)
+        self.assertRaises(TypeError, f, a=2)
+        self.assertTrue(checkfn(f, 2))
+        self.assertTrue(checkfn(f, x=2))
+
+    def test_sig_mult_args(self):
+        # multiple args, no default
+        def f(x, y):
+            return x * y
+        self.assertRaises(TypeError, f)
+        self.assertRaises(TypeError, f, 2)
+        self.assertRaises(TypeError, f, a=2, b=2)
+        self.assertTrue(checkfn(f, 2, 3))
+        self.assertTrue(checkfn(f, y=4, x=5))
+
+    def test_sig_var_args(self):
+        # var args, no default
+        def f(x, y, *z):
+            return x * y * sum(z)
+        self.assertRaises(TypeError, f)
+        self.assertRaises(TypeError, f, 2)
+        self.assertRaises(TypeError, f, a=2, b=2)
+        self.assertTrue(checkfn(f, 2, 3))
+        self.assertTrue(checkfn(f, 2, 3, 4))
+        self.assertTrue(checkfn(f, 2, 3, 4, 5))
+
+    def test_sig_default_args(self):
+        # multiple args, one default
+        def f(x, y=2):
+            return x * y
+        self.assertRaises(TypeError, f)
+        self.assertRaises(TypeError, f, y=3)
+        self.assertTrue(checkfn(f, 2))
+        self.assertTrue(checkfn(f, 2, 3))
+        self.assertTrue(checkfn(f, y=4, x=5))
+        self.assertTrue(checkfn(f, x=5))
+
+        # multiple args, all default
+        def f(x=1, y=2):
+            return x * y
+        self.assertTrue(checkfn(f))
+        self.assertTrue(checkfn(f, 1))
+        self.assertTrue(checkfn(f, 1, 2))
+        self.assertTrue(checkfn(f, y=2, x=1))
+        self.assertTrue(checkfn(f, x=5))
+        self.assertTrue(checkfn(f, y=5))
+
+    def test_sig_default_var_args(self):
+        # multiple var args, all default
+        def f(x=1, y=2, *z):
+            return x * y * sum(z)
+        self.assertTrue(checkfn(f))
+        self.assertTrue(checkfn(f, 1))
+        self.assertTrue(checkfn(f, 1, 2))
+        self.assertTrue(checkfn(f, 1, 2, 3))
+        self.assertTrue(checkfn(f, 1, 2, 3, 4))
+
+    def test_sig_kwargs(self):
+        # kwargs
+        def f(**kwargs):
+            x = kwargs['x']
+            y = kwargs['y']
+            z = kwargs['z']
+            return x * y * z
+        self.assertRaises(KeyError, f)
+        self.assertRaises(TypeError, f, 1)
+        self.assertTrue(checkfn(f, x=1, y=2, z=3))
+
+    def test_sig_varargs_kwargs(self):
+        # varargs and kwargs
+        def f(a, *b, **kwargs):
+            x = kwargs['x']
+            y = kwargs['y']
+            z = kwargs['z']
+            return x * y * z
+        self.assertRaises(TypeError, f)
+        self.assertRaises(KeyError, f, 1)
+        self.assertRaises(TypeError, f, x=1, y=2, z=3)
+        self.assertTrue(checkfn(f, 1, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+
+        # varargs and kwargs, use varargs
+        def f(a, *b, **kwargs):
+            x = kwargs['x']
+            y = kwargs['y']
+            z = kwargs['z']
+            return x * y * z * b[0]
+        self.assertTrue(checkfn(f, 1, 2, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
 
 class Python(unittest.TestCase):
     def test_range(self):
@@ -151,6 +250,7 @@ class Python(unittest.TestCase):
         def f(x):
             return __builtin__.min(x)
         self.assertTrue(checkfn(f, [1]))
+
     def test_isinstance(self):
         def f(x):
             if isinstance(x, int):
