@@ -91,13 +91,12 @@ def escape(x):
     return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
 
 
-def simple_Call(func, args):
+def simple_Call(func, args=None):
     """
     Simple alias for building Call nodes that doesn't require specification of
     keywords, kwargs or starargs.
     """
-    if not isinstance(args, (list, tuple)):
-        args = [args]
+    args = utils.as_seq(args)
     call = Call(args=args,
                 func=func,
                 keywords=[],
