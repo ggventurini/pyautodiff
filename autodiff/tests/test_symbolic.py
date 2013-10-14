@@ -3,14 +3,14 @@ import numpy as np
 import theano.tensor
 
 import autodiff
-from autodiff.symbolic import Symbolic#, Function, Gradient
+from autodiff.symbolic import Symbolic, Function, Gradient
 from autodiff import tag
 
 
 def checkfn(symF, *args, **kwargs):
     py_result = symF.pyfn(*args, **kwargs)
-    ad_result = symF(*args, **kwargs)
-    return np.allclose(ad_result, py_result)
+    sym_result = symF(*args, **kwargs)
+    return np.allclose(sym_result, py_result)
 
 
 #========= Tests
