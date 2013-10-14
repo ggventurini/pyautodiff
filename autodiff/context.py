@@ -315,14 +315,13 @@ class TheanoTransformer(NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared
         variable and store the relationship in self.s_vars. Otherwise return x.
         """
-
         if id(x) in self.context._noshadow:
             return x
 
         if utils.isvar(x):
             return x
 
-        if isinstance(x, (int, float, np.ndarray)):
+        if isinstance(x, (int, float, np.number, np.ndarray)):
             # take special care with small ints, because CPython caches them.
             if isinstance(x, int) and -5 <= x <= 256:
                 x = np.int_(x)
