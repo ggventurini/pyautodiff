@@ -126,7 +126,7 @@ class Context(object):
         # ensure these id's do not get recycled by garbage collection
         self._nogc = []
         self._noshadow = set()
-        self._top_node = None
+        self._top_def = None
         self.borrowable = [id(b) for b in borrowable]
 
     def recompile(self, f, nested=False):
@@ -145,7 +145,7 @@ class Context(object):
         f_ast = get_ast(f)
 
         if not nested:
-            self._top_node = f_ast
+            self._top_def = f_ast
             self.tags.clear()
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
@@ -885,9 +885,9 @@ class TheanoTransformer(NodeTransformer):
                 target=Tuple(ctx=Store(), elts=[Name(ctx=Store(), id='k'),
                                                 Name(ctx=Store(), id='v')])))
 
-        if node is self.context._top_node:
+        if node is self.context._top_def:
             node.body = assigns + tags + node.body
-            self.context._top_node = None
+            self.context._top_def = None
         else:
             node.body = assigns + node.body
 
