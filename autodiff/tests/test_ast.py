@@ -13,6 +13,8 @@ context = autodiff.context.Context()
 
 
 def checkfn(f, var_ndim=None, *args, **kwargs):
+    context.reset()
+
     override = kwargs.pop('override', None)
     var_ndim = utils.as_seq(var_ndim)
     dim = [[4] * nd for nd in var_ndim]
@@ -32,8 +34,6 @@ def checkfn(f, var_ndim=None, *args, **kwargs):
         sym_result = sym_result[0]
 
     py_result = override or f(*(values + args))
-
-    context.reset()
 
     if sym_result is None:
         return sym_result is None and py_result is None
@@ -547,6 +547,24 @@ class Namespaces(unittest.TestCase):
             return g(x)
 
         self.assertTrue(checkfn(f, [2]))
+
+    def test_freevars(self):
+        class Test(object):
+            def __init__(self):
+                self.x = np.arange(5.) - 10.0
+
+            def getx(self):
+                return self.x
+
+        t = Test()
+
+        def f(x):
+            return np.dot(x, t.x)
+
+        x = np.arange(5.)
+        self.assertTrue(checkfn(f, [], x))
+        self.assertTrue(id(t.x) in context.s_vars)
+
 
 class ArraySubscripts(unittest.TestCase):
     def test_indexing(self):

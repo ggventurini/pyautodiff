@@ -149,19 +149,15 @@ class Context(object):
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
 
-        func_globals = dict(
-            (k, transformer.shadow(v)) for (k, v) in f.func_globals.iteritems())
+        func_globals = f.func_globals.copy()
         func_globals.update({'___ctx' : transformer})
         if f.func_closure:
-            func_globals.update(
-                (v, transformer.shadow(c.cell_contents))
-                for v, c in zip(f.func_code.co_freevars, f.func_closure))
+            func_globals.update((v, transformer.shadow(c.cell_contents)) for v, c in
+                                zip(f.func_code.co_freevars, f.func_closure))
 
-        # func_globals = f.func_globals.copy()
-        # func_globals.update({'___ctx' : transformer})
-        # if f.func_closure:
-        #     func_globals.update((v, c.cell_contents) for v, c in
-        #                         zip(f.func_code.co_freevars, f.func_closure))
+        for name in f.func_code.co_names:
+            if name in func_globals.iterkeys():
+                func_globals[name] = transformer.shadow(func_globals[name])
 
         new_f = compile_func(transformed_ast, func_globals, repr(self))
 
@@ -216,54 +212,59 @@ class ShadowClass(object):
     A class that [almost] transparently wraps other objects, shadowing any
     requested attributes and function calls. Attributes can not be set.
     """
-    __wraps__ = None
-    __ignore__ = ['__class__',
+    __wraps___ = None
+    __ignore___ = ['__class__',
                   '__mro__',
                   '__repr__',
                   '__new__',
                   '__init__',
                   '__dict__',
+                  '__call__',
                   '__name__',
                   '__setattr__',
                   '__getattr__',
                   '__getattribute__',
                   '__shadow__']
 
-    def __init__(_self, obj):
-        if _self.__wraps__ is None:
+    def __init__(self, obj, context):
+        if isinstance(obj,  type):
+            raise TypeError()
+        if self.__wraps___ is None:
             raise TypeError('__wraps__ not set.')
-        assert isinstance(obj, _self.__wraps__)
-        _self.__dict__['_obj__'] = obj
-        _self.__dict__['_context__'] = self.context
+        assert isinstance(obj, self.__wraps___)
+        self.__dict__['_obj__'] = obj
+        self.__dict__['_transformer__'] = TheanoTransformer(context)
 
     def __setattr__(SetComp, name, value):
          raise TypeError(
             'To protect code integrity, attributes of shadowed objects '
-            'can not be set: {0}'.format(_self._obj__))
+            'can not be set: Shadowed {0}'.format(self._obj__))
 
-    def __getattr__(_self, name):
-        attr = getattr(_self._obj__, name)
-        return _self._context__.shadow(attr)
+    def __getattr__(self, name):
+        attr = getattr(self._obj__, name)
+        return self._transformer__.shadow(attr)
 
-    def __call__(_self, *args, **kwargs):
-        rval = _self._obj__.__call__(*args, **kwargs)
-        return _self._context__.shadow(rval)
+    def __call__(self, *args, **kwargs):
+        handle_functions = self._transformer__.handle_functions
+        rval = handle_functions(self._obj__).__call__(*args, **kwargs)
+        return self._transformer__.shadow(rval)
 
     class __metaclass__(type):
         def __init__(cls, name, bases, dct):
 
             def make_proxy(name):
-                def proxy(_self, *args):
-                    return _self._context__.shadow(getattr(_self._obj__, name))
+                def proxy(self, *args):
+                    print name
+                    return self._transformer__.shadow(getattr(self._obj__, name))
                 return proxy
 
             type.__init__(cls, name, bases, dct)
-            if cls.__wraps__:
-                for name in dir(cls.__wraps__):
+            if cls.__wraps___:
+                for name in dir(cls.__wraps___):
                     if name.startswith("__"):
-                        if (name not in cls.__ignore__
+                        if (name not in cls.__ignore___
                             and name not in dct):
-                            attr = getattr(cls.__wraps__, name, None)
+                            attr = getattr(cls.__wraps___, name, None)
                             try:
                                 setattr(cls, name, property(make_proxy(name)))
                             except:
@@ -305,12 +306,7 @@ class TheanoTransformer(NodeTransformer):
         its argument.
         """
         shadow_vars = [self._shadow_inner(x) for x in utils.flatten(args)]
-        # sometimes unflatten fails with certain dict subtypes (like
-        # matplotlib.RcParams!), so catch the error and skip shadowing.
-        try:
-            return utils.unflatten(args, shadow_vars)
-        except:
-            return args
+        return utils.unflatten(args, shadow_vars)
 
     def _shadow_inner(self, x):
 
@@ -349,12 +345,14 @@ class TheanoTransformer(NodeTransformer):
             else:
                 return self.context.s_vars[id(x)]
         else:
-            try:
-                class Shadow(ShadowClass):
-                    __wraps__ = x.__class__
-                return Shadow(x)
-            except:
+            if isinstance(x, type):
                 return x
+            if isinstance(x, ShadowClass):
+                return x
+            else:
+                class Shadow(ShadowClass):
+                    __wraps___ = x.__class__
+                return Shadow(x, self.context)
 
     def update_inplace(self, obj, new_value):
         """
@@ -409,6 +407,7 @@ class TheanoTransformer(NodeTransformer):
                 return obj
             return tag
 
+
         # ** ======================= __theano_op__
 
         elif hasattr(func, '__theano_op__'):
@@ -457,7 +456,12 @@ class TheanoTransformer(NodeTransformer):
                         return enumerate(iterable, start=start)
                 return enumerate_
             else:
-                raise ValueError('Unsupported type: {0}'.format(func))
+                def new_type(*args, **kwargs):
+                    try:
+                        return self.shadow(func(*args, **kwargs))
+                    except:
+                        raise ValueError('Unsupported type: {0}'.format(func))
+                return new_type
 
         # ** ======================= numpy functions
 
@@ -884,7 +888,7 @@ class TheanoTransformer(NodeTransformer):
             node.body = assigns + tags + node.body
             self.context._top_node = None
         else:
-            node.body = assigns + tags + node.body
+            node.body = assigns + node.body
 
         return node
 

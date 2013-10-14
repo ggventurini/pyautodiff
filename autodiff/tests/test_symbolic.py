@@ -153,6 +153,25 @@ class TestSymbolic(unittest.TestCase):
         f = s.compile_function(x, o)
         assert(f(2.0) == 102.0)
 
+    def test_access_attribute(self):
+        class Test(object):
+            def __init__(self):
+                self.x = np.arange(5.) - 10.0
+
+            def getx(self):
+                return self.x
+
+        t = Test()
+
+        def f(x):
+            return np.dot(x, t.x)
+
+        x = np.arange(5.)
+        s = Symbolic()
+        o = s.trace(f, x)
+        g = s.compile_gradient(x, o, wrt=t.x)
+        self.assertTrue(np.allclose(g(x), x))
+
 
 class TestFunction(unittest.TestCase):
     def test_sig_no_arg(self):
