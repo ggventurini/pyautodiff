@@ -295,7 +295,26 @@ class Function(Symbolic):
 
 
 class Gradient(Function):
-    pass
+    def __init__(self,
+                 pyfn,
+                 wrt=None,
+                 reduction=None,
+                 borrowable=None,
+                 context=None,
+                 use_cache=True):
+        super(Gradient, self).__init__(pyfn=pyfn,
+                                       borrowable=borrowable,
+                                       context=context,
+                                       use_cache=use_cache)
+        self.wrt = utils.as_seq(wrt, tuple)
+        self.reduction = reduction
+
+    def get_theano_function(self):
+        fn = self.compile_gradient(inputs=self.s_inputs,
+                                   outputs=self.s_outputs,
+                                   wrt=self.wrt,
+                                   reduction=self.reduction)
+        return fn
 
 
 class HessianVector(Gradient):
