@@ -770,8 +770,10 @@ class TheanoTransformer(NodeTransformer):
     def visit_Compare(self, node):
         """
         Replaces comparison operators with Theano functions, if either argument
-        is a tensor variable. Only applies to '==' and '!=' since those are not
-        handled well by Tensors.
+        is a tensor variable. Prior to NumPy 1.8, this is required for all
+        comparisons where the NumPy array is on the left; thereafter it is
+        required only for == and !=.
+
 
         Given:
 
@@ -798,8 +800,16 @@ class TheanoTransformer(NodeTransformer):
             theano_op = Str(s='eq')
         elif isinstance(node.ops[0], NotEq):
             theano_op = Str(s='neq')
+        elif isinstance(node.ops[0], Gt):
+            theano_op = Str(s='gt')
+        elif isinstance(node.ops[0], GtE):
+            theano_op = Str(s='ge')
+        elif isinstance(node.ops[0], Lt):
+            theano_op = Str(s='lt')
+        elif isinstance(node.ops[0], LtE):
+            theano_op = Str(s='le')
         else:
-            # Gt, GtE, Lt, LtE, Is, IsNot, In, Not In
+            # Is, IsNot, In, NotIn
             return node
 
         if len(node.comparators) == 1:
