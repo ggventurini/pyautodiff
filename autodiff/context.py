@@ -645,17 +645,25 @@ class TheanoTransformer(NodeTransformer):
 
     def handle_comparison(self, operator, left, right):
         """
-        This method is called whenever an 'eq' or 'neq' operator is
-        encountered with a single rhs comparator, since tensors do not properly
-        resolve == and !=.
+        This method is called whenever an operator is encountered with a single
+        rhs comparator, since tensors do not properly them.
         """
         if utils.isvar(left) or utils.isvar(right):
             return getattr(T, operator)(left, right)
+        elif operator == 'gt':
+            return left > right
+        elif oeprator == 'ge':
+            return left >= right
+        elif operator == 'lt':
+            return left < right
+        elif operator == 'le':
+            return left <= right
         elif operator == 'eq':
             return left == right
         elif operator == 'neq':
             return left != right
         else:
+            # shouldn't ever reach here!
             raise ValueError(
                 'Not sure how to handle operator: {0}'.format(operator))
 
@@ -785,9 +793,11 @@ class TheanoTransformer(NodeTransformer):
             else:
                 x == y
 
-        The function call is required to allow seamless replacement of the
-        comparison in places like if statements, where the nested if would raise
-        a syntax error.
+        This could be done by directly replacing the literal comparison with
+        the `if` clause, but this wouldn't be compatible with all code. For
+        example, if the comparison takes place in an `if` clause, the new
+        (and nested) `if` clause would be illegal syntax. Wrapping the `isvar`
+        check in a function call means the syntax remains compatible.
         """
         self.generic_visit(node)
 
