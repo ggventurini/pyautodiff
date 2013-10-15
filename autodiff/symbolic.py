@@ -9,25 +9,6 @@ from autodiff.compat import OrderedDict
 import autodiff.utils as utils
 
 
-def clean_int_args(*args, **kwargs):
-    """
-    Given args and kwargs, replaces small integers with numpy int16 objects, to
-    allow tracing.
-    """
-    flatargs = utils.flatten(args)
-    for i, a in enumerate(flatargs):
-        if type(a) is int and -5 <= a <= 256:
-            flatargs[i] = np.int16(a)
-    clean_args = utils.unflatten(args, flatargs)
-
-    flatkwargs = utils.flatten(kwargs)
-    for i, a in enumerate(flatkwargs):
-        if type(a) is int and -5 <= a <= 256:
-            flatkwargs[i] = np.int16(a)
-    clean_kwargs = utils.unflatten(kwargs, flatkwargs)
-    return clean_args, clean_kwargs
-
-
 def clean_function_defaults(fn):
     """
     Copy a function (or method) and replace int defaults with traceable int16
@@ -95,7 +76,7 @@ class Symbolic(object):
         """
         clean_fn = clean_function_defaults(fn)
         recompiled_fn = self.context.recompile(clean_fn)
-        clean_args, clean_kwargs = clean_int_args(*args, **kwargs)
+        clean_args, clean_kwargs = utils.clean_int_args(*args, **kwargs)
         return recompiled_fn(*clean_args, **clean_kwargs)
 
     def get_theano_vars(self, inputs=None, outputs=None):
@@ -310,7 +291,7 @@ class Function(Symbolic):
         """
 
         # clean args and kwargs
-        c_args, c_kwargs = clean_int_args(*args, **kwargs)
+        c_args, c_kwargs = utils.clean_int_args(*args, **kwargs)
 
         # call the symfn
         results = self.symfn(*c_args, **c_kwargs)

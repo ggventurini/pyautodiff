@@ -2,6 +2,7 @@ import gc
 import opcode
 import inspect
 import theano
+import numpy as np
 
 from autodiff.compat import OrderedDict, getcallargs
 
@@ -168,6 +169,26 @@ def isvar(x):
                 theano.tensor.TensorConstant,
                 theano.tensor.TensorVariable)
     return isinstance(x, vartypes)
+
+
+def clean_int_args(*args, **kwargs):
+    """
+    Given args and kwargs, replaces small integers with numpy int16 objects, to
+    allow tracing.
+    """
+    flatargs = flatten(args)
+    for i, a in enumerate(flatargs):
+        if type(a) is int and -5 <= a <= 256:
+            flatargs[i] = np.int16(a)
+    clean_args = unflatten(args, flatargs)
+
+    flatkwargs = flatten(kwargs)
+    for i, a in enumerate(flatkwargs):
+        if type(a) is int and -5 <= a <= 256:
+            flatkwargs[i] = np.int16(a)
+    clean_kwargs = unflatten(kwargs, flatkwargs)
+    return clean_args, clean_kwargs
+
 
 # -- picklable decorated function
 class post_collect(object):
