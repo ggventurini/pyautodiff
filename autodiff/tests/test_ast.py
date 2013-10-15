@@ -73,8 +73,8 @@ class Signatures(unittest.TestCase):
             return x
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, a=2)
-        self.assertTrue(checkfn(f, 2))
-        self.assertTrue(checkfn(f, x=2))
+        self.assertTrue(checkfn(f, [], 2))
+        self.assertTrue(checkfn(f, [], x=2))
 
     def test_sig_mult_args(self):
         # multiple args, no default
@@ -83,8 +83,8 @@ class Signatures(unittest.TestCase):
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, 2)
         self.assertRaises(TypeError, f, a=2, b=2)
-        self.assertTrue(checkfn(f, 2, 3))
-        self.assertTrue(checkfn(f, y=4, x=5))
+        self.assertTrue(checkfn(f, [], 2, 3))
+        self.assertTrue(checkfn(f, [], y=4, x=5))
 
     def test_sig_var_args(self):
         # var args, no default
@@ -93,9 +93,9 @@ class Signatures(unittest.TestCase):
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, 2)
         self.assertRaises(TypeError, f, a=2, b=2)
-        self.assertTrue(checkfn(f, 2, 3))
-        self.assertTrue(checkfn(f, 2, 3, 4))
-        self.assertTrue(checkfn(f, 2, 3, 4, 5))
+        self.assertTrue(checkfn(f, [], 2, 3))
+        self.assertTrue(checkfn(f, [], 2, 3, 4))
+        self.assertTrue(checkfn(f, [], 2, 3, 4, 5))
 
     def test_sig_default_args(self):
         # multiple args, one default
@@ -103,30 +103,30 @@ class Signatures(unittest.TestCase):
             return x * y
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, y=3)
-        self.assertTrue(checkfn(f, 2))
-        self.assertTrue(checkfn(f, 2, 3))
-        self.assertTrue(checkfn(f, y=4, x=5))
-        self.assertTrue(checkfn(f, x=5))
+        self.assertTrue(checkfn(f, [], 2))
+        self.assertTrue(checkfn(f, [], 2, 3))
+        self.assertTrue(checkfn(f, [], y=4, x=5))
+        self.assertTrue(checkfn(f, [], x=5))
 
         # multiple args, all default
         def f(x=1, y=2):
             return x * y
         self.assertTrue(checkfn(f))
-        self.assertTrue(checkfn(f, 1))
-        self.assertTrue(checkfn(f, 1, 2))
-        self.assertTrue(checkfn(f, y=2, x=1))
-        self.assertTrue(checkfn(f, x=5))
-        self.assertTrue(checkfn(f, y=5))
+        self.assertTrue(checkfn(f, [], 1))
+        self.assertTrue(checkfn(f, [], 1, 2))
+        self.assertTrue(checkfn(f, [], y=2, x=1))
+        self.assertTrue(checkfn(f, [], x=5))
+        self.assertTrue(checkfn(f, [], y=5))
 
     def test_sig_default_var_args(self):
         # multiple var args, all default
         def f(x=1, y=2, *z):
             return x * y * sum(z)
         self.assertTrue(checkfn(f))
-        self.assertTrue(checkfn(f, 1))
-        self.assertTrue(checkfn(f, 1, 2))
-        self.assertTrue(checkfn(f, 1, 2, 3))
-        self.assertTrue(checkfn(f, 1, 2, 3, 4))
+        self.assertTrue(checkfn(f, [], 1))
+        self.assertTrue(checkfn(f, [], 1, 2))
+        self.assertTrue(checkfn(f, [], 1, 2, 3))
+        self.assertTrue(checkfn(f, [], 1, 2, 3, 4))
 
     def test_sig_kwargs(self):
         # kwargs
@@ -137,7 +137,7 @@ class Signatures(unittest.TestCase):
             return x * y * z
         self.assertRaises(KeyError, f)
         self.assertRaises(TypeError, f, 1)
-        self.assertTrue(checkfn(f, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, [], x=1, y=2, z=3))
 
     def test_sig_varargs_kwargs(self):
         # varargs and kwargs
@@ -149,8 +149,8 @@ class Signatures(unittest.TestCase):
         self.assertRaises(TypeError, f)
         self.assertRaises(KeyError, f, 1)
         self.assertRaises(TypeError, f, x=1, y=2, z=3)
-        self.assertTrue(checkfn(f, 1, x=1, y=2, z=3))
-        self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, [], 1, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, [], 1, 2, 3, x=1, y=2, z=3))
 
         # varargs and kwargs, use varargs
         def f(a, *b, **kwargs):
@@ -158,8 +158,8 @@ class Signatures(unittest.TestCase):
             y = kwargs['y']
             z = kwargs['z']
             return x * y * z * b[0]
-        self.assertTrue(checkfn(f, 1, 2, x=1, y=2, z=3))
-        self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, [], 1, 2, x=1, y=2, z=3))
+        self.assertTrue(checkfn(f, [], 1, 2, 3, x=1, y=2, z=3))
 
 
 class Python(unittest.TestCase):
