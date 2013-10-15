@@ -195,6 +195,15 @@ class Python(unittest.TestCase):
             pass
         self.assertTrue(checkfn(fn, [1]))
 
+    def test_if(self):
+        # test that if statements escape their test arguments
+        def f(switch):
+            if switch > 0:
+                return 1
+            else:
+                return -1
+        self.assertTrue(checkfn(f, [], -10))
+
     def test_for(self):
         def f():
             x = 0

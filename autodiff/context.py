@@ -903,6 +903,33 @@ class TheanoTransformer(NodeTransformer):
 
         return node
 
+    def visit_If(self, node):
         """
+        Transform this:
+
+            if <statement>:
+                ...
+            else:
+                ...
+
+        to this:
+
+            if escape(<statement>):
+                ...
+            else:
+                ...
+
+        This means that the if statement's test clause will be evaluated at
+        runtime. Note that this does NOT carry over to the compiled Theano code.
+        It just protects against the following case:
+
+            if x:
+                <do something>
+
+        If x is a shadowed variable, then it always resolves to True. However,
+        x could have a value of 0, in which case this shouldn't pass. Escaping
+        x resolves it when the function is called.
         """
         self.generic_visit(node)
+        node.test = self.ast_wrap('escape', node.test)
+        return node
