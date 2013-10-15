@@ -8,7 +8,6 @@ import autodiff.utils as utils
 import autodiff.context as c
 
 
-
 context = autodiff.context.Context()
 
 
@@ -65,12 +64,12 @@ class AugAssign(unittest.TestCase):
 
 class Signatures(unittest.TestCase):
     def test_sig_no_arg(self):
-        def fn():
+        def f():
             return 1
-        self.assertTrue(checkfn(fn))
+        self.assertTrue(checkfn(f))
 
     def test_sig_one_arg(self):
-        def fn(x):
+        def f(x):
             return x
         self.assertRaises(TypeError, f)
         self.assertRaises(TypeError, f, a=2)
@@ -161,6 +160,7 @@ class Signatures(unittest.TestCase):
             return x * y * z * b[0]
         self.assertTrue(checkfn(f, 1, 2, x=1, y=2, z=3))
         self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+
 
 class Python(unittest.TestCase):
     def test_range(self):
