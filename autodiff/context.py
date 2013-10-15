@@ -58,20 +58,6 @@ def print_source(ast):
     meta.asttools.python_source(ast)
 
 
-def escape(x):
-    def _escape(x):
-        if isinstance(x, theano.tensor.sharedvar.SharedVariable):
-            return x.get_value()
-        elif utils.isvar(x):
-            try:
-                return x.eval()
-            except:
-                raise ValueError('Could not escape {0}'.format(x))
-        elif isinstance(x, ShadowClass):
-            return x._obj__
-        else:
-            return x
-    return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
 
 
 def simple_Call(func, args=None):
@@ -340,21 +326,31 @@ class TheanoTransformer(NodeTransformer):
             else:
                 return self.context.s_vars[id(x)]
         else:
-            if isinstance(x, type):
+            if (isinstance(x, types.FunctionType)
+                    and inspect.getmodule(x) is autodiff.functions):
                 return x
-            if isinstance(x, ShadowClass):
+            if isinstance(x, (type, ShadowClass)):
                 return x
             else:
                 class Shadow(ShadowClass):
                     __wraps___ = x.__class__
                 return Shadow(x, self.context)
 
-    def update_inplace(self, obj, new_value):
-        """
-        Object `obj` is updated inplace with value `value`; they must be
-        compatible. This is basically a hack to mimic inplace operations.
-        """
-        raise ValueError('cant update inplace')
+    @staticmethod
+    def escape(x):
+        def _escape(x):
+            if isinstance(x, theano.tensor.sharedvar.SharedVariable):
+                return x.get_value()
+            elif utils.isvar(x):
+                try:
+                    return x.eval()
+                except:
+                    raise ValueError('Could not escape {0}'.format(x))
+            elif isinstance(x, ShadowClass):
+                return x._obj__
+            else:
+                return x
+        return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
 
     def handle_functions(self, func):
         """
@@ -371,7 +367,7 @@ class TheanoTransformer(NodeTransformer):
 
         elif func is autodiff.functions.escape:
             # escapes a variable from Tensor representation
-            return escape
+            return self.escape
 
         elif func is autodiff.functions.escaped_call:
             # call a function on escaped arguments, without transforming the AST
@@ -493,7 +489,7 @@ class TheanoTransformer(NodeTransformer):
             # ranges
             if func.__name__ in ('range', 'xrange'):
                 def range_(*args):
-                    return func(*(escape(a) for a in args))
+                    return func(*(self.escape(a) for a in args))
                 return range_
 
             # zip
@@ -546,10 +542,10 @@ class TheanoTransformer(NodeTransformer):
             # isinstance
             elif func is isinstance:
                 def isinstance_(obj, types):
-                    escaped_obj = escape(obj)
+                    escaped_obj = self.escape(obj)
                     if obj.ndim == 0:
                         escaped_obj = np.asscalar(escaped_obj)
-                    return isinstance(escaped_obj, escape(types))
+                    return isinstance(escaped_obj, self.escape(types))
                 return isinstance_
 
             # anything else (like getattr)
@@ -605,7 +601,7 @@ class TheanoTransformer(NodeTransformer):
         # Theano has no swapaxes method
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
-                axis1, axis2 = (escape(a) for a in args)
+                axis1, axis2 = (self.escape(a) for a in args)
                 dims = range(var.ndim)
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
