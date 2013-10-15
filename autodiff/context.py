@@ -903,17 +903,6 @@ class TheanoTransformer(NodeTransformer):
 
         return node
 
-    def visit_Name(self, node):
         """
-        Whenever a literal variable name is loaded, call the
-        'shadow' method on its value.
         """
         self.generic_visit(node)
-        # if isinstance(node.ctx, Load):
-            # node = self.ast_wrap('shadow', node)
-        return node
-
-    def visit_Num(self, node):
-        # don't shadow because these are typically function arguments
-        # node = self.ast_wrap('shadow', node)
-        return node
