@@ -352,6 +352,24 @@ class TheanoTransformer(NodeTransformer):
                 return x
         return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
 
+    def tag(self, obj, tag):
+        if not isinstance(tag, basestring):
+            raise ValueError('Tag must be a string. Received: {0}'.format(tag))
+        if tag in self.context.s_vars:
+            logger.warning(
+                '{0} was tagged as {1}, but {1} is a top-level '
+                'function argument. The tag will not be '
+                'available.'.format(obj, tag))
+        else:
+            if tag in self.context.tags:
+                logger.warning(
+                    '{0} was tagged as {1}, but {1} was already '
+                    'tagged. Note that the new tag will overwrite '
+                    'the old one.'.format(obj, tag))
+
+            self.context.tags[tag] = obj
+        return obj
+
     def handle_functions(self, func):
         """
         Given some function for, return another function.
@@ -359,6 +377,7 @@ class TheanoTransformer(NodeTransformer):
         Generally used to exchange NumPy functions for Theano equivalents.
         """
         # ** ======================= first handle functions defined here!
+
 
         if getattr(func, '__module__', None) == __name__:
             return func
@@ -380,24 +399,8 @@ class TheanoTransformer(NodeTransformer):
             return escaped_call
 
         elif func is autodiff.functions.tag:
-            def tag(obj, tag):
-                assert isinstance(tag, basestring)
-                if tag in self.context.s_vars:
-                    logger.warning(
-                        '{0} was tagged as {1}, but {1} is a top-level '
-                        'function argument. The tag will not be '
-                        'available.'.format(self, obj, tag))
-                else:
-                    if tag in self.context.tags:
-                        logger.warning(
-                            '{0} was tagged as {1}, but {1} was already '
-                            'tagged. Note that the new tag will overwrite '
-                            'the old one.'.format(self, obj, tag))
-
-                    self.context.tags[tag] = obj
-                return obj
-            return tag
-
+            # tag a variable
+            return self.tag
 
         # ** ======================= __theano_op__
 
@@ -857,12 +860,9 @@ class TheanoTransformer(NodeTransformer):
                 targets=[Name(ctx=Store(), id=param.id)],
                 value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
-            tags.append(Expr(value=simple_Call(
-                args=[Name(ctx=Load(), id=param.id), Str(s=param.id)],
-                func=Attribute(attr='tag',
-                               ctx=Load(),
-                               value=Name(ctx=Load(),
-                                          id='___functions')))))
+            tags.append(Expr(value=self.ast_wrap(
+                method_name='tag',
+                args=[Name(ctx=Load(), id=param.id), Str(s=param.id)])))
 
         # shadow the varargs
         if node.args.vararg:
@@ -879,13 +879,9 @@ class TheanoTransformer(NodeTransformer):
                                                    id=node.args.kwarg))))
 
             tags.append(For(
-                body=[Expr(value=simple_Call(
-                    args=[Name(ctx=Load(), id='v'),
-                          Name(ctx=Load(), id='k')],
-                    func=Attribute(attr='tag',
-                                   ctx=Load(),
-                                   value=Name(ctx=Load(),
-                                              id='___functions'))))],
+                body=[Expr(value=self.ast_wrap(
+                    method_name='tag',
+                    args=[Name(ctx=Load(), id=param.id), Str(s=param.id)]))],
                 iter=simple_Call(
                     func=Attribute(attr='iteritems',
                                    ctx=Load(),

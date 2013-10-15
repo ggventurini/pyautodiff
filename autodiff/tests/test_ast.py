@@ -43,7 +43,8 @@ def checkfn(f, var_ndim=None, *args, **kwargs):
 
 class GarbageCollection(unittest.TestCase):
     # make sure shadowed variables aren't garbage-collected
-    # so their id's do not get reused
+    # so their id's do not get reused. If gc takes effect, then
+    # x and y will coexist in the same location in memory (weird...)
     def test_gc(self):
         def f(x, y):
             return [x, y]
@@ -51,16 +52,17 @@ class GarbageCollection(unittest.TestCase):
         F = context.recompile(f)
         assert F(3, 4)[1].eval() == 4
 
-
-class AugAssign(unittest.TestCase):
-    def test_aug_shadowing(self):
-        def f(x):
-            a = x
-            x += 1
-            return x
+class Tags(unittest.TestCase):
+    def test_tagging(self):
+        def f(arg1, arg2=1, *arg3, **arg4):
+            pass
 
         F = context.recompile(f)
-        assert F(1).eval() == 2
+        F(1.0)
+        self.assertTrue('arg1' in context.tags)
+        self.assertTrue('arg2' in context.tags)
+        self.assertTrue('arg3' not in context.tags)
+        self.assertTrue('arg4' not in context.tags)
 
 class Signatures(unittest.TestCase):
     def test_sig_no_arg(self):
