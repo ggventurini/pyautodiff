@@ -258,9 +258,6 @@ class Function(Symbolic):
     def cache(self):
         return self._cache
 
-    def __call__(self, *args, **kwargs):
-        return self.call(*args, **kwargs)
-
     def __get__(self, instance, owner=None):
         """
         Necessary descriptor for decorator compatibility.
@@ -273,6 +270,20 @@ class Function(Symbolic):
             method = self.pyfn.__get__(instance, owner)
             self._pyfn = method
         return self
+
+    def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
+
+    def call(self, *args, **kwargs):
+        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+
+        key = tuple(np.asarray(a).ndim for a in all_args)
+        if key not in self.cache or not self.use_cache:
+            self.trace(*args, **kwargs)
+            self.cache[key] = self.compile_function(inputs=self.s_inputs,
+                                                    outputs=self.s_outputs)
+        fn = self.cache[key]
+        return fn(*all_args)
 
     def trace(self, *args, **kwargs):
         """
