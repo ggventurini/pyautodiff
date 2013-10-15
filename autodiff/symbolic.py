@@ -308,20 +308,14 @@ class Function(Symbolic):
 
         # get a tuple of the symbolic inputs
         # but avoid 'self' and 'cls' bound arguments
-        callargs = utils.orderedcallargs(self.pyfn, *c_args, **c_kwargs)
-        all_args = utils.flatten(callargs)
+        all_args = utils.expandedcallargs(self.pyfn, *c_args, **c_kwargs)
         if (inspect.ismethod(self.pyfn) or
            (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
-        self.s_inputs = tuple(self.s_vars[id(a)] for a in all_args)
+        self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
 
         # get a tuple of the symbolic outputs
         self.s_outputs = utils.as_seq(results, tuple)
-
-        # update variable names where possible
-        for name, arg in callargs.iteritems():
-            if self.s_vars.get(id(arg), None) in self.s_inputs:
-                self.s_vars[name] = self.s_vars[id(arg)]
 
         return results
 
