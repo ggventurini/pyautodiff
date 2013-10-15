@@ -278,7 +278,7 @@ class Function(Symbolic):
 
         # get a tuple of the symbolic inputs
         # but avoid 'self' and 'cls' bound arguments
-        all_args = utils.expandedcallargs(self.pyfn, *c_args, **c_kwargs)
+        all_args = utils.expandedcallargs(self.symfn, *c_args, **c_kwargs)
         if (inspect.ismethod(self.pyfn) or
            (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
