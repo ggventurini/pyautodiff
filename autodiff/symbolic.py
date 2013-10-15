@@ -112,7 +112,7 @@ class Symbolic(object):
         if callable(reduction):
             if 'numpy' in reduction.__module__:
                 reduction = getattr(theano.tensor, reduction.__name__)
-            fn_outputs = [reduction(o) for o in fn_outputs]
+            fn_outputs = [reduction(o) if o.ndim > 0 else o for o in fn_outputs]
 
         if np.any([o.ndim != 0 for o in fn_outputs]):
             raise TypeError('Gradient requires either scalar outputs or a '
