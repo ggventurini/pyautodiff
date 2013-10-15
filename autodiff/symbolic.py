@@ -87,8 +87,7 @@ class Symbolic(object):
         inputs = utils.as_seq(inputs, tuple)
         sym_inputs = [self.get_symbolic(x) for x in inputs]
 
-        outputs = utils.as_seq(outputs, tuple)
-        sym_outputs = [self.get_symbolic(x) for x in outputs]
+        sym_outputs = utils.as_seq(outputs, tuple)
 
         # get symbolic inputs corresponding to shared inputs in s_inputs
         # this dict maps each shared variable to its (non-shared) type.
