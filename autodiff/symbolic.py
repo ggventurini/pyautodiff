@@ -9,35 +9,6 @@ from autodiff.compat import OrderedDict
 import autodiff.utils as utils
 
 
-def clean_function_defaults(fn):
-    """
-    Copy a function (or method) and replace int defaults with traceable int16
-    objects.
-
-    """
-    # make deepcopy of fn because we might change its defaults
-    # -- note that copy.deepcopy doesn't work on functions
-    fn_copy = types.FunctionType(fn.func_code,
-                                 fn.func_globals,
-                                 fn.func_name,
-                                 fn.func_defaults,
-                                 fn.func_closure)
-
-    # if pyfn is a method, make sure to make the copy a method as well
-    if isinstance(fn, types.MethodType):
-        fn_copy = types.MethodType(fn_copy,
-                                   fn.im_self,
-                                   fn.im_class)
-
-    # replace integer defaults in fn to avoid tracing problems
-    if fn_copy.func_defaults:
-        a = inspect.getargspec(fn_copy)
-        clean_defaults = tuple(clean_int_args(*a.defaults)[0])
-        fn_copy.func_defaults = clean_defaults
-
-    return fn_copy
-
-
 class Symbolic(object):
     def __init__(self, context=None, borrowable=None):
         """
@@ -74,8 +45,7 @@ class Symbolic(object):
         Returns the symbolic function result, and also stores any traced
         objects in self.s_vars.
         """
-        clean_fn = clean_function_defaults(fn)
-        recompiled_fn = self.context.recompile(clean_fn)
+        recompiled_fn = self.context.recompile(fn)
         clean_args, clean_kwargs = utils.clean_int_args(*args, **kwargs)
         return recompiled_fn(*clean_args, **clean_kwargs)
 
@@ -229,8 +199,8 @@ class Function(Symbolic):
         # if the fn is an autodiff Function class, get its own fn
         if isinstance(pyfn, Function):
             pyfn = pyfn.pyfn
+        self._pyfn = pyfn
 
-        self._pyfn = copy_function(pyfn)
         self._symfn = self.context.recompile(self.pyfn)
 
         self._cache = dict()

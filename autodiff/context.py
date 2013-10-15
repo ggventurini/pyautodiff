@@ -1,19 +1,14 @@
 import logging
 import meta
 from ast import *
-import numpy as np
 import types
+import inspect
+import numpy as np
 import theano
 import theano.tensor as T
-
 import autodiff.utils as utils
 import autodiff.functions
 
-# import with triple underscore to use [hopefully] safely in ASTs
-# basically, need to make sure that these modules aren't overwritten
-import autodiff.utils as ___utils
-import theano.tensor as ___T
-import autodiff.functions as ___functions
 
 logger = logging.getLogger('autodiff')
 
@@ -23,15 +18,20 @@ from theano.tensor.shared_randomstreams import RandomStreams
 global_randomstreams = RandomStreams(seed=12345)#np.random.randint(1, 999999))
 
 
-def get_ast(func, flags=0):
-    func_def = meta.decompiler.decompile_func(func)
-    if isinstance(func_def, Lambda):
-        func_def = FunctionDef(
-            name='<lambda>', args=func_def.args,
-            body=[Return(func_def.body)],
-            decorator_list=[])
-    assert isinstance(func_def, FunctionDef)
-    return func_def
+def get_ast(fn):
+    fn_def = meta.decompiler.decompile_func(fn)
+    if isinstance(fn_def, Lambda):
+        fn_def = FunctionDef(name='<lambda>',
+                             args=fn_def.args,
+                             body=[Return(fn_def.body)],
+                             decorator_list=[])
+
+    # Meta gets these fields wrong...
+    argspec = inspect.getargspec(fn)
+    fn_def.args.vararg = argspec.varargs
+    fn_def.args.kwarg = argspec.keywords
+
+    return fn_def
 
 
 def get_source(ast):
@@ -56,23 +56,6 @@ def print_source(ast):
     elif callable(ast):
         ast = get_ast(ast.__call__)
     meta.asttools.python_source(ast)
-
-
-def compile_func(ast, new_globals=None, file_name=None):
-    global_dict = globals().copy()
-    if new_globals is not None:
-        global_dict.update(new_globals)
-    if file_name is None:
-        file_name = '<Context-AST>'
-    if not isinstance(ast, FunctionDef):
-        ast = fix_missing_locations(FunctionDef(name='<tmp_fn>',
-                                                args=arguments(args=[],
-                                                               defaults=[],
-                                                               kwarg=None,
-                                                               vararg=None),
-                                                body=[Return(ast)],
-                                                decorator_list=[]))
-    return meta.decompiler.compile_func(ast, file_name, global_dict)
 
 
 def escape(x):
@@ -142,6 +125,7 @@ class Context(object):
             same context but keep it when calling recompile.
         """
         transformer = TheanoTransformer(context=self)
+
         f_ast = get_ast(f)
 
         if not nested:
@@ -150,22 +134,33 @@ class Context(object):
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
 
-        func_globals = f.func_globals.copy()
-        func_globals.update({'___ctx' : transformer})
+        f_globals = f.func_globals.copy()
+        f_globals.update(dict(___ctx=transformer,
+                              ___functions=autodiff.functions,
+                              ___T=theano.tensor,
+                              ___utils=autodiff.utils))
         if f.func_closure:
-            func_globals.update((v, transformer.shadow(c.cell_contents)) for v, c in
-                                zip(f.func_code.co_freevars, f.func_closure))
+            f_globals.update((v, transformer.shadow(c.cell_contents)) for v, c in
+                             zip(f.func_code.co_freevars, f.func_closure))
 
         for name in f.func_code.co_names:
-            if name in func_globals.iterkeys():
-                func_globals[name] = transformer.shadow(func_globals[name])
+            if name in f_globals.iterkeys():
+                f_globals[name] = transformer.shadow(f_globals[name])
 
-        new_f = compile_func(transformed_ast, func_globals, repr(self))
+        new_f = meta.decompiler.compile_func(ast_node=transformed_ast,
+                                             filename='<Context-AST>',
+                                             globals=f_globals)
 
+        # recreate method, if necessary
         if isinstance(f, types.MethodType):
             new_f = types.MethodType(new_f, f.im_self, f.im_class)
 
+        # add defaults, if necessary (meta erases them and won't recompile!)
+        if f.func_defaults:
+            new_f.func_defaults = utils.clean_int_args(*f.func_defaults)[0]
+
         return new_f
+
 
     def get_symbolic(self, x):
         """
