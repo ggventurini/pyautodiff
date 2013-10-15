@@ -250,8 +250,7 @@ class Function(Symbolic):
         key = tuple(np.asarray(a).ndim for a in all_args)
         if key not in self.cache or not self.use_cache:
             self.trace(*args, **kwargs)
-            self.cache[key] = self.compile_function(inputs=self.s_inputs,
-                                                    outputs=self.s_outputs)
+            self.cache[key] = self.get_theano_function()
         fn = self.cache[key]
         return fn(*all_args)
 
@@ -288,6 +287,12 @@ class Function(Symbolic):
         self.s_outputs = utils.as_seq(results, tuple)
 
         return results
+
+    def get_theano_function(self):
+        fn = self.compile_function(inputs=self.s_inputs,
+                                   outputs=self.s_outputs)
+        return fn
+
 
 class Gradient(Function):
     pass
