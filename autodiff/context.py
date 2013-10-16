@@ -338,6 +338,16 @@ class TheanoTransformer(NodeTransformer):
                 return Shadow(x, self.context)
 
     @staticmethod
+    def remove_shadow_class(x):
+        def _remove_shadow_class(x):
+            if isinstance(x, ShadowClass):
+                return x._obj__
+            else:
+                return x
+        return utils.unflatten(x, [_remove_shadow_class(i)
+                                   for i in utils.flatten(x)])
+
+    @staticmethod
     def escape(x):
         def _escape(x):
             if isinstance(x, theano.tensor.sharedvar.SharedVariable):
@@ -379,6 +389,8 @@ class TheanoTransformer(NodeTransformer):
         """
         # ** ======================= first handle functions defined here!
 
+        if isinstance(func, ShadowClass):
+            return self.handle_functions(func._obj__)
 
         if getattr(func, '__module__', None) == __name__:
             return func
@@ -484,7 +496,8 @@ class TheanoTransformer(NodeTransformer):
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)
             else:
-                raise ValueError('Unsupported function: {0}'.format(func))
+                raise ValueError(
+                    'Autodiff unsupported function: {0}'.format(func))
 
         # ** ======================= built-ins
 
@@ -768,6 +781,13 @@ class TheanoTransformer(NodeTransformer):
         """
         self.generic_visit(node)
         node.func = self.ast_wrap('handle_functions', node.func)
+
+        # the * and ** syntax won't work if an object has been shadowed...
+        if node.starargs:
+            node.starargs = self.ast_wrap('remove_shadow_class', node.starargs)
+        if node.kwargs:
+            node.kwargs = self.ast_wrap('remove_shadow_class', node.kwargs)
+
         return node
 
     def visit_Compare(self, node):
