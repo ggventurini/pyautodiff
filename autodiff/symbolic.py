@@ -1,7 +1,6 @@
 import numpy as np
 import theano
 import theano.tensor as T
-import types
 import inspect
 
 from autodiff.context import Context
@@ -10,6 +9,7 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
+
     def __init__(self, context=None, borrowable=None):
         """
         Arguments
@@ -79,25 +79,22 @@ class Symbolic(object):
 
         return theano_inputs, theano_outputs, graph
 
-    def get_function_compile_args(self, fn_inputs, fn_outputs):
+    def get_function_compile_args(self, inputs, outputs):
         """
-        Helper function: given the symbolic fn_inputs and fn_outputs,
+        Helper function: given the symbolic inputs and outputs,
         return the appropriate arguments for theano.function to compile
         a function.
         """
-        if len(fn_outputs) == 1:
-            fn_outputs = fn_outputs[0]
-
-        return dict(inputs=fn_inputs, outputs=fn_outputs)
+        return dict(inputs=inputs, outputs=outputs)
 
     def get_gradient_compile_args(self,
-                                  fn_inputs,
-                                  fn_outputs,
+                                  inputs,
+                                  outputs,
                                   graph,
                                   wrt=None,
                                   reduction=None):
         """
-        Helper function: given the symbolic fn_inputs and fn_outputs, as well as
+        Helper function: given the symbolic inputs and outputs, as well as
         a theano graph and wrt/reduction info, return the appropriate arguments
         for theano.function to compile a gradient.
         """
@@ -112,33 +109,122 @@ class Symbolic(object):
         if callable(reduction):
             if 'numpy' in reduction.__module__:
                 reduction = getattr(theano.tensor, reduction.__name__)
-            fn_outputs = [reduction(o) if o.ndim > 0 else o for o in fn_outputs]
+            outputs = [reduction(o) if o.ndim > 0 else o for o in outputs]
 
-        if np.any([o.ndim != 0 for o in fn_outputs]):
+        if np.any([o.ndim != 0 for o in outputs]):
             raise TypeError('Gradient requires either scalar outputs or a '
                             'reduction that returns a scalar.')
 
         # get wrt variables. If none were specified, use inputs.
         if len(wrt) == 0:
-            wrt = [i for i in fn_inputs]
+            wrt = [i for i in inputs]
         else:
             wrt = [graph[self.get_symbolic(w)] for w in wrt]
 
-        grads = utils.flatten([T.grad(o, wrt=wrt) for o in fn_outputs])
+        grads = utils.flatten([T.grad(o, wrt=wrt) for o in outputs])
 
-        if len(grads) == 1:
-            grads = grads[0]
+        return dict(inputs=inputs, outputs=utils.as_seq(grads, tuple))
 
-        return dict(inputs=fn_inputs, outputs=grads)
+    def get_hessian_vector_compile_args(self,
+                                        inputs,
+                                        outputs,
+                                        graph,
+                                        wrt=None,
+                                        reduction=None):
+        """
+        Helper function: given the symbolic inputs and outputs, as well as
+        a theano graph and wrt/reduction/vectors info, return the appropriate
+        argumentsfor theano.function to compile a Hessian-vector product.
+        """
+        wrt = utils.as_seq(wrt)
+
+        if reduction is None:
+            reduction = T.sum
+
+        if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
+            reduction = getattr(theano.tensor, reduction)
+
+        if callable(reduction):
+            if 'numpy' in reduction.__module__:
+                reduction = getattr(theano.tensor, reduction.__name__)
+            outputs = [reduction(o) if o.ndim > 0 else o for o in outputs]
+
+        if np.any([o.ndim != 0 for o in outputs]):
+            raise TypeError('Gradient requires either scalar outputs or a '
+                            'reduction that returns a scalar.')
+
+        # get wrt variables. If none were specified, use inputs.
+        if len(wrt) == 0:
+            wrt = [i for i in inputs]
+        else:
+            wrt = [graph[self.get_symbolic(w)] for w in wrt]
+
+        grads = utils.flatten([T.grad(o, wrt=wrt) for o in outputs])
+
+        sym_vectors = tuple(T.TensorType(
+            dtype=w.dtype, broadcastable=[False]*w.ndim)()
+            for w in wrt)
+        hessian_vectors = utils.as_seq(tt.Rop(grads, wrt, sym_vectors), tuple)
+
+        return dict(inputs=inputs + sym_vectors, outputs=hessian_vectors)
+
+    def compile(self,
+                function=False,
+                gradient=False,
+                hessian_vector=False,
+                inputs=None,
+                outputs=None,
+                wrt=None,
+                reduction=None):
+
+        if not (function or gradient or hessian_vector):
+            raise ValueError(
+                'At least one of `function`, `gradient`, or `hessian_vector` '
+                'must be True when calling `compile()`.')
+
+        fn_inputs, fn_outputs, fn_graph = self.get_theano_vars(inputs, outputs)
+
+        inputs = fn_inputs
+        outputs = ()
+
+        if function:
+            fn_args = self.get_function_compile_args(inputs=fn_inputs,
+                                                     outputs=fn_outputs)
+            outputs += fn_args['outputs']
+
+        if gradient:
+            g_args = self.get_gradient_compile_args(inputs=fn_inputs,
+                                                    outputs=fn_outputs,
+                                                    graph=fn_graph,
+                                                    wrt=wrt,
+                                                    reduction=reduction)
+            outputs += g_args['outputs']
+
+        if hessian_vector:
+            hv_args = self.get_hessian_vector_compile_args(inputs=fn_inputs,
+                                                           outputs=fn_outputs,
+                                                           graph=fn_graph,
+                                                           wrt=wrt,
+                                                           reduction=reduction)
+            inputs = hv_args['inputs']
+            outputs += hv_args['outputs']
+
+        if len(outputs) == 1:
+            outputs = outputs[0]
+
+        fn = theano.function(inputs=inputs,
+                             outputs=outputs,
+                             on_unused_input='ignore')
+
+        return fn
 
     def compile_function(self, inputs=None, outputs=None):
         """
         Based on traced variables, compile a Theano function of the inputs that
         returns the outputs.
         """
-        fn_inputs, fn_outputs, _ = self.get_theano_vars(inputs, outputs)
-        args = self.get_function_compile_args(fn_inputs, fn_outputs)
-        return theano.function(on_unused_input='ignore', **args)
+        fn = self.compile(function=True, inputs=inputs, outputs=outputs)
+        return fn
 
     def compile_gradient(self,
                          inputs=None,
@@ -152,13 +238,12 @@ class Symbolic(object):
         be specified (since gradients are defined with respect to scalars); if
         None is supplied, it is assumed to be 'sum'.
         """
-        fn_inputs, fn_outputs, graph = self.get_theano_vars(inputs, outputs)
-        args = self.get_gradient_compile_args(fn_inputs=fn_inputs,
-                                              fn_outputs=fn_outputs,
-                                              graph=graph,
-                                              wrt=wrt,
-                                              reduction=reduction)
-        return theano.function(on_unused_input='ignore', **args)
+        fn = self.compile(gradient=True,
+                          inputs=inputs,
+                          outputs=outputs,
+                          wrt=wrt,
+                          reduction=reduction)
+        return fn
 
     def compile_function_gradient(self,
                                   inputs=None,
@@ -172,21 +257,15 @@ class Symbolic(object):
         inputs. A reduction may be specified (since gradients are defined with
         respect to scalars); if None is supplied, it is assumed to be 'sum'.
         """
-        fn_inputs, fn_outputs, graph = self.get_theano_vars(inputs, outputs)
-        f_args = self.get_function_compile_args(fn_inputs, fn_outputs)
-        g_args = self.get_gradient_compile_args(fn_inputs=fn_inputs,
-                                                fn_outputs=fn_outputs,
-                                                graph=graph,
-                                                wrt=wrt,
-                                                reduction=reduction)
-        assert f_args['inputs'] == g_args['inputs']
 
-        outputs = utils.as_seq(f_args['outputs'])
-        outputs += utils.as_seq(g_args['outputs'])
+        fn = self.compile(function=True,
+                          gradient=True,
+                          inputs=inputs,
+                          outputs=outputs,
+                          wrt=wrt,
+                          reduction=reduction)
+        return fn
 
-        return theano.function(inputs=f_args['inputs'],
-                               outputs=outputs,
-                               on_unused_input='ignore')
 
 class Function(Symbolic):
     """
@@ -249,6 +328,7 @@ class Function(Symbolic):
 
         key = tuple(np.asarray(a).ndim for a in all_args)
         if key not in self.cache or not self.use_cache:
+            self.context.reset()
             self.trace(*args, **kwargs)
             self.cache[key] = self.get_theano_function()
         fn = self.cache[key]
@@ -289,8 +369,7 @@ class Function(Symbolic):
         return results
 
     def get_theano_function(self):
-        fn = self.compile_function(inputs=self.s_inputs,
-                                   outputs=self.s_outputs)
+        fn = self.compile_function(inputs=self.s_inputs, outputs=self.s_outputs)
         return fn
 
 
