@@ -426,7 +426,7 @@ class HessianVector(Gradient):
         return fn(*(all_args + vectors))
 
     def get_theano_function(self):
-        fn = self.compile(hessian_vector=True
+        fn = self.compile(hessian_vector=True,
                           inputs=self.s_inputs,
                           outputs=self.s_outputs,
                           wrt=self.wrt,
