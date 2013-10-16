@@ -881,7 +881,8 @@ class TheanoTransformer(NodeTransformer):
             tags.append(For(
                 body=[Expr(value=self.ast_wrap(
                     method_name='tag',
-                    args=[Name(ctx=Load(), id=param.id), Str(s=param.id)]))],
+                    args=[Name(ctx=Load(), id='v'),
+                          Name(ctx=Load(), id='k')]))],
                 iter=simple_Call(
                     func=Attribute(attr='iteritems',
                                    ctx=Load(),
