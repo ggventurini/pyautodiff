@@ -397,7 +397,42 @@ class Gradient(Function):
 
 
 class HessianVector(Gradient):
-    pass
+
+    def call(self, *args, **kwargs):
+        if 'vectors' in kwargs:
+            vectors = kwargs.pop('vectors')
+        else:
+            raise ValueError(
+                'Vectors must be passed the keyword \'vectors\'.')
+        vectors = utils.as_seq(vectors, tuple)
+
+
+        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+
+        key = tuple(np.asarray(a).ndim for a in all_args)
+        if key not in self.cache or not self.use_cache:
+            self.context.reset()
+            self.trace(*args, **kwargs)
+            self.cache[key] = self.get_theano_function()
+        fn = self.cache[key]
+
+        if len(self.wrt) > 0 and len(vectors) != len(self.wrt):
+            raise ValueError('Expected {0} items in `vectors`; received '
+                             '{1}.'.format(len(self.wrt), len(vectors)))
+        elif len(self.wrt) == 0 and len(vectors) != len(self.s_inputs):
+            raise ValueError('Expected {0} items in `vectors`; received '
+                             '{1}.'.format(len(self.s_inputs), len(vectors)))
+
+        return fn(*(all_args + vectors))
+
+    def get_theano_function(self):
+        fn = self.compile(hessian_vector=True
+                          inputs=self.s_inputs,
+                          outputs=self.s_outputs,
+                          wrt=self.wrt,
+                          reduction=self.reduction)
+        return fn
+
 
 
 class VectorArg(Function):
