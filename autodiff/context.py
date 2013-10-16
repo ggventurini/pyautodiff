@@ -198,6 +198,7 @@ class ShadowClass(object):
     __ignore___ = ['__class__',
                   '__mro__',
                   '__repr__',
+                  '__str__',
                   '__new__',
                   '__init__',
                   '__dict__',
