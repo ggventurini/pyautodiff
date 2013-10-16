@@ -363,8 +363,8 @@ class TheanoTransformer(NodeTransformer):
         else:
             if tag in self.context.tags:
                 logger.warning(
-                    '{0} was tagged as {1}, but {1} was already '
-                    'tagged. Note that the new tag will overwrite '
+                    '{0} was tagged as {1}, but the tag {1} was already '
+                    'assigned. Note that the new tag will overwrite '
                     'the old one.'.format(obj, tag))
 
             self.context.tags[tag] = obj
