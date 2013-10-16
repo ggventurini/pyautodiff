@@ -297,7 +297,7 @@ class TheanoTransformer(NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared
         variable and store the relationship in self.s_vars. Otherwise return x.
         """
-        if id(x) in self.context._noshadow:
+        if id(x) in self.context._noshadow or x in (True, False, None):
             return x
 
         if utils.isvar(x):
@@ -330,7 +330,7 @@ class TheanoTransformer(NodeTransformer):
             if (isinstance(x, types.FunctionType)
                     and inspect.getmodule(x) is autodiff.functions):
                 return x
-            if isinstance(x, (type, ShadowClass)):
+            elif isinstance(x, (type, ShadowClass)):
                 return x
             else:
                 class Shadow(ShadowClass):
