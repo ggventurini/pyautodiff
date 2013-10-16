@@ -163,6 +163,27 @@ class Signatures(unittest.TestCase):
         self.assertTrue(checkfn(f, [], 1, 2, x=1, y=2, z=3))
         self.assertTrue(checkfn(f, [], 1, 2, 3, x=1, y=2, z=3))
 
+    def test_expand_varargs(self):
+        def f(*args):
+            return args[1]
+
+        def g(x):
+            args = (x, np.ones((2,3)), 5)
+            return f(*args)
+
+        self.assertTrue(checkfn(g, [], 1))
+
+    def test_expand_kwargs(self):
+        def f(**args):
+            return args['x']
+
+        def g(x):
+            args = dict(x=x, y=np.ones((2,3)), z=5)
+            return f(**args)
+
+        self.assertTrue(checkfn(g, [], 1))
+
+
 
 class Python(unittest.TestCase):
     def test_range(self):
