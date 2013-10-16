@@ -297,7 +297,10 @@ class TheanoTransformer(NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared
         variable and store the relationship in self.s_vars. Otherwise return x.
         """
-        if id(x) in self.context._noshadow or x in (True, False, None):
+        if (id(x) in self.context._noshadow
+            or x is True
+            or x is False
+            or x is None):
             return x
 
         if utils.isvar(x):

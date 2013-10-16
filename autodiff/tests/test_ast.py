@@ -334,7 +334,6 @@ class BasicMath(unittest.TestCase):
 
         for d in range(3):
             for f in [iadd, isub, imul, idiv]:
-                print f, d
                 self.assertTrue(checkfn(f, [d]))
 
 
