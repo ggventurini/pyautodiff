@@ -24,12 +24,12 @@ def fmin_cg(fn, init_args=None, init_kwargs=None, **scipy_kwargs):
     f = VectorArg(fn,
                   init_args=init_args,
                   init_kwargs=init_kwargs,
-                  compile_fn=True)
+                  function=True)
 
     fprime = VectorArg(fn,
                        init_args=init_args,
                        init_kwargs=init_kwargs,
-                       compile_grad=True)
+                       gradient=True)
 
     x0 = f.vector_from_args(init_args, init_kwargs)
 
@@ -60,17 +60,17 @@ def fmin_ncg(fn, init_args=None, init_kwargs=None, **scipy_kwargs):
     f = VectorArg(fn,
                   init_args=init_args,
                   init_kwargs=init_kwargs,
-                  compile_fn=True)
+                  function=True)
 
     fprime = VectorArg(fn,
                        init_args=init_args,
                        init_kwargs=init_kwargs,
-                       compile_grad=True)
+                       gradient=True)
 
     fhess_p = VectorArg(fn,
                         init_args=init_args,
                         init_kwargs=init_kwargs,
-                        compile_hv=True)
+                        hessian_vector=True)
 
     x0 = f.vector_from_args(init_args, init_kwargs)
 
@@ -107,8 +107,8 @@ def fmin_l_bfgs_b(fn,
     f_df = VectorArg(fn,
                      init_args=init_args,
                      init_kwargs=init_kwargs,
-                     compile_fn=True,
-                     compile_grad=True)
+                     function=True,
+                     gradient=True)
 
     x0 = f_df.vector_from_args(init_args, init_kwargs)
 

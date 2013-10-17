@@ -441,16 +441,8 @@ class VectorArg(object):
             pyfn = pyfn.pyfn
         self.pyfn = pyfn
 
-        if init_args is None:
-            init_args = ()
-        if init_kwargs is None:
-            init_kwargs = {}
-        if not isinstance(init_args, (list, tuple)):
-            raise TypeError('init_args must be a list or tuple. '
-                            'Received: {0}'.format(init_args))
-        if not isinstance(init_kwargs, dict):
-            raise TypeError(
-                'init_kwargs must be a dict. Received: {0}'.format(init_kwargs))
+        init_args = utils.as_seq(init_args, tuple)
+        init_kwargs = utils.as_seq(init_kwargs, dict)
 
         self.init_args = utils.expandedcallargs(pyfn, *init_args, **init_kwargs)
 
@@ -461,7 +453,7 @@ class VectorArg(object):
                             context=context,
                             borrowable=borrowable)
 
-        vector = T.vector()
+        vector = T.vector(name='inputVector')
         result = symbolic.trace(vector)
 
         fn = symbolic.compile(function=function,
@@ -474,7 +466,7 @@ class VectorArg(object):
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
-    def vector_from_args(*args, **kwargs):
+    def vector_from_args(self, args, kwargs):
         if len(args) + len(kwargs) > 1:
             all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
             return np.concatenate([np.asarray(a).flat for a in all_args])
