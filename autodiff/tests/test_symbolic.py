@@ -2,8 +2,7 @@ import unittest
 import numpy as np
 import theano.tensor
 
-import autodiff
-from autodiff.symbolic import Symbolic, Tracer, Function, Gradient
+from autodiff.symbolic import Symbolic, Tracer, Function, Gradient, VectorArg
 from autodiff import tag
 
 
@@ -429,3 +428,21 @@ class TestGradient(unittest.TestCase):
 
         g = Gradient(fn, wrt=b)
         self.assertTrue(np.allclose(g(a, b), a))
+
+
+class TestVectorArg(unittest.TestCase):
+    def test_vectorarg(self):
+        def f(x):
+            bar = np.ones(x.shape)
+            bar[1, 1] = 0
+            return (x * 3 * bar).sum()
+
+        x = np.ones((2, 4))
+        v = VectorArg(f, [x], function=True, gradient=True)
+        result = v(x.flat)
+
+        self.assertTrue(np.allclose(result[0], 21))
+
+        expected_grad = np.ones(x.size) * 3
+        expected_grad[6] = 0
+        self.assertTrue =(np.allclose(result[1], expected_grad))

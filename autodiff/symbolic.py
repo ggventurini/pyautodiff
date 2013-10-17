@@ -6,6 +6,7 @@ import inspect
 from autodiff.context import Context
 from autodiff.compat import OrderedDict
 import autodiff.utils as utils
+from autodiff.functions import escape
 
 
 class Symbolic(object):
@@ -212,7 +213,7 @@ class Symbolic(object):
         sym_vectors = tuple(T.TensorType(
             dtype=w.dtype, broadcastable=[False]*w.ndim)()
             for w in wrt)
-        hessian_vectors = utils.as_seq(tt.Rop(grads, wrt, sym_vectors), tuple)
+        hessian_vectors = utils.as_seq(T.Rop(grads, wrt, sym_vectors), tuple)
 
         return dict(inputs=inputs + sym_vectors, outputs=hessian_vectors)
 
@@ -424,6 +425,71 @@ class HessianVector(Gradient):
         return fn
 
 
+class VectorArg(object):
 
-class VectorArg(Function):
-    pass
+    def __init__(self,
+                 pyfn,
+                 init_args=None,
+                 init_kwargs=None,
+                 context=None,
+                 borrowable=None,
+                 function=False,
+                 gradient=False,
+                 hessian_vector=False):
+
+        if isinstance(pyfn, Symbolic):
+            pyfn = pyfn.pyfn
+        self.pyfn = pyfn
+
+        if init_args is None:
+            init_args = ()
+        if init_kwargs is None:
+            init_kwargs = {}
+        if not isinstance(init_args, (list, tuple)):
+            raise TypeError('init_args must be a list or tuple. '
+                            'Received: {0}'.format(init_args))
+        if not isinstance(init_kwargs, dict):
+            raise TypeError(
+                'init_kwargs must be a dict. Received: {0}'.format(init_kwargs))
+
+        self.init_args = utils.expandedcallargs(pyfn, *init_args, **init_kwargs)
+
+        def wrapped_function(vector):
+            return pyfn(*self.args_from_vector(vector))
+
+        symbolic = Symbolic(pyfn=wrapped_function,
+                            context=context,
+                            borrowable=borrowable)
+
+        vector = T.vector()
+        result = symbolic.trace(vector)
+
+        fn = symbolic.compile(function=function,
+                              gradient=gradient,
+                              hessian_vector=hessian_vector,
+                              inputs=vector,
+                              outputs=result)
+        self.fn = fn
+
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
+
+    def vector_from_args(*args, **kwargs):
+        if len(args) + len(kwargs) > 1:
+            all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+            return np.concatenate([np.asarray(a).flat for a in all_args])
+        elif len(args) > 0:
+            return np.asarray(args[0]).flat
+        elif len(kwargs) > 0:
+            return np.asarray(kwargs.values()[0]).flat
+        else:
+            return None
+
+    def args_from_vector(self, vector):
+        new_args = []
+        idx = 0
+        for arg in escape(self.init_args):
+            new_args.append(vector[idx : idx + arg.size].reshape(arg.shape))
+            idx += arg.size
+        return new_args
+
