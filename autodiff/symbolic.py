@@ -9,8 +9,13 @@ import autodiff.utils as utils
 
 
 class Symbolic(object):
+    """
+    A class that converts a Python function into a symbolic function of Theano
+    objects. The symbolic function can be used to compile Theano functions of
+    the original (Python) function, its gradient, or a Hessian-vector product.
+    """
 
-    def __init__(self, context=None, borrowable=None):
+    def __init__(self, pyfn, context=None, borrowable=None):
         """
         Arguments
         ---------
@@ -22,13 +27,45 @@ class Symbolic(object):
             (likely NumPy) object will affect the symbolic function.
 
         """
+
         if context is None:
-            self.context = Context(borrowable=utils.as_seq(borrowable, tuple))
-        elif isinstance(context, Context):
-            self.context = context
-        else:
-            raise TypeError(
-                'Received unrecognized Context: {0}'.format(context))
+            context = Context(borrowable=utils.as_seq(borrowable, tuple))
+        assert isinstance(context, Context)
+        self.context = context
+
+        if isinstance(pyfn, Symbolic):
+            pyfn = pyfn.pyfn
+        self._pyfn = pyfn
+
+        self._symfn = self.context.recompile(self.pyfn)
+
+    def __get__(self, instance, owner=None):
+        """
+        Necessary descriptor for decorator compatibility.
+
+        At decoration time, methods have not been bound. However, when bound
+        methods are accessed, the __get__ method is called, so we can monitor
+        that call and bind the method as necessary.
+        """
+        if instance is not None:
+            method = self.pyfn.__get__(instance, owner)
+            self._pyfn = method
+        return self
+
+    def __call__(self, *args, **kwargs):
+        return self.trace(*args, **kwargs)
+
+    @property
+    def pyfn(self):
+        return self._pyfn
+
+    @property
+    def symfn(self):
+        return self._symfn
+
+    @property
+    def cache(self):
+        return self._cache
 
     @property
     def s_vars(self):
@@ -37,27 +74,38 @@ class Symbolic(object):
     def get_symbolic(self, x):
         return self.context.get_symbolic(x)
 
-    def trace(self, fn, *args, **kwargs):
+    def trace(self, *args, **kwargs):
         """
-        Given a Python function and arguments, recompiles a symbolic function
-        and calls it on the [symbolic version of the] arguments.
+        Call the symbolic function on args and kwargs, returning the symbolic
+        result and storing all shadowed variables.
+        """
+        # clean args and kwargs
+        c_args, c_kwargs = utils.clean_int_args(*args, **kwargs)
 
-        Returns the symbolic function result, and also stores any traced
-        objects in self.s_vars.
-        """
-        recompiled_fn = self.context.recompile(fn)
-        clean_args, clean_kwargs = utils.clean_int_args(*args, **kwargs)
-        return recompiled_fn(*clean_args, **clean_kwargs)
+        # call the symfn
+        results = self.symfn(*c_args, **c_kwargs)
+
+        # get a tuple of the symbolic inputs
+        # but avoid 'self' and 'cls' bound arguments
+        all_args = utils.expandedcallargs(self.symfn, *c_args, **c_kwargs)
+        if (inspect.ismethod(self.pyfn) or
+           (len(all_args) > 0 and type(all_args[0]) is type)):
+            all_args = all_args[1:]
+
+        # store the inputs and outputs so they can be accessed later
+        self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
+        self.s_outputs = utils.as_seq(results, tuple)
+
+        return results
 
     def get_theano_vars(self, inputs=None, outputs=None):
         """
         Returns a dict containing inputs, outputs and graph corresponding to
         the Theano version of the pyfn.
         """
-        inputs = utils.as_seq(inputs, tuple)
-        sym_inputs = [self.get_symbolic(x) for x in inputs]
+        sym_inputs = tuple(self.get_symbolic(i) for i in utils.as_seq(inputs))
 
-        sym_outputs = utils.as_seq(outputs, tuple)
+        sym_outputs = tuple(self.get_symbolic(o) for o in utils.as_seq(outputs))
 
         # get symbolic inputs corresponding to shared inputs in s_inputs
         # this dict maps each shared variable to its (non-shared) type.
@@ -271,63 +319,36 @@ class Symbolic(object):
         return fn
 
 
+class Tracer(Symbolic):
+    """
+    A Symbolic class for tracing variables through multiple functions.
+    """
+
+    def __init__(self, context=None, borrowable=None):
+        super(Tracer, self).__init__(pyfn=lambda:None,
+                                     context=context,
+                                     borrowable=borrowable)
+
+    def trace(self, pyfn, *args, **kwargs):
+        symbolic = Symbolic(pyfn=pyfn, context=self.context)
+        return symbolic.trace(*args, **kwargs)
+
+
 class Function(Symbolic):
     """
     A Symbolic tracer which is specialized for a specific function, passed at
     initialization.
     """
-    def __init__(self, pyfn, borrowable=None, context=None, use_cache=True):
-        super(Function, self).__init__(borrowable=borrowable, context=context)
 
-        # if the fn is an autodiff Function class, get its own fn
-        if isinstance(pyfn, Function):
-            pyfn = pyfn.pyfn
-        self._pyfn = pyfn
-
-        self._symfn = self.context.recompile(self.pyfn)
+    def __init__(self, pyfn, context=None, borrowable=None, use_cache=True):
+        super(Function, self).__init__(pyfn=pyfn,
+                                       context=context,
+                                       borrowable=borrowable)
 
         self._cache = dict()
         self.use_cache = use_cache
-        self.argspec = inspect.getargspec(self.pyfn)
-
-        # set the instance docstring to look like that of the function
-        ds = 'AutoDiff class: {0}\n\nWrapped docstring:\n\n'.format(
-            self.__class__.__name__)
-        if self.pyfn.__doc__ is not None:
-            fn_ds = self.pyfn.__doc__
-        else:
-            fn_ds = '[no docstring found]\n '
-        self.__doc__ = ds + fn_ds
-
-    @property
-    def pyfn(self):
-        return self._pyfn
-
-    @property
-    def symfn(self):
-        return self._symfn
-
-    @property
-    def cache(self):
-        return self._cache
-
-    def __get__(self, instance, owner=None):
-        """
-        Necessary descriptor for decorator compatibility.
-
-        At decoration time, methods have not been bound. However, when bound
-        methods are accessed, the __get__ method is called, so we can monitor
-        that call and bind the method as necessary.
-        """
-        if instance is not None:
-            method = self.pyfn.__get__(instance, owner)
-            self._pyfn = method
-        return self
 
     def __call__(self, *args, **kwargs):
-        return self.call(*args, **kwargs)
-
-    def call(self, *args, **kwargs):
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
 
         key = tuple(np.asarray(a).ndim for a in all_args)
@@ -337,40 +358,6 @@ class Function(Symbolic):
             self.cache[key] = self.get_theano_function()
         fn = self.cache[key]
         return fn(*all_args)
-
-    def trace(self, *args, **kwargs):
-        """
-        Given args and kwargs, call the Python function and get its
-        symbolic representation.
-
-        A dictionary of shadowed symbolic variables is maintained:
-            self.s_vars   : {id(obj) : sym_var}
-                            Contains all symbolic variables traced during
-                            function execution, indexed by the id of the
-                            corresponding Python object.
-
-        Additionally, self.s_inputs and self.s_outputs are lists of symbolic
-        arguments and results, respectively.
-        """
-
-        # clean args and kwargs
-        c_args, c_kwargs = utils.clean_int_args(*args, **kwargs)
-
-        # call the symfn
-        results = self.symfn(*c_args, **c_kwargs)
-
-        # get a tuple of the symbolic inputs
-        # but avoid 'self' and 'cls' bound arguments
-        all_args = utils.expandedcallargs(self.symfn, *c_args, **c_kwargs)
-        if (inspect.ismethod(self.pyfn) or
-           (len(all_args) > 0 and type(all_args[0]) is type)):
-            all_args = all_args[1:]
-        self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
-
-        # get a tuple of the symbolic outputs
-        self.s_outputs = utils.as_seq(results, tuple)
-
-        return results
 
     def get_theano_function(self):
         fn = self.compile_function(inputs=self.s_inputs, outputs=self.s_outputs)
@@ -409,7 +396,6 @@ class HessianVector(Gradient):
             raise ValueError(
                 'Vectors must be passed the keyword \'vectors\'.')
         vectors = utils.as_seq(vectors, tuple)
-
 
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
 

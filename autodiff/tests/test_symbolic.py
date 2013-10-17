@@ -3,7 +3,7 @@ import numpy as np
 import theano.tensor
 
 import autodiff
-from autodiff.symbolic import Symbolic, Function, Gradient
+from autodiff.symbolic import Symbolic, Tracer, Function, Gradient
 from autodiff import tag
 
 
@@ -20,46 +20,48 @@ class TestSymbolic(unittest.TestCase):
     def test_trace(self):
         def f(x):
             return x * 5 + 10 * np.ones((3, 4))
-        s = Symbolic()
+        s = Symbolic(f)
         x = np.random.random((3, 4))
-        self.assertTrue(np.allclose(s.trace(f, x).eval(), f(x)))
+        self.assertTrue(np.allclose(s.trace(x).eval(), f(x)))
 
     def test_trace_method(self):
         class Test(object):
             def test(self, x):
                 return x + 1
         t = Test()
-        s = Symbolic()
+        s = Symbolic(t.test)
         x = np.random.random((3, 4))
-        self.assertTrue(np.allclose(s.trace(t.test, x).eval(), t.test(x)))
+        self.assertTrue(np.allclose(s.trace(x).eval(), t.test(x)))
 
     def test_compile_function(self):
         def f(x):
             return x * 5 + 10 * np.ones((3, 4))
-        s = Symbolic()
+        s = Symbolic(f)
         x = np.random.random((3, 4))
-        o = s.trace(f, x)
+        o = s.trace(x)
         F = s.compile_function(x, o)
         self.assertTrue(np.allclose(F(x), f(x)))
 
     def test_compile_gradient(self):
         def f(x):
             return x ** 2
-        s = Symbolic()
+        s = Symbolic(f)
         x = np.random.random((3, 4))
-        o = s.trace(f, x)
+        o = s.trace(x)
         F = s.compile_gradient(x, o)
         self.assertTrue(np.allclose(F(x), 2 * x))
 
     def test_compile_function_gradient(self):
         def f(x):
             return x ** 2
-        s = Symbolic()
+        s = Symbolic(f)
         x = np.random.random((3, 4))
-        o = s.trace(f, x)
+        o = s.trace(x)
         F = s.compile_function_gradient(x, o)
         self.assertTrue(np.allclose(F(x), [f(x), 2 * x]))
 
+
+class TestTracer(unittest.TestCase):
     def test_multiple_trace(self):
         def f1(x):
             return x + 1.0
@@ -69,23 +71,23 @@ class TestSymbolic(unittest.TestCase):
 
         def f3(x):
             return x ** 2
-        s = Symbolic()
+        t = Tracer()
         x = np.random.random((3, 4))
-        o1 = s.trace(f1, x)
-        o2 = s.trace(f2, o1)
-        o3 = s.trace(f3, o2)
+        o1 = t.trace(f1, x)
+        o2 = t.trace(f2, o1)
+        o3 = t.trace(f3, o2)
 
         # test function
-        f = s.compile_function(x, o3)
+        f = t.compile_function(x, o3)
         self.assertTrue(np.allclose(f(x), f3(f2(f1(x)))))
 
         # test gradient
-        o4 = s.trace(lambda x: x.sum(), o3)
-        g = s.compile_gradient(x, o4, wrt=x)
+        o4 = t.trace(lambda x: x.sum(), o3)
+        g = t.compile_gradient(x, o4, wrt=x)
         self.assertTrue(np.allclose(g(x), 8 * (x+1)))
 
-    def test_symbolic_readme(self):
-        """ the README example"""
+    def test_readme(self):
+        """ the original README example"""
 
         # -- a vanilla function
         def f1(x):
@@ -105,7 +107,7 @@ class TestSymbolic(unittest.TestCase):
         # -- create a general symbolic tracer and apply
         #    it to the three functions
         x = np.random.random(10)
-        tracer = Symbolic()
+        tracer = Tracer()
 
         out1 = tracer.trace(f1, x)
         out2 = tracer.trace(f2, out1)
@@ -138,19 +140,19 @@ class TestSymbolic(unittest.TestCase):
             def h(x):
                 return x + 100.0
 
-        t = Test()
-        s = Symbolic()
+        test = Test()
+        t = Tracer()
         x = 1.0
-        o = s.trace(t.f, x)
-        f = s.compile_function(x, o)
+        o = t.trace(test.f, x)
+        f = t.compile_function(x, o)
         assert(f(2.0) == 102.0)
 
-        o = s.trace(t.g, x)
-        f = s.compile_function(x, o)
+        o = t.trace(test.g, x)
+        f = t.compile_function(x, o)
         assert(f(2.0) == 102.0)
 
-        o = s.trace(t.h, x)
-        f = s.compile_function(x, o)
+        o = t.trace(test.h, x)
+        f = t.compile_function(x, o)
         assert(f(2.0) == 102.0)
 
     def test_access_attribute(self):
@@ -161,15 +163,15 @@ class TestSymbolic(unittest.TestCase):
             def getx(self):
                 return self.x
 
-        t = Test()
+        test = Test()
 
         def f(x):
-            return np.dot(x, t.x)
+            return np.dot(x, test.x)
 
         x = np.arange(5.)
-        s = Symbolic()
-        o = s.trace(f, x)
-        g = s.compile_gradient(x, o, wrt=t.x)
+        t = Tracer()
+        o = t.trace(f, x)
+        g = t.compile_gradient(x, o, wrt=test.x)
         self.assertTrue(np.allclose(g(x), x))
 
 
