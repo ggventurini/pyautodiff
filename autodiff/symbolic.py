@@ -177,6 +177,10 @@ class Symbolic(object):
                 wrt=None,
                 reduction=None):
 
+        assert isinstance(function, bool)
+        assert isinstance(gradient, bool)
+        assert isinstance(hessian_vector, bool)
+
         if not (function or gradient or hessian_vector):
             raise ValueError(
                 'At least one of `function`, `gradient`, or `hessian_vector` '
