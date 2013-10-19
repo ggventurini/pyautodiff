@@ -389,7 +389,7 @@ class HessianVector(Gradient):
             vectors = kwargs.pop('vectors')
         else:
             raise ValueError(
-                'Vectors must be passed the keyword \'vectors\'.')
+                'HessianVector must be called with the keyword \'vectors\'.')
         vectors = utils.as_seq(vectors, tuple)
 
         all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)

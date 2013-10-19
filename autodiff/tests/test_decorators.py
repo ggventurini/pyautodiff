@@ -102,15 +102,15 @@ class TestHV(unittest.TestCase):
         def fn(x):
             return np.dot(x, x)
         x = np.ones((3, 3))
-        self.assertRaises(TypeError, fn, x, _vectors=x[0])
+        self.assertRaises(TypeError, fn, x, vectors=x[0])
 
     def test_hv(self):
         @hessian_vector
         def fn(x):
             return np.dot(x, x).sum()
         x = np.ones((3, 3))
-        self.assertTrue(np.allclose(x * 6, fn(x, _vectors=x)))
-        self.assertTrue(np.allclose(x * 2, fn(x[0], _vectors=x[0])))
+        self.assertTrue(np.allclose(x * 6, fn(x, vectors=x)))
+        self.assertTrue(np.allclose(x * 2, fn(x[0], vectors=x[0])))
 
 
 class TestClass(unittest.TestCase):
