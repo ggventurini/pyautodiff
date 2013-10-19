@@ -369,20 +369,26 @@ class TheanoTransformer(NodeTransformer):
     def tag(self, obj, tag):
         if not isinstance(tag, basestring):
             raise ValueError('Tag must be a string. Received: {0}'.format(tag))
-        if tag in self.context.s_vars:
+        if tag in self.context.tags:
             logger.warning(
-                '{0} was tagged as {1}, but {1} is a top-level '
-                'function argument. The tag will not be '
-                'available.'.format(obj, tag))
+                '{0} was tagged as {1}, but the tag {1} was already '
+                'assigned. Note that the new tag will overwrite '
+                'the old one.'.format(obj, tag))
         else:
-            if tag in self.context.tags:
-                logger.warning(
-                    '{0} was tagged as {1}, but the tag {1} was already '
-                    'assigned. Note that the new tag will overwrite '
-                    'the old one.'.format(obj, tag))
-
             self.context.tags[tag] = obj
+            if utils.isvar(obj):
+                obj.name = tag
         return obj
+
+    def tag_function_arg(self, obj, tag):
+        """
+        A version of tagging called only by visit_FunctionDef, which tags
+        top-level function arguments and stores the tags in s_vars. These
+        tags can not be overwritten.
+        """
+        self.context.s_vars[tag] = obj
+        if utils.isvar(obj):
+            obj.name = tag
 
     def handle_functions(self, func):
         """
@@ -885,7 +891,7 @@ class TheanoTransformer(NodeTransformer):
                 value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
             tags.append(Expr(value=self.ast_wrap(
-                method_name='tag',
+                method_name='tag_function_arg',
                 args=[Name(ctx=Load(), id=param.id), Str(s=param.id)])))
 
         # shadow the varargs
@@ -904,7 +910,7 @@ class TheanoTransformer(NodeTransformer):
 
             tags.append(For(
                 body=[Expr(value=self.ast_wrap(
-                    method_name='tag',
+                    method_name='tag_function_arg',
                     args=[Name(ctx=Load(), id='v'),
                           Name(ctx=Load(), id='k')]))],
                 iter=simple_Call(

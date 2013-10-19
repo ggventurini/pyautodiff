@@ -59,10 +59,10 @@ class Tags(unittest.TestCase):
 
         F = context.recompile(f)
         F(1.0)
-        self.assertTrue('arg1' in context.tags)
-        self.assertTrue('arg2' in context.tags)
-        self.assertTrue('arg3' not in context.tags)
-        self.assertTrue('arg4' not in context.tags)
+        self.assertTrue('arg1' in context.s_vars)
+        self.assertTrue('arg2' in context.s_vars)
+        self.assertTrue('arg3' not in context.s_vars)
+        self.assertTrue('arg4' not in context.s_vars)
 
 class Signatures(unittest.TestCase):
     def test_sig_no_arg(self):
