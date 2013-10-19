@@ -715,6 +715,7 @@ class ArraySubscripts(unittest.TestCase):
     def test_adv_index(self):
         self.assertTrue(checkfn(lambda x: x[[3, 2, 1], [1, 2, 3]], [2]))
         self.assertTrue(checkfn(lambda x: x[x > .5], [2]))
+        self.assertTrue(checkfn(lambda x: x[(x > .1) * (x < .5)], [2]))
         self.assertTrue(checkfn(lambda x: x[[2, 3], 1:], [2]))
 
     @unittest.expectedFailure

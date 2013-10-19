@@ -1030,72 +1030,24 @@ class TheanoTransformer(NodeTransformer):
         elements. Thus, this properly selects the desired elements but is not
         compatible with Numpy comparisons anywhere else.
 
-        So, whenever we visit a subscript, we try to guess whether a boolean
-        mask was intended. This is done by looking for Compare nodes (that
-        would return bool results in Numpy) in the Subscript slice. A different
-        transformer, BoolMaskAdvIndexing, handles this part of the AST
-        transformation. If a Compare candidate is found, it is wrapped in the
-        `handle_bool` method.
+        To resolve this, if a Theano 'int8' subscript or index is requested,
+        it is treated as a boolean mask and wrapped in a nonzero() call.
 
         NOTE THIS DOESN'T HANDLE ALL CASES
         """
-
-        #FIXME
-        return BoolMaskAdvIndexing(self).transform(node)
+        self.generic_visit(node)
+        if isinstance(node.slice, Index):
+            node.slice = Index(value=self.ast_wrap('handle_bool',
+                                                   node.slice.value))
+        return node
 
     def visit_ExtSlice(self, node):
         #FIXME
         logger.warn(
             'It appears that you may be doing some Numpy advanced indexing '
-            'involving ExtSlice nodes. Please note that Theano\'s advanced '
-            'indexing support is not as robust as Numpy\'s and these calls '
-            'may fail.')
+            'involving ExtSlice nodes. Please note that Theano does not '
+            'advanced indexing with boolean masks, so your operation may not '
+            'translate correctly. Note that Autodiff has limited support for '
+            'translating boolean masks when they are the only requested index.')
         self.generic_visit(node)
         return node
-
-
-class BoolMaskAdvIndexing(NodeTransformer):
-    """
-    By calling tensor.nonzero(), it is possible to mimic the behavior of Numpy's
-    boolean mask advanced indexing in Theano. However, this can not be done at
-    all times because it returns a tuple of indices and therefore isn't
-    compatible with all incidences of masking. This transformer scans an AST
-    looking for the signature of boolean mask indexing -- a subscript with a
-    comparison as one of the slices.
-    """
-
-    def __init__(self, theanotransformer):
-        super(BoolMaskAdvIndexing, self).__init__()
-        self.transformer = theanotransformer
-
-    def check(self, node):
-        return isinstance(node, (Subscript, Index, Compare, List, Tuple))
-
-    def transform(self, node):
-        method = 'transform_' + node.__class__.__name__
-        transformer = getattr(self, method, lambda x : x)
-        return transformer(node)
-
-    def transform_Subscript(self, node):
-        node.slice = self.transform(node.slice)
-        return node
-
-    def transform_ExtSlice(self, node):
-        node.dims = [self.transform(d) for d in node.dims]
-        return node
-
-    def transform_Index(self, node):
-        node.value = self.transform(node.value)
-        return node
-
-    def transform_List(self, node):
-        node.elts = [self.transform(e) for e in node.elts]
-        return node
-
-    def transform_Tuple(self, node):
-        node.elts = [self.transform(e) for e in node.elts]
-        return node
-
-    def transform_Compare(self, node):
-        return self.transformer.ast_wrap('handle_bool', node)
-
