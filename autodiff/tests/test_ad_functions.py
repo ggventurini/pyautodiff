@@ -120,9 +120,9 @@ class TestTag(unittest.TestCase):
             return z
 
         F = Function(f)
-        self.assertFalse('y' in F.s_vars)
+        self.assertFalse('y' in F.sym_vars)
         F(10)
-        self.assertTrue('y' in F.s_vars)
+        self.assertTrue('y' in F.sym_vars)
 
     def test_tag_decorator(self):
         @function
@@ -131,6 +131,6 @@ class TestTag(unittest.TestCase):
             z = y * 3
             return z
 
-        self.assertFalse('y' in F.s_vars)
+        self.assertFalse('y' in F.sym_vars)
         F(10)
-        self.assertTrue('y' in F.s_vars)
+        self.assertTrue('y' in F.sym_vars)
