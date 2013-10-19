@@ -52,6 +52,7 @@ class GarbageCollection(unittest.TestCase):
         F = context.recompile(f)
         assert F(3, 4)[1].eval() == 4
 
+
 class Tags(unittest.TestCase):
     def test_tagging(self):
         def f(arg1, arg2=1, *arg3, **arg4):
@@ -63,6 +64,7 @@ class Tags(unittest.TestCase):
         self.assertTrue('arg2' in context.s_vars)
         self.assertTrue('arg3' not in context.s_vars)
         self.assertTrue('arg4' not in context.s_vars)
+
 
 class Signatures(unittest.TestCase):
     def test_sig_no_arg(self):
@@ -168,7 +170,7 @@ class Signatures(unittest.TestCase):
             return args[1]
 
         def g(x):
-            args = (x, np.ones((2,3)), 5)
+            args = (x, np.ones((2, 3)), 5)
             return f(*args)
 
         self.assertTrue(checkfn(g, [], 1))
@@ -178,7 +180,7 @@ class Signatures(unittest.TestCase):
             return args['x']
 
         def g(x):
-            args = dict(x=x, y=np.ones((2,3)), z=5)
+            args = dict(x=x, y=np.ones((2, 3)), z=5)
             return f(**args)
 
         self.assertTrue(checkfn(g, [], 1))
@@ -460,15 +462,15 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.bool(x), [0]))
 
     def test_alloc(self):
-        self.assertTrue(checkfn(lambda : np.ones(5), []))
-        self.assertTrue(checkfn(lambda : np.ones((2,5)), []))
-        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [0]))
-        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [1]))
-        self.assertTrue(checkfn(lambda x : np.ones(x.shape), [2]))
+        self.assertTrue(checkfn(lambda: np.ones(5), []))
+        self.assertTrue(checkfn(lambda: np.ones((2, 5)), []))
+        self.assertTrue(checkfn(lambda x: np.ones(x.shape), [0]))
+        self.assertTrue(checkfn(lambda x: np.ones(x.shape), [1]))
+        self.assertTrue(checkfn(lambda x: np.ones(x.shape), [2]))
 
     def test_sort(self):
-        self.assertTrue(checkfn(lambda x : np.sort(x), [2]))
-        self.assertTrue(checkfn(lambda x : np.sort(x, 0), [2]))
+        self.assertTrue(checkfn(lambda x: np.sort(x), [2]))
+        self.assertTrue(checkfn(lambda x: np.sort(x, 0), [2]))
 
 
 class ArrayMethodsAttributes(unittest.TestCase):
@@ -639,8 +641,8 @@ class ArrayMethodsAttributes(unittest.TestCase):
                           lambda x, a: x.std(a), [2], 0)
 
     def test_size(self):
-        self.assertTrue(checkfn(lambda x : np.arange(x.size), [1]))
-        self.assertTrue(checkfn(lambda x : np.arange(x.size), [2]))
+        self.assertTrue(checkfn(lambda x: np.arange(x.size), [1]))
+        self.assertTrue(checkfn(lambda x: np.arange(x.size), [2]))
 
     def test_T(self):
         def fn(x):
@@ -661,9 +663,12 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertRaises(TypeError, checkfn,
                           lambda x, a: x.var(a), [2], 0)
 
+
 class Namespaces(unittest.TestCase):
+
     def test_global(self):
         x = np.ones((3, 4))
+
         def f():
             return x.swapaxes(0, 1)
         self.assertTrue(checkfn(f, []))
@@ -699,23 +704,23 @@ class Namespaces(unittest.TestCase):
 
 class ArraySubscripts(unittest.TestCase):
     def test_indexing(self):
-        self.assertTrue(checkfn(lambda x : x[2], [1]))
-        self.assertTrue(checkfn(lambda x : x[-2], [1]))
-        self.assertTrue(checkfn(lambda x : x[2], [2]))
-        self.assertTrue(checkfn(lambda x : x[-2], [2]))
-        self.assertTrue(checkfn(lambda x : x[2, 2], [2]))
-        self.assertTrue(checkfn(lambda x : x[-2, -2], [2]))
+        self.assertTrue(checkfn(lambda x: x[2], [1]))
+        self.assertTrue(checkfn(lambda x: x[-2], [1]))
+        self.assertTrue(checkfn(lambda x: x[2], [2]))
+        self.assertTrue(checkfn(lambda x: x[-2], [2]))
+        self.assertTrue(checkfn(lambda x: x[2, 2], [2]))
+        self.assertTrue(checkfn(lambda x: x[-2, -2], [2]))
 
     def test_slicing(self):
-        self.assertTrue(checkfn(lambda x : x[1:3], [1]))
-        self.assertTrue(checkfn(lambda x : x[1:-1], [1]))
-        self.assertTrue(checkfn(lambda x : x[1:3], [2]))
-        self.assertTrue(checkfn(lambda x : x[1:-1], [2]))
-        self.assertTrue(checkfn(lambda x : x[1:3, 1:3], [2]))
-        self.assertTrue(checkfn(lambda x : x[1:-1, 1:-1], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:3], [1]))
+        self.assertTrue(checkfn(lambda x: x[1:-1], [1]))
+        self.assertTrue(checkfn(lambda x: x[1:3], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:-1], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:3, 1:3], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:-1, 1:-1], [2]))
 
     def test_index_and_slice(self):
-        self.assertTrue(checkfn(lambda x : x[1:3, 2], [2]))
+        self.assertTrue(checkfn(lambda x: x[1:3, 2], [2]))
 
     def test_index_assign(self):
         def f():
@@ -773,14 +778,15 @@ class ArraySubscripts(unittest.TestCase):
 
     def test_nested_assign(self):
         def f(x):
-            x[2:4][1,2] = 100
+            x[2:4][1, 2] = 100
             return x
         self.assertTrue(checkfn(f, [2]))
 
         def f(x):
-            x[2:4][1,2] += 100
+            x[2:4][1, 2] += 100
             return x
         self.assertTrue(checkfn(f, [2]))
+
 
 class TestMethods(unittest.TestCase):
     def test_instance_method(self):
@@ -810,6 +816,7 @@ class TestMethods(unittest.TestCase):
         t = Test()
         self.assertTrue(checkfn(t.test, [2]))
         self.assertTrue(checkfn(Test.test, [2]))
+
 
 class NumberMethodsAttributes(unittest.TestCase):
     """
