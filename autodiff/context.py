@@ -6,6 +6,7 @@ import inspect
 import numpy as np
 import theano
 import theano.tensor as T
+import autodiff
 import autodiff.utils as utils
 import autodiff.functions
 
@@ -423,6 +424,11 @@ class TheanoTransformer(NodeTransformer):
         elif func is autodiff.functions.tag:
             # tag a variable
             return self.tag
+
+        # ** ======================= autodiff classes
+
+        elif isinstance(func, autodiff.symbolic.Symbolic):
+            return func.symfn
 
         # ** ======================= __theano_op__
 
