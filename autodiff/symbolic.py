@@ -384,7 +384,7 @@ class Gradient(Function):
 
 class HessianVector(Gradient):
 
-    def call(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         if 'vectors' in kwargs:
             vectors = kwargs.pop('vectors')
         else:

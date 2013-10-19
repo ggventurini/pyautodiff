@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import theano.tensor
 
-from autodiff.symbolic import Symbolic, Tracer, Function, Gradient, VectorArg
+from autodiff.symbolic import Symbolic, Tracer, Function, Gradient
+from autodiff.symbolic import HessianVector, VectorArg
 from autodiff import tag
 
 
@@ -434,6 +435,29 @@ class TestGradient(unittest.TestCase):
 
         g = Gradient(fn, wrt=b)
         self.assertTrue(np.allclose(g(a, b), a))
+
+
+class TestHV(unittest.TestCase):
+    def test_hv_missing_vectors(self):
+        def fn(x):
+            return x
+        F = HessianVector(fn)
+        self.assertRaises(ValueError, F, np.array([[1, 1]]))
+
+    def test_hv_no_scalar(self):
+        def fn(x):
+            return np.dot(x, x)
+        x = np.ones((3, 3))
+        F = HessianVector(fn)
+        self.assertRaises(TypeError, F, x, vectors=x[0])
+
+    def test_hv(self):
+        def fn(x):
+            return np.dot(x, x).sum()
+        x = np.ones((3, 3))
+        F = HessianVector(fn)
+        self.assertTrue(np.allclose(x * 6, F(x, vectors=x)))
+        self.assertTrue(np.allclose(x * 2, F(x[0], vectors=x[0])))
 
 
 class TestVectorArg(unittest.TestCase):
