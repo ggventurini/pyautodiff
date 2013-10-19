@@ -705,7 +705,7 @@ class TheanoTransformer(NodeTransformer):
         rhs comparator, since tensors do not properly them.
         """
         if utils.isvar(left) or utils.isvar(right):
-            return self.handle_bool(getattr(T, operator)(left, right))
+            return getattr(T, operator)(left, right)
         elif operator == 'gt':
             return left > right
         elif oeprator == 'ge':
