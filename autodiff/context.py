@@ -621,7 +621,17 @@ class TheanoTransformer(NodeTransformer):
             def reshape(*args, **kwargs):
                 if not isinstance(args[0], (list, tuple)):
                     args = [args]
-                return var.reshape(*args, **kwargs)
+
+                # Theano doesn't handle (), as an arg, which NumPy interprets
+                # as casting length-1 vectors to scalars
+                if args == ((),):
+                    if var.ndim > 1:
+                        raise ValueError(
+                            'Reshape with `()` as an arg can only be used with '
+                            'vectors of length 1.')
+                    return var[0]
+                else:
+                    return var.reshape(*args, **kwargs)
             return reshape
 
         # Theano has no swapaxes method
