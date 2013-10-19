@@ -726,6 +726,17 @@ class TheanoTransformer(NodeTransformer):
                     x[a:b][c] = y
 
         """
+
+        # TODO AugAssigns with unbounded subscripts decompile strangely and can't
+        # be recompiled. Specifically, they decompile as an Assign to a target
+        # with a value that is an AugAssign of the same target and the true
+        # value. To get around this, we just take the AugAssign (which appears
+        # to be correct) and replace the Assign with it.
+        # This is the syntax that creates the weird AST:
+        #    a[:b] += c
+        if isinstance(node.value, AugAssign):
+            return self.visit_AugAssign(node.value)
+
         self.generic_visit(node)
 
         # handle subscripted assignment for tensor variables
@@ -752,7 +763,13 @@ class TheanoTransformer(NodeTransformer):
                 tensor = tensor.value
 
             # transform subscript into set_subtensor
-            set_subt = build_subt(subscript=node.targets[0], value=node.value)
+            if isinstance(node.value, AugAssign):
+                value = BinOp(op=node.value.op,
+                              left=node.targets[0],
+                              right=node.value.value)
+            else:
+                value = node.value
+            set_subt = build_subt(subscript=node.targets[0], value=value)
 
             # wrap set_subtensor statements in Assign to root tensor
             assign_subtensor = Assign(targets=[Name(ctx=Store(), id=tensor.id)],
