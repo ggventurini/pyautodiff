@@ -343,6 +343,9 @@ class TheanoTransformer(NodeTransformer):
 
     @staticmethod
     def handle_shadow_class(x):
+        """
+        Handles escaping ShadowClass instances.
+        """
         def remove_shadow_class(x):
             if isinstance(x, ShadowClass):
                 return x._obj__
@@ -353,6 +356,9 @@ class TheanoTransformer(NodeTransformer):
 
     @staticmethod
     def handle_escape(x):
+        """
+        Handles escaping variables, including ShadowClass and Theano variables
+        """
         def escape(x):
             if isinstance(x, theano.tensor.sharedvar.SharedVariable):
                 return x.get_value()
