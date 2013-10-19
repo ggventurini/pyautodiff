@@ -149,9 +149,6 @@ class Symbolic(object):
         """
         wrt = utils.as_seq(wrt)
 
-        if reduction is None:
-            reduction = T.sum
-
         if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
             reduction = getattr(theano.tensor, reduction)
 
@@ -186,9 +183,6 @@ class Symbolic(object):
         argumentsfor theano.function to compile a Hessian-vector product.
         """
         wrt = utils.as_seq(wrt)
-
-        if reduction is None:
-            reduction = T.sum
 
         if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
             reduction = getattr(theano.tensor, reduction)

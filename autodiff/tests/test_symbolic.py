@@ -47,7 +47,9 @@ class TestSymbolic(unittest.TestCase):
         s = Symbolic(f)
         x = np.random.random((3, 4))
         o = s.trace(x)
-        F = s.compile_gradient(x, o)
+        self.assertRaises(TypeError, s.compile_function_gradient, x, o)
+
+        F = s.compile_gradient(x, o.sum())
         self.assertTrue(np.allclose(F(x), 2 * x))
 
     def test_compile_function_gradient(self):
@@ -56,8 +58,12 @@ class TestSymbolic(unittest.TestCase):
         s = Symbolic(f)
         x = np.random.random((3, 4))
         o = s.trace(x)
-        F = s.compile_function_gradient(x, o)
-        self.assertTrue(np.allclose(F(x), [f(x), 2 * x]))
+        self.assertRaises(TypeError, s.compile_function_gradient, x, o)
+
+        F = s.compile_function_gradient(x, o.sum())
+        sym_result = F(x)
+        self.assertTrue(np.allclose(sym_result[0], f(x).sum()))
+        self.assertTrue(np.allclose(sym_result[1], 2 * x))
 
 
 class TestTracer(unittest.TestCase):
