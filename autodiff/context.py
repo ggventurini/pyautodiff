@@ -373,6 +373,17 @@ class TheanoTransformer(NodeTransformer):
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
 
+    def handle_bool(self, x):
+        """
+        Theano doesn't have a bool type, but we can track certain variables that
+        we know must be boolean and possibly use that informatino (for
+        advanced indexing, for example).
+        """
+        if utils.isvar(x) and x.dtype == 'int8':
+            return x.nonzero()
+        else:
+            return x
+
     def handle_tag(self, obj, tag):
         if not isinstance(tag, basestring):
             raise ValueError('Tag must be a string. Received: {0}'.format(tag))
@@ -694,7 +705,7 @@ class TheanoTransformer(NodeTransformer):
         rhs comparator, since tensors do not properly them.
         """
         if utils.isvar(left) or utils.isvar(right):
-            return getattr(T, operator)(left, right)
+            return self.handle_bool(getattr(T, operator)(left, right))
         elif operator == 'gt':
             return left > right
         elif oeprator == 'ge':
@@ -1000,3 +1011,93 @@ class TheanoTransformer(NodeTransformer):
         self.generic_visit(node)
         node.test = self.ast_wrap('handle_escape', node.test)
         return node
+
+    def visit_Subscript(self, node):
+        """
+        Theano does not have a bool dtype, and therefore does not support
+        Numpy's advanced indexing with boolean masks. For example, the
+        following is interpreted as requested many items at the indices 1 and 0,
+        not as a boolean mask:
+
+            x[x > 0.5]
+
+        It is possible to replicate the boolean mask behavior in Theano with the
+        following construction:
+
+            x[(x > 0.5).nonzero()]
+
+        tensor.nonzero() returns a tuple of indices corresponding to the nonzero
+        elements. Thus, this properly selects the desired elements but is not
+        compatible with Numpy comparisons anywhere else.
+
+        So, whenever we visit a subscript, we try to guess whether a boolean
+        mask was intended. This is done by looking for Compare nodes (that
+        would return bool results in Numpy) in the Subscript slice. A different
+        transformer, BoolMaskAdvIndexing, handles this part of the AST
+        transformation. If a Compare candidate is found, it is wrapped in the
+        `handle_bool` method.
+
+        NOTE THIS DOESN'T HANDLE ALL CASES
+        """
+
+        #FIXME
+        return BoolMaskAdvIndexing(self).transform(node)
+
+    def visit_ExtSlice(self, node):
+        #FIXME
+        logger.warn(
+            'It appears that you may be doing some Numpy advanced indexing '
+            'involving ExtSlice nodes. Please note that Theano\'s advanced '
+            'indexing support is not as robust as Numpy\'s and these calls '
+            'may fail.')
+        self.generic_visit(node)
+        return node
+
+
+
+
+class BoolMaskAdvIndexing(NodeTransformer):
+    """
+    By calling tensor.nonzero(), it is possible to mimic the behavior of Numpy's
+    boolean mask advanced indexing in Theano. However, this can not be done at
+    all times because it returns a tuple of indices and therefore isn't
+    compatible with all incidences of masking. This transformer scans an AST
+    looking for the signature of boolean mask indexing -- a subscript with a
+    comparison as one of the slices.
+    """
+
+    def __init__(self, theanotransformer):
+        super(BoolMaskAdvIndexing, self).__init__()
+        self.transformer = theanotransformer
+
+    def check(self, node):
+        return isinstance(node, (Subscript, Index, Compare, List, Tuple))
+
+    def transform(self, node):
+        method = 'transform_' + node.__class__.__name__
+        transformer = getattr(self, method, lambda x : x)
+        return transformer(node)
+
+    def transform_Subscript(self, node):
+        node.slice = self.transform(node.slice)
+        return node
+
+    def transform_ExtSlice(self, node):
+        node.dims = [self.transform(d) for d in node.dims]
+        return node
+
+    def transform_Index(self, node):
+        node.value = self.transform(node.value)
+        return node
+
+    def transform_List(self, node):
+        node.elts = [self.transform(e) for e in node.elts]
+        return node
+
+    def transform_Tuple(self, node):
+        node.elts = [self.transform(e) for e in node.elts]
+        return node
+
+    def transform_Compare(self, node):
+        return self.transformer.ast_wrap('handle_bool', node)
+
