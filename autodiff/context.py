@@ -440,7 +440,7 @@ class TheanoTransformer(NodeTransformer):
 
         elif func is autodiff.functions.tag:
             # tag a variable
-            return self.tag
+            return self.handle_tag
 
         # ** ======================= autodiff classes
 
