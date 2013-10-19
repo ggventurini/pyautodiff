@@ -596,7 +596,8 @@ class TheanoTransformer(NodeTransformer):
         # ** ======================= Catchall (shouldn't be called)
 
         raise ValueError(
-            'handle_functions: No case matched function {0}'.format(func))
+            'handle_functions: No case matched function {0}; something is '
+            'wrong!'.format(func))
 
     def handle_array_methods(self, var, method_name):
         """
