@@ -70,8 +70,8 @@ class Symbolic(object):
         return self._cache
 
     @property
-    def s_vars(self):
-        return self.context.s_vars
+    def sym_vars(self):
+        return self.context.sym_vars
 
     def get_symbolic(self, x):
         return self.context.get_symbolic(x)

@@ -90,7 +90,7 @@ def isvar_ast(name):
 class Context(object):
 
     def __init__(self, borrowable=()):
-        self.s_vars = dict()
+        self.sym_vars = dict()
         self.tags = dict()
         # FIXME do we need to hold on to all of these itermediates?
         # ensure these id's do not get recycled by garbage collection
@@ -160,8 +160,8 @@ class Context(object):
         autodiff.functions.tag().
         """
         if isinstance(x, basestring):
-            if x in self.s_vars:
-                return self.s_vars[x]
+            if x in self.sym_vars:
+                return self.sym_vars[x]
             elif x in self.tags:
                 return self.tags[x]
             else:
@@ -170,8 +170,8 @@ class Context(object):
                     ', but `{0}` was not tagged.'.format(x))
         elif utils.isvar(x):
             return x
-        elif id(x) in self.s_vars:
-            return self.s_vars[id(x)]
+        elif id(x) in self.sym_vars:
+            return self.sym_vars[id(x)]
         elif isinstance(x, int) and -5 <= x <= 256:
             raise ValueError(
                 'Small integers (-5 <= x <= 256) can not be shadowed due to '
@@ -183,7 +183,7 @@ class Context(object):
                 ', but it was not traced.'.format(repr(x)))
 
     def reset(self):
-        self.s_vars.clear()
+        self.sym_vars.clear()
         self.tags.clear()
         self._nogc = []
         self._noshadow = set()
@@ -296,7 +296,7 @@ class TheanoTransformer(NodeTransformer):
 
         """
         Given a numerical variable x, return an equivalent Theano shared
-        variable and store the relationship in self.s_vars. Otherwise return x.
+        variable and store the relationship in self.sym_vars. Otherwise return x.
         """
         if (id(x) in self.context._noshadow
             or x is True
@@ -316,7 +316,7 @@ class TheanoTransformer(NodeTransformer):
                 logger.info('Warning: Theano has no bool type; upgrading to int8.')
                 x = x.astype('int8')
 
-            if id(x) not in self.context.s_vars:
+            if id(x) not in self.context.sym_vars:
                 # add to _nogc to ensure that the id won't be reused
                 self.context._nogc.append(x)
                 # create symbolic version:
@@ -325,11 +325,11 @@ class TheanoTransformer(NodeTransformer):
                 else:
                     sym_x = theano.shared(x)
                 # store symbolic version
-                self.context.s_vars[id(x)] = sym_x
+                self.context.sym_vars[id(x)] = sym_x
                 # return symbolic version
                 return sym_x
             else:
-                return self.context.s_vars[id(x)]
+                return self.context.sym_vars[id(x)]
         else:
             if (isinstance(x, types.FunctionType)
                     and inspect.getmodule(x) is autodiff.functions):
@@ -401,10 +401,10 @@ class TheanoTransformer(NodeTransformer):
     def handle_tag_function_arg(self, obj, tag):
         """
         A version of tagging called only by visit_FunctionDef, which tags
-        top-level function arguments and stores the tags in s_vars. These
+        top-level function arguments and stores the tags in sym_vars. These
         tags can not be overwritten.
         """
-        self.context.s_vars[tag] = obj
+        self.context.sym_vars[tag] = obj
         if utils.isvar(obj):
             obj.name = tag
 

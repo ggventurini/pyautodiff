@@ -60,10 +60,10 @@ class Tags(unittest.TestCase):
 
         F = context.recompile(f)
         F(1.0)
-        self.assertTrue('arg1' in context.s_vars)
-        self.assertTrue('arg2' in context.s_vars)
-        self.assertTrue('arg3' not in context.s_vars)
-        self.assertTrue('arg4' not in context.s_vars)
+        self.assertTrue('arg1' in context.sym_vars)
+        self.assertTrue('arg2' in context.sym_vars)
+        self.assertTrue('arg3' not in context.sym_vars)
+        self.assertTrue('arg4' not in context.sym_vars)
 
 
 class Signatures(unittest.TestCase):
@@ -699,7 +699,7 @@ class Namespaces(unittest.TestCase):
 
         x = np.arange(5.)
         self.assertTrue(checkfn(f, [], x))
-        self.assertTrue(id(t.x) in context.s_vars)
+        self.assertTrue(id(t.x) in context.sym_vars)
 
 
 class ArraySubscripts(unittest.TestCase):
