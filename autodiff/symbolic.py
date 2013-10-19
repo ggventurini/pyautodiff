@@ -73,6 +73,10 @@ class Symbolic(object):
     def sym_vars(self):
         return self.context.sym_vars
 
+    @property
+    def tags(self):
+        return self.context.tags
+
     def get_symbolic(self, x):
         return self.context.get_symbolic(x)
 
