@@ -1041,13 +1041,3 @@ class TheanoTransformer(NodeTransformer):
                                                    node.slice.value))
         return node
 
-    def visit_ExtSlice(self, node):
-        #FIXME
-        logger.warn(
-            'It appears that you may be doing some Numpy advanced indexing '
-            'involving ExtSlice nodes. Please note that Theano does not '
-            'advanced indexing with boolean masks, so your operation may not '
-            'translate correctly. Note that Autodiff has limited support for '
-            'translating boolean masks when they are the only requested index.')
-        self.generic_visit(node)
-        return node
