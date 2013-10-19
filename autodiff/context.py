@@ -640,6 +640,8 @@ class TheanoTransformer(NodeTransformer):
         if not utils.isvar(var):
             return getattr(var, method_name)
 
+        # ** ======================= Reshape
+
         # Theano's reshape requires dim to be in a collection, unlike Numpy.
         if method_name == 'reshape':
             def reshape(*args, **kwargs):
@@ -658,6 +660,8 @@ class TheanoTransformer(NodeTransformer):
                     return var.reshape(*args, **kwargs)
             return reshape
 
+        # ** ======================= swapaxes
+
         # Theano has no swapaxes method
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
@@ -666,6 +670,8 @@ class TheanoTransformer(NodeTransformer):
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
             return swapaxes
+
+        # ** ======================= astype
 
         # Theano doesn't process numpy dtype objects or 'bool'
         elif method_name == 'astype':
@@ -687,6 +693,8 @@ class TheanoTransformer(NodeTransformer):
                 return var.astype(dtype)
             return astype
 
+        # ** ======================= sort
+
         elif method_name == 'sort':
             def sort_(*args, **kwargs):
                 raise ValueError(
@@ -694,6 +702,31 @@ class TheanoTransformer(NodeTransformer):
                     'because in NumPy it is an inplace operation, but in '
                     'Theano it is not. Please use numpy.sort() instead.')
             return sort_
+
+        # ** ======================= reductions
+
+        elif method_name in ('argmax',
+                             'argmin',
+                             'argsort',
+                             'max',
+                             'mean',
+                             'min',
+                             'norm',
+                             'prod',
+                             'std',
+                             'sum',
+                             'var'):
+            def reduce_(*args, **kwargs):
+                method = getattr(var, method_name)
+                all_args = inspect.getcallargs(method, *args, **kwargs)
+                for k, v in all_args.items():
+                    if v is method.im_self:
+                        all_args.pop(k)
+                all_args['axis'] = self.handle_escape(all_args['axis'])
+                return method(**all_args)
+            return reduce_
+
+        # ** ======================= anything else
 
         # ...Otherwise, try to access the method on the Theano variable
         else:
