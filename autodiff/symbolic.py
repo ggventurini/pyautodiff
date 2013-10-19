@@ -51,6 +51,7 @@ class Symbolic(object):
         if instance is not None:
             method = self.pyfn.__get__(instance, owner)
             self._pyfn = method
+            self._symfn = self.context.recompile(self.pyfn)
         return self
 
     def __call__(self, *args, **kwargs):
@@ -344,7 +345,10 @@ class Function(Symbolic):
         self.use_cache = use_cache
 
     def __call__(self, *args, **kwargs):
-        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+        all_args = utils.expandedcallargs(self.symfn, *args, **kwargs)
+        if (inspect.ismethod(self.pyfn) or
+           (len(all_args) > 0 and type(all_args[0]) is type)):
+            all_args = all_args[1:]
 
         key = tuple(np.asarray(a).ndim for a in all_args)
         if key not in self.cache or not self.use_cache:
@@ -392,7 +396,7 @@ class HessianVector(Gradient):
                 'HessianVector must be called with the keyword \'vectors\'.')
         vectors = utils.as_seq(vectors, tuple)
 
-        all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
+        all_args = utils.expandedcallargs(self.symfn, *args, **kwargs)
 
         key = tuple(np.asarray(a).ndim for a in all_args)
         if key not in self.cache or not self.use_cache:
