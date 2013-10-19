@@ -703,6 +703,7 @@ class Namespaces(unittest.TestCase):
 
 
 class ArraySubscripts(unittest.TestCase):
+
     def test_indexing(self):
         self.assertTrue(checkfn(lambda x: x[2], [1]))
         self.assertTrue(checkfn(lambda x: x[-2], [1]))
@@ -711,13 +712,38 @@ class ArraySubscripts(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x[2, 2], [2]))
         self.assertTrue(checkfn(lambda x: x[-2, -2], [2]))
 
+    def test_adv_index(self):
+        self.assertTrue(checkfn(lambda x: x[[3, 2, 1], [1, 2, 3]], [2]))
+        self.assertTrue(checkfn(lambda x: x[x > .5], [2]))
+        self.assertTrue(checkfn(lambda x: x[[2, 3], 1:], [2]))
+
+    @unittest.expectedFailure
+    def test_adv_index_known_failures(self):
+        self.assertTrue(checkfn(lambda x: x[1:, x > .5], [2]))
+        self.assertTrue(checkfn(lambda x: x[x > .5, 1:], [2]))
+
     def test_slicing(self):
+        # SLICE+0
+        self.assertTrue(checkfn(lambda x: x[:], [1]))
+        self.assertTrue(checkfn(lambda x: x[:], [2]))
+
+        # SLICE+1
+        self.assertTrue(checkfn(lambda x: x[1:], [1]))
+        self.assertTrue(checkfn(lambda x: x[-2:], [1]))
+        self.assertTrue(checkfn(lambda x: x[1:, 1:], [2]))
+        self.assertTrue(checkfn(lambda x: x[-2:, -2:], [2]))
+
+        # SLICE+2
+        self.assertTrue(checkfn(lambda x: x[:2], [1]))
+        self.assertTrue(checkfn(lambda x: x[:-2], [1]))
+        self.assertTrue(checkfn(lambda x: x[:2, :2], [2]))
+        self.assertTrue(checkfn(lambda x: x[:-2, :-2], [2]))
+
+        # SLICE+3
         self.assertTrue(checkfn(lambda x: x[1:3], [1]))
-        self.assertTrue(checkfn(lambda x: x[1:-1], [1]))
-        self.assertTrue(checkfn(lambda x: x[1:3], [2]))
-        self.assertTrue(checkfn(lambda x: x[1:-1], [2]))
+        self.assertTrue(checkfn(lambda x: x[-3:-1], [1]))
         self.assertTrue(checkfn(lambda x: x[1:3, 1:3], [2]))
-        self.assertTrue(checkfn(lambda x: x[1:-1, 1:-1], [2]))
+        self.assertTrue(checkfn(lambda x: x[-3:-1, -3:-1], [2]))
 
     def test_index_and_slice(self):
         self.assertTrue(checkfn(lambda x: x[1:3, 2], [2]))
@@ -768,6 +794,57 @@ class ArraySubscripts(unittest.TestCase):
             x[2:3, 2:3] += 100
             return x
         self.assertTrue(checkfn(f, [2]))
+
+    def test_store_slice(self):
+        # STORE_SLICE+0
+        def f(x):
+            x[:] = 5
+            x[:] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+
+        # STORE_SLICE+1
+        def f(x):
+            x[2:] = 5
+            x[-2:] += 5
+            return x
+
+        def f2(x):
+            x[2:, 2:] = 5
+            x[-2:, -2:] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+        self.assertTrue(checkfn(f2, [2]))
+
+        # STORE_SLICE+2
+        def f(x):
+            x[:2] = 5
+            x[:-2] += 5
+            return x
+
+        def f2(x):
+            x[:2, :2] = 5
+            x[:-2, :-2] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+        self.assertTrue(checkfn(f2, [2]))
+
+        # STORE_SLICE+3
+        def f(x):
+            x[1:3] = 5
+            x[-3:-1] += 5
+            return x
+
+        def f2(x):
+            x[1:3, 1:3] = 5
+            x[-3:-1, -3:-1] += 5
+            return x
+        self.assertTrue(checkfn(f, [1]))
+        self.assertTrue(checkfn(f, [2]))
+        self.assertTrue(checkfn(f2, [2]))
 
     def test_array_assign(self):
         def f(x):
@@ -832,96 +909,6 @@ class IndexSlice(unittest.TestCase):
     """
     Test for coverage of indexing and slicing
     """
-    def test_index(self):
-        self.assertTrue(checkfn(lambda x: x[1], [1]))
-        self.assertTrue(checkfn(lambda x: x[-1], [1]))
-        self.assertTrue(checkfn(lambda x: x[1, 1], [2]))
-        self.assertTrue(checkfn(lambda x: x[-1, -1], [2]))
-
-    def test_slice(self):
-        # SLICE+0
-        self.assertTrue(checkfn(lambda x: x[:], [1]))
-        self.assertTrue(checkfn(lambda x: x[:], [2]))
-
-        # SLICE+1
-        self.assertTrue(checkfn(lambda x: x[1:], [1]))
-        self.assertTrue(checkfn(lambda x: x[-2:], [1]))
-        self.assertTrue(checkfn(lambda x: x[1:, 1:], [2]))
-        self.assertTrue(checkfn(lambda x: x[-2:, -2:], [2]))
-
-        # SLICE+2
-        self.assertTrue(checkfn(lambda x: x[:2], [1]))
-        self.assertTrue(checkfn(lambda x: x[:-2], [1]))
-        self.assertTrue(checkfn(lambda x: x[:2, :2], [2]))
-        self.assertTrue(checkfn(lambda x: x[:-2, :-2], [2]))
-
-        # SLICE+3
-        self.assertTrue(checkfn(lambda x: x[1:3], [1]))
-        self.assertTrue(checkfn(lambda x: x[-3:-1], [1]))
-        self.assertTrue(checkfn(lambda x: x[1:3, 1:3], [2]))
-        self.assertTrue(checkfn(lambda x: x[-3:-1, -3:-1], [2]))
-
-    def test_store_slice(self):
-        # STORE_SLICE+0
-        def f(x):
-            x[:] = 5
-            x[:] += 5
-            return x
-        self.assertTrue(checkfn(f, [1]))
-        self.assertTrue(checkfn(f, [2]))
-
-        # STORE_SLICE+1
-        def f(x):
-            x[2:] = 5
-            x[-2:] += 5
-            return x
-
-        def f2(x):
-            x[2:, 2:] = 5
-            x[-2:, -2:] += 5
-            return x
-        self.assertTrue(checkfn(f, [1]))
-        self.assertTrue(checkfn(f, [2]))
-        self.assertTrue(checkfn(f2, [2]))
-
-        # STORE_SLICE+2
-        def f(x):
-            x[:2] = 5
-            x[:-2] += 5
-            return x
-
-        def f2(x):
-            x[:2, :2] = 5
-            x[:-2, :-2] += 5
-            return x
-        self.assertTrue(checkfn(f, [1]))
-        self.assertTrue(checkfn(f, [2]))
-        self.assertTrue(checkfn(f2, [2]))
-
-        # STORE_SLICE+3
-        def f(x):
-            x[1:3] = 5
-            x[-3:-1] += 5
-            return x
-
-        def f2(x):
-            x[1:3, 1:3] = 5
-            x[-3:-1, -3:-1] += 5
-            return x
-        self.assertTrue(checkfn(f, [1]))
-        self.assertTrue(checkfn(f, [2]))
-        self.assertTrue(checkfn(f2, [2]))
-
-    def test_adv_index(self):
-        self.assertTrue(checkfn(lambda x: x[[3, 2, 1], [1, 2, 3]], [2]))
-        self.assertTrue(checkfn(lambda x: x[x > .5], [2]))
-        self.assertTrue(checkfn(lambda x: x[[2, 3], 1:], [2]))
-
-    @unittest.expectedFailure
-    def test_adv_index_known_failures(self):
-        self.assertTrue(checkfn(lambda x: x[1:, x > .5], [2]))
-        self.assertTrue(checkfn(lambda x: x[x > .5, 1:], [2]))
-
 
 class Ops(unittest.TestCase):
     """

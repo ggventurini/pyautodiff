@@ -1054,8 +1054,6 @@ class TheanoTransformer(NodeTransformer):
         return node
 
 
-
-
 class BoolMaskAdvIndexing(NodeTransformer):
     """
     By calling tensor.nonzero(), it is possible to mimic the behavior of Numpy's
