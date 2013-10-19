@@ -342,18 +342,18 @@ class TheanoTransformer(NodeTransformer):
                 return Shadow(x, self.context)
 
     @staticmethod
-    def remove_shadow_class(x):
-        def _remove_shadow_class(x):
+    def handle_shadow_class(x):
+        def remove_shadow_class(x):
             if isinstance(x, ShadowClass):
                 return x._obj__
             else:
                 return x
-        return utils.unflatten(x, [_remove_shadow_class(i)
+        return utils.unflatten(x, [remove_shadow_class(i)
                                    for i in utils.flatten(x)])
 
     @staticmethod
-    def escape(x):
-        def _escape(x):
+    def handle_escape(x):
+        def escape(x):
             if isinstance(x, theano.tensor.sharedvar.SharedVariable):
                 return x.get_value()
             elif utils.isvar(x):
@@ -365,9 +365,9 @@ class TheanoTransformer(NodeTransformer):
                 return x._obj__
             else:
                 return x
-        return utils.unflatten(x, [_escape(i) for i in utils.flatten(x)])
+        return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
 
-    def tag(self, obj, tag):
+    def handle_tag(self, obj, tag):
         if not isinstance(tag, basestring):
             raise ValueError('Tag must be a string. Received: {0}'.format(tag))
         if tag in self.context.tags:
@@ -381,7 +381,7 @@ class TheanoTransformer(NodeTransformer):
                 obj.name = tag
         return obj
 
-    def tag_function_arg(self, obj, tag):
+    def handle_tag_function_arg(self, obj, tag):
         """
         A version of tagging called only by visit_FunctionDef, which tags
         top-level function arguments and stores the tags in s_vars. These
@@ -409,7 +409,7 @@ class TheanoTransformer(NodeTransformer):
 
         elif func is autodiff.functions.escape:
             # escapes a variable from Tensor representation
-            return self.escape
+            return self.handle_escape
 
         elif func is autodiff.functions.escaped_call:
             # call a function on escaped arguments, without transforming the AST
@@ -521,7 +521,7 @@ class TheanoTransformer(NodeTransformer):
             # ranges
             if func.__name__ in ('range', 'xrange'):
                 def range_(*args):
-                    return func(*(self.escape(a) for a in args))
+                    return func(*(self.handle_escape(a) for a in args))
                 return range_
 
             # zip
@@ -574,10 +574,10 @@ class TheanoTransformer(NodeTransformer):
             # isinstance
             elif func is isinstance:
                 def isinstance_(obj, types):
-                    escaped_obj = self.escape(obj)
+                    escaped_obj = self.handle_escape(obj)
                     if obj.ndim == 0:
                         escaped_obj = np.asscalar(escaped_obj)
-                    return isinstance(escaped_obj, self.escape(types))
+                    return isinstance(escaped_obj, self.handle_escape(types))
                 return isinstance_
 
             # anything else (like getattr)
@@ -644,7 +644,7 @@ class TheanoTransformer(NodeTransformer):
         # Theano has no swapaxes method
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
-                axis1, axis2 = (self.escape(a) for a in args)
+                axis1, axis2 = (self.handle_escape(a) for a in args)
                 dims = range(var.ndim)
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
@@ -827,9 +827,9 @@ class TheanoTransformer(NodeTransformer):
 
         # the * and ** syntax won't work if an object has been shadowed...
         if node.starargs:
-            node.starargs = self.ast_wrap('remove_shadow_class', node.starargs)
+            node.starargs = self.ast_wrap('handle_shadow_class', node.starargs)
         if node.kwargs:
-            node.kwargs = self.ast_wrap('remove_shadow_class', node.kwargs)
+            node.kwargs = self.ast_wrap('handle_shadow_class', node.kwargs)
 
         return node
 
@@ -925,7 +925,7 @@ class TheanoTransformer(NodeTransformer):
                 value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
 
             tags.append(Expr(value=self.ast_wrap(
-                method_name='tag_function_arg',
+                method_name='handle_tag_function_arg',
                 args=[Name(ctx=Load(), id=param.id), Str(s=param.id)])))
 
         # shadow the varargs
@@ -944,7 +944,7 @@ class TheanoTransformer(NodeTransformer):
 
             tags.append(For(
                 body=[Expr(value=self.ast_wrap(
-                    method_name='tag_function_arg',
+                    method_name='handle_tag_function_arg',
                     args=[Name(ctx=Load(), id='v'),
                           Name(ctx=Load(), id='k')]))],
                 iter=simple_Call(
@@ -992,5 +992,5 @@ class TheanoTransformer(NodeTransformer):
         x resolves it when the function is called.
         """
         self.generic_visit(node)
-        node.test = self.ast_wrap('escape', node.test)
+        node.test = self.ast_wrap('handle_escape', node.test)
         return node
