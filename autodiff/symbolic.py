@@ -354,7 +354,7 @@ class Function(Symbolic):
            (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
 
-        key = tuple(np.asarray(a).ndim for a in all_args)
+        key = tuple((np.asarray(a).ndim, np.asarray(a).dtype) for a in all_args)
         if key not in self.cache or not self.use_cache:
             self.context.reset()
             self.trace(*args, **kwargs)

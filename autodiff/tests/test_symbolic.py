@@ -404,6 +404,16 @@ class TestFunction(unittest.TestCase):
 
 
 class TestGradient(unittest.TestCase):
+
+    def test_cache_key(self):
+        def fn(x):
+            return x ** 2
+
+        f = Gradient(fn)
+        self.assertTrue(np.allclose(f(3), 0.0))
+        self.assertTrue(np.allclose(f(3.0), 6.0))
+
+
     def test_simple_gradients(self):
         # straightforward gradient
         g = Gradient(lambda x: x ** 2)
