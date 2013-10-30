@@ -22,7 +22,7 @@ class TestSymbolic(unittest.TestCase):
             return x * 5 + 10 * np.ones((3, 4))
         s = Symbolic(f)
         x = np.random.random((3, 4))
-        self.assertTrue(np.allclose(s.trace(x).eval(), f(x)))
+        self.assertTrue(np.allclose(s.trace(x)[1].eval(), f(x)))
 
     def test_trace_method(self):
         class Test(object):
@@ -31,14 +31,14 @@ class TestSymbolic(unittest.TestCase):
         t = Test()
         s = Symbolic(t.test)
         x = np.random.random((3, 4))
-        self.assertTrue(np.allclose(s.trace(x).eval(), t.test(x)))
+        self.assertTrue(np.allclose(s.trace(x)[1].eval(), t.test(x)))
 
     def test_compile_function(self):
         def f(x):
             return x * 5 + 10 * np.ones((3, 4))
         s = Symbolic(f)
         x = np.random.random((3, 4))
-        o = s.trace(x)
+        o = s.trace(x)[1]
         F = s.compile_function(x, o)
         self.assertTrue(np.allclose(F(x), f(x)))
 
@@ -47,7 +47,7 @@ class TestSymbolic(unittest.TestCase):
             return x ** 2
         s = Symbolic(f)
         x = np.random.random((3, 4))
-        o = s.trace(x)
+        o = s.trace(x)[1]
         self.assertRaises(TypeError, s.compile_function_gradient, x, o)
 
         F = s.compile_gradient(x, o.sum())
@@ -58,7 +58,7 @@ class TestSymbolic(unittest.TestCase):
             return x ** 2
         s = Symbolic(f)
         x = np.random.random((3, 4))
-        o = s.trace(x)
+        o = s.trace(x)[1]
         self.assertRaises(TypeError, s.compile_function_gradient, x, o)
 
         F = s.compile_function_gradient(x, o.sum())
@@ -297,6 +297,18 @@ class TestFunction(unittest.TestCase):
         f = Function(fn)
         self.assertTrue(checkfn(f, 1, 2, x=1, y=2, z=3))
         self.assertTrue(checkfn(f, 1, 2, 3, x=1, y=2, z=3))
+
+    def test_return_none(self):
+        def f1():
+            pass
+
+        def f2(x):
+            x + 1
+
+        F1 = Function(f1)
+        F2 = Function(f2)
+
+
 
     def test_nested_fn_call(self):
         def f(x, y):

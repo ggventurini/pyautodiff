@@ -99,10 +99,12 @@ class Symbolic(object):
             all_args = all_args[1:]
 
         # store the inputs and outputs so they can be accessed later
-        self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
-        self.s_outputs = utils.as_seq(results, tuple)
+        # self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
+        # self.s_outputs = utils.as_seq(results, tuple)
+        inputs = tuple(self.get_symbolic(a) for a in all_args)
+        # outputs = utils.as_seq(results, tuple)
 
-        return results
+        return inputs, results
 
     def get_theano_vars(self, inputs=None, outputs=None):
         """
@@ -130,6 +132,7 @@ class Symbolic(object):
 
         # get symbolic outputs
         theano_outputs = tuple([graph[o] for o in sym_outputs])
+
 
         return theano_inputs, theano_outputs, graph
 
@@ -331,7 +334,7 @@ class Tracer(Symbolic):
 
     def trace(self, pyfn, *args, **kwargs):
         symbolic = Symbolic(pyfn=pyfn, context=self.context)
-        return symbolic.trace(*args, **kwargs)
+        return symbolic.trace(*args, **kwargs)[1]
 
 
 class Function(Symbolic):
@@ -357,13 +360,13 @@ class Function(Symbolic):
         key = tuple((np.asarray(a).ndim, np.asarray(a).dtype) for a in all_args)
         if key not in self.cache or not self.use_cache:
             self.context.reset()
-            self.trace(*args, **kwargs)
-            self.cache[key] = self.get_theano_function()
+            inputs, outputs = self.trace(*args, **kwargs)
+            self.cache[key] = self.get_theano_function(inputs, outputs)
         fn = self.cache[key]
         return fn(*all_args)
 
-    def get_theano_function(self):
-        fn = self.compile_function(inputs=self.s_inputs, outputs=self.s_outputs)
+    def get_theano_function(self, inputs, outputs):
+        fn = self.compile_function(inputs=inputs, outputs=outputs)
         return fn
 
 
@@ -382,9 +385,9 @@ class Gradient(Function):
         self.wrt = utils.as_seq(wrt, tuple)
         self.reduction = reduction
 
-    def get_theano_function(self):
-        fn = self.compile_gradient(inputs=self.s_inputs,
-                                   outputs=self.s_outputs,
+    def get_theano_function(self, inputs, outputs):
+        fn = self.compile_gradient(inputs=inputs,
+                                   outputs=outputs,
                                    wrt=self.wrt,
                                    reduction=self.reduction)
         return fn
@@ -405,23 +408,23 @@ class HessianVector(Gradient):
         key = tuple(np.asarray(a).ndim for a in all_args)
         if key not in self.cache or not self.use_cache:
             self.context.reset()
-            self.trace(*args, **kwargs)
-            self.cache[key] = self.get_theano_function()
+            inputs, outputs = self.trace(*args, **kwargs)
+            self.cache[key] = self.get_theano_function(inputs, outputs)
         fn = self.cache[key]
 
         if len(self.wrt) > 0 and len(vectors) != len(self.wrt):
             raise ValueError('Expected {0} items in `vectors`; received '
                              '{1}.'.format(len(self.wrt), len(vectors)))
-        elif len(self.wrt) == 0 and len(vectors) != len(self.s_inputs):
+        elif len(self.wrt) == 0 and len(vectors) != len(inputs):
             raise ValueError('Expected {0} items in `vectors`; received '
-                             '{1}.'.format(len(self.s_inputs), len(vectors)))
+                             '{1}.'.format(len(inputs), len(vectors)))
 
         return fn(*(all_args + vectors))
 
-    def get_theano_function(self):
+    def get_theano_function(self, inputs, outputs):
         fn = self.compile(hessian_vector=True,
-                          inputs=self.s_inputs,
-                          outputs=self.s_outputs,
+                          inputs=inputs,
+                          outputs=outputs,
                           wrt=self.wrt,
                           reduction=self.reduction)
         return fn
