@@ -294,6 +294,25 @@ class Python(unittest.TestCase):
         self.assertTrue(checkfn(f, [], 1))
         self.assertTrue(checkfn(f, [], 1.0))
 
+    def test_tuple_index(self):
+        def f(*x):
+            return x[1]
+        self.assertTrue(checkfn(f, [], 1, 2, 3))
+
+    def test_nested_tuple_index(self):
+        def f(*x):
+            return x[1]
+        def g(*x):
+            return f(*x)
+        self.assertTrue(checkfn(g, [], 1, 2, 3))
+
+    def test_nested_def_tuple_index(self):
+        reload(autodiff.context)
+        def g(*x):
+            def f(*x):
+                return x[1]
+            return f(*x)
+        self.assertTrue(checkfn(g, [], 1, 2, 3))
 
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
