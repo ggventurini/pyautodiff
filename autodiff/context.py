@@ -298,16 +298,33 @@ class TheanoTransformer(NodeTransformer):
         Given a numerical variable x, return an equivalent Theano shared
         variable and store the relationship in self.sym_vars. Otherwise return x.
         """
+
+        # skip Python builtins and noshadows
         if (id(x) in self.context._noshadow
             or x is True
             or x is False
             or x is None):
             return x
 
-        if utils.isvar(x):
+        # skip Theano variables
+        elif utils.isvar(x):
             return x
 
-        if isinstance(x, (int, float, np.number, np.ndarray)):
+        # skip functions defined in autodiff.functions
+        elif (isinstance(x, types.FunctionType)
+              and inspect.getmodule(x) is autodiff.functions):
+                return x
+
+        # skip functions defined in autodiff.functions
+        # elif (isinstance(x, types.FunctionType)
+              # and inspect.getmodule(x) is autodiff.functions):
+                # return x
+        # skip objects that are already ShadowClasses
+        elif isinstance(x, (type, ShadowClass)):
+            return x
+
+        # transform compatible numeric values into Theano variables
+        elif isinstance(x, (int, float, np.number, np.ndarray)):
             # take special care with small ints, because CPython caches them.
             if isinstance(x, int) and -5 <= x <= 256:
                 x = np.int_(x)
@@ -330,16 +347,12 @@ class TheanoTransformer(NodeTransformer):
                 return sym_x
             else:
                 return self.context.sym_vars[id(x)]
+
+        # everything else: wrap in Shadowclass
         else:
-            if (isinstance(x, types.FunctionType)
-                    and inspect.getmodule(x) is autodiff.functions):
-                return x
-            elif isinstance(x, (type, ShadowClass)):
-                return x
-            else:
-                class Shadow(ShadowClass):
-                    __wraps___ = x.__class__
-                return Shadow(x, self.context)
+            class Shadow(ShadowClass):
+                __wraps___ = x.__class__
+            return Shadow(x, self.context)
 
     @staticmethod
     def handle_shadow_class(x):
