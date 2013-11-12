@@ -13,6 +13,7 @@ def checkfn(symF, *args, **kwargs):
     return np.allclose(sym_result, py_result)
 
 
+
 #========= Tests
 
 
@@ -307,8 +308,6 @@ class TestFunction(unittest.TestCase):
 
         F1 = Function(f1)
         F2 = Function(f2)
-
-
 
     def test_nested_fn_call(self):
         def f(x, y):

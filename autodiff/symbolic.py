@@ -460,7 +460,7 @@ class VectorArg(object):
 
         vector = theano.shared(self.vector_from_args(init_args, init_kwargs),
                                name='InputVector')
-        result = symbolic.trace(vector)
+        _, result = symbolic.trace(vector)
 
         fn = symbolic.compile(function=function,
                               gradient=gradient,
