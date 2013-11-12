@@ -55,7 +55,7 @@ class Symbolic(object):
         return self
 
     def __call__(self, *args, **kwargs):
-        return self.trace(*args, **kwargs)
+        return self.trace(*args, **kwargs)[1]
 
     @property
     def pyfn(self):
