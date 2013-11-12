@@ -315,12 +315,9 @@ class TheanoTransformer(NodeTransformer):
               and inspect.getmodule(x) is autodiff.functions):
                 return x
 
-        # skip functions defined in autodiff.functions
-        # elif (isinstance(x, types.FunctionType)
-              # and inspect.getmodule(x) is autodiff.functions):
-                # return x
-        # skip objects that are already ShadowClasses
-        elif isinstance(x, (type, ShadowClass)):
+        # skip objects that are already classes, ShadowClasses, or special
+        # autodiff classes
+        elif isinstance(x, (type, ShadowClass, TheanoTransformer, Context)):
             return x
 
         # transform compatible numeric values into Theano variables
@@ -386,10 +383,10 @@ class TheanoTransformer(NodeTransformer):
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
 
-    def handle_bool(self, x):
+    def handle_bool_subscript(self, x):
         """
         Theano doesn't have a bool type, but we can track certain variables that
-        we know must be boolean and possibly use that informatino (for
+        we know must be boolean and possibly use that information (for
         advanced indexing, for example).
         """
         if utils.isvar(x) and x.dtype == 'int8':
@@ -1083,7 +1080,7 @@ class TheanoTransformer(NodeTransformer):
         """
         self.generic_visit(node)
         if isinstance(node.slice, Index):
-            node.slice = Index(value=self.ast_wrap('handle_bool',
+            node.slice = Index(value=self.ast_wrap('handle_bool_subscript',
                                                    node.slice.value))
         return node
 
