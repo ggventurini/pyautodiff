@@ -8,7 +8,7 @@ AutoDiff automatically compiles NumPy code with [Theano](http://deeplearning.net
 ## Quickstart
 
 ### Decorators
-AutoDiff decorators are the simplest way to leverage the library and will be the primary interface for most users. The `@function` and `@gradient` decorators allow Theano to be leveraged invisibly; the `@theanify` decorator runs code through Theano but does not compile and execute it.
+AutoDiff decorators are the simplest way to leverage the library and will be the primary interface for most users. The `@function` and `@gradient` decorators allow Theano to be leveraged invisibly; the `@symbolic` decorator runs code through Theano but does not compile and execute it. The latter functionality can also be accessed via the `@theanify` alias.
 
 ```python
 from autodiff import function, gradient
@@ -37,11 +37,13 @@ def f(x, y):
 
 f(x=3.0, y=5.0) # returns 3.0 because df/dy(3.0, 5.0) = x = 3.0
 
-@theanify
+@symbolic
 def f(x):
     return x ** 2
 
 f(5.0) # returns a Theano scalar object
+f(np.ones((3, 4))) # returns a Theano matrix object
+f(T.scalar()) # returns a Theano scalar object
 
 ```
 
