@@ -1,6 +1,23 @@
 #PyAutoDiff Changelog
 
+## 0.4 - November 2013
+
+Total rewrite of low-level backend to parse and manipulate function AST's, thereby avoiding having to call functions prior to compilation. Refactored mid-level interface to take advantage of new features, but mid/high-level API's remain largely the same.
+
+### Features
+
+- Total rewrite of backend
+    - Deprecated bytecode backend (that required calling the function) in favor of static AST analysis and transformation.
+    - New TheanoTransformer class for changing NumPy AST's into Theano AST's with runtime checks.
+    - New classes for shadowing arbitrary objects
+- Added `escape()` function and updated `tag()` capabilities
+- Added `@theanify` decorator to encourage adoption of NumPy-to-Theano transformations without compilation
+
+
+
 ##0.3 - May 2013
+
+Total rewrite of mid-level interface around class-based symbolic tracers. More work to "do the right thing" when Python constructs don't have Theano analogues (i.e. complex signatures).
 
 ### Features
 
@@ -13,6 +30,8 @@
 
 ##0.2 - May 2013
 
+Expanded support beyond simple functions to classes and tracing through multiple functions.
+
 ### Features
 
 - Added `Symbolic` general tracing/compiling mechanism
@@ -23,6 +42,8 @@
 
 
 ##0.1 - May 2013
+
+Initial release. Updated prototype for Theano 0.6 and added mid/high level interfaces.
 
 ### Features
 

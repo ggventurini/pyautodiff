@@ -3,70 +3,53 @@
 
 #### Automatic differentiation for NumPy
 
-
-PyAutoDiff automatically compiles NumPy code using [Theano](http://deeplearning.net/software/theano/)'s powerful symbolic engine, allowing users to take advantage of features like mathematical optimization, GPU acceleration, and automatic  differentiation.
-
-**This library is under active development. Features may break or change.**
+AutoDiff automatically compiles NumPy code with [Theano](http://deeplearning.net/software/theano/)'s powerful symbolic engine, allowing users to take advantage of features like mathematical optimization, GPU acceleration, and automatic  differentiation.
 
 ## Quickstart
 
-###Decorators
-
-PyAutoDiff provides simple decorators for compiling arbitrary NumPy functions and their derivatives. For most users, these will be the primary interface to autodiff.
+### Decorators
+AutoDiff decorators are the simplest way to leverage the library and will be the primary interface for most users. The `@function` and `@gradient` decorators allow Theano to be leveraged invisibly; the `@theanify` decorator runs code through Theano but does not compile and execute it.
 
 ```python
 from autodiff import function, gradient
 
-# -- compile a Theano function
+# -- use Theano to compile a function
 
 @function
 def f(x):
     return x ** 2
 
-print f(5.0) # 25.0
+f(5.0) # returns 25.0; not surprising but executed in Theano!
 
-# -- compile a function returning the gradient
+# -- automatically differentiate a function with respect to its inputs
 
 @gradient
 def f(x):
     return x ** 2
 
-print f(5.0) # 10.0
+f(5.0) # returns 10.0 because f'(5.0) = 2 * 5.0 = 10.0
 
-# -- compile a function returning the gradient only with respect to a specific input
+# -- symbolically differentiate a function with respect to a specifc input
 
 @gradient(wrt='y')
 def f(x, y):
     return x * y
-    
-print f(3.0, 5.0) # 3.0
-```
 
-### Optimization
+f(x=3.0, y=5.0) # returns 3.0 because df/dy(3.0, 5.0) = x = 3.0
 
-Users can call a higher-level optimization interface that wraps SciPy minimization routines (currently L-BFGS-B, nonlinear conjugate gradient, and Newton-CG), using autodiff to compute the required derivatives and Hessian-vector products.
+@theanify
+def f(x):
+    return x ** 2
 
-```python
-import numpy as np
-from autodiff.optimize import fmin_l_bfgs_b
-
-# -- A trivial least-squares minimization problem
-
-def fn(x):
-    y = np.arange(3.0)
-    return ((x - y) ** 2).mean()
-    
-x_opt = fmin_l_bfgs_b(fn, init_args=np.zeros(3))
-
-print x_opt # [0.0, 1.0, 2.0]
+f(5.0) # returns a Theano scalar object
 
 ```
 
 ### General Symbolic Tracing
-The `Symbolic` class allows more general tracing of NumPy objects through (potentially) multiple functions. Users should call it's `trace` method on any functions and arguments, followed by either the `compile_function` or `compile_gradient` method in order to get a compiled Theano function. 
+The `Symbolic` class allows more general tracing of NumPy objects through (potentially) multiple functions. Users should call its `trace` method on any functions and arguments, followed by either the `compile_function` or `compile_gradient` method in order to get a compiled Theano function.
 
-Critically, `Symbolic` can compile functions not only from existing arguments and results, but of any NumPy object 
-referenced while tracing. The following example traces objects through three different functions and ultimately compiles a function of an existing argument, a global variable, and a local variable via autodiff's `tag` mechanism: 
+Critically, `Symbolic` can compile functions not only from existing arguments and results, but of any NumPy object
+referenced while tracing. The following example traces objects through three different functions and ultimately compiles a function of an existing argument, a global variable, and a local variable via AutoDiff's `tag` mechanism:
 
 ```python
 import numpy as np
@@ -96,13 +79,13 @@ out2 = tracer.trace(f2, out1)
 out3 = tracer.trace(f3, out2)
 
 # -- compile a function representing f(x, y, z) = out3
-new_fn = tracer.compile_function(inputs=[x, y, 'local_var'], 
+new_fn = tracer.compile_function(inputs=[x, y, 'local_var'],
                                  outputs=out3)
 
 # -- compile the gradient of f(x) = out3, with respect to y
-fn_grad = tracer.compile_gradient(inputs=x, 
-                                  outputs=out3, 
-                                  wrt=y, 
+fn_grad = tracer.compile_gradient(inputs=x,
+                                  outputs=out3,
+                                  wrt=y,
                                   reduction=theano.tensor.sum)
 
 assert np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x))))
@@ -110,7 +93,7 @@ assert np.allclose(new_fn(x, y, np.ones(10)), f3(f2(f1(x))))
 
 ### Classes
 
-Autodiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function` and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
+AutoDiff classes are also available (the decorators are simply convenient ways of automatically wrapping functions in classes). In addition to the function` and gradient decorators/classes shown here, a Hessian-vector product class and decorator are also available.
 
 ```python
 from autodiff import Function, Gradient
@@ -126,11 +109,36 @@ print g(5.0) # 10.0
 
 ```
 
+## Important notes
+
+### Code transformation
+AutoDiff takes NumPy functions and attempts to make them compatible with Theano objects by analyzing their code and transforming it as necessary. This takes a few forms:
+
+ * NumPy arrays are intercepted and replaced by equivalent Theano variables
+ * NumPy functions are replaced by Theano versions (for example, `np.dot` is replaced by `T.dot`)
+ * NumPy syntax is replaced by its Theano analogue (for example, inplace array assignment is replaced by a call to `T.set_subtensor`)
+
+ ### Caveats
+
+ **As a rule of thumb, if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance the Theano version won't behave as you expect.**
+
+ There are important differences between NumPy and Theano that make some transformations impossible (or, at least, yield unexpected results). A NumPy function can be called multiple times, and each time the code in the function is executed on its arguemnts. A Theano function is called only once, after which its output is analyzed and compiled into a static Theano function.
+
+ This means that control flow and loops don't work the same way in NumPy and Theano and (often) can't be transformed properly. For example, an `if-else` statement in a NumPy function will examine its conditional argument and select the appropriate branch every time. The same `if-else` branch in a Theano function will be executed one time, and the selected branch will be compiled as the sole path in the resulting Theano function.
+
+ In AutoDiff, there **is** a way to sometimes avoid this problem, but at the cost of significantly more expensive calculations. If an `autodiff` class is instantiated with keyword `use_cache=False`, then it will not cache its compiled functions. Therefore, it will reevaluate all control flow statements at every call. However, compile and call a Theano function every time it is called -- meaning functions will take significantly longer to run. This should only be used as a last resort if more clever designs are simply not possible -- note that it will not solve all problems, as Theano and NumPy have certain irreconcilable differences.
+
+In addition, other small details may be important. For example, `dtypes` matter! In particular, Theano considers the gradient of an integer argument to be undefined, and also only supports `float32` dtypes on the GPU.
+
 ## Concepts
+
+### Symbolic
+
+The `Symbolic` class is used for general tracing of NumPy objects through Theano. Following tracing, its `compile` method can be used to compile Theano functions returning any combination of the function, gradient, and Hessian-Vector product corresponding to the provided inputs and outputs. The `compile_function`, `compile_gradient`, and `compile_function_gradient` methods are convenient shortcuts.
 
 ### Functions
 
-The `Function` class and `@function` decorator use Theano to compile the target function. PyAutoDiff has support for all NumPy operations with Theano equivalents and limited support for many Python behaviors (see caveats).
+The `Function` class and `@function` decorator use Theano to compile the target function. AutoDiff has support for all NumPy operations with Theano equivalents and limited support for many Python behaviors (see caveats).
 
 ### Gradients
 
@@ -144,58 +152,14 @@ The `HessianVector` class and `@hessian_vector` decorator compile functions that
 
 The `autodiff.optimize` module wraps some SciPy minimizers, automatically compiling functions to compute derivatives and Hessian-vector products that the minimizers require in order to optimize an arbitrary function.
 
-### Symbolic
-
-The `Symbolic` class is used for general purpose symbolic tracing, usually through multiple functions. It creates `Function` instances as necessary to trace different variables, and has `compile_function()` and `compile_gradient()` methods to get the compiled functions corresponding to a traced set of operations.
-
 ### Special Functions
 
-#### Constants
+#### Escape
 
-PyAutoDiff replaces many variables with symbolic Theano versions. This can cause problems, because some Theano functions do not support symbolic arguments. To resolve this, autodiff provides a `constant()` modifier, which instructs PyAutoDiff to construct a non-symbolic (and therefore constant) version of a variable.
+AutoDiff provides an `escape()` function, which signals that the library shouldn't attempt to transform any of the code inside the function. Additionally, if a variable has been replaced with a Theano object, calling escape() on it will restore the underlying NumPy array. This provides a limited mechanism for using constructs that aren't compatible with Theano. Also see the `escaped_call()` function for calling functions without attempting to analyze or transform their code.
 
-Most of the time, users will not have to call `constant()` -- it is only necessary in certain cases.
-
-For example, the following functions will compile, because the `axis` argument `1` is loaded as a constant, even when bound to a variable `a`.
-
-```python
-from autodiff import constant, function
-m = np.ones((3, 4))
-
-@function
-def fn_1(x):
-    return x.sum(axis=1)
-    
-@function
-def fn_2(x):
-    a = 1
-    return x.sum(axis=a)
-    
-print fn_1(m)
-```
-
-However, the decorated function's arguments are always assumed to be symbolic. Therefore, the following function will fail because the `axis` argument is the symbolic variable `a` and `tensor.sum` does not accept symbolic arguments:
-
-```python
-@function
-def bad_fn(x, a):
-    return x.sum(axis=a)
-
-print bad_fn(m, 1) # error
-```
-
-By calling 'constant()` appropriately, we can convert the symbolic variable back to a constant `int`. Now the function will compile:
-
-```python
-@function
-def good_fn(x, a):
-    return x.sum(axis=constant(a))
-    
-print good_fn1(m, 1)
-```
-
-#### Tagging
-PyAutoDiff tacing makes it relatively easy to access a function's symbolic inputs and outputs, allowing Theano to compile the function with ease. However, advanced users may wish to access the symbolic representations of other variables, including variables local to the function. Autodiff stores symbolic variables by the id of the corresponding Python object, something which may not always be available to the user. Instead, users can manually tag symbolic variables with arbitrary keys, as the following example demonstrates:
+#### Tag
+AutoDiff tacing makes it relatively easy to access a function's symbolic inputs and outputs, allowing Theano to compile the function with ease. However, advanced users may wish to access the symbolic representations of other variables, including variables local to the function. To that end, users can manually tag symbolic variables with arbitrary keys, as the following example demonstrates:
 
 ```python
 from autodiff import tag
@@ -207,66 +171,20 @@ def local_fn(x):
     return z
 
 local_fn(10.0)                   # call local_fn to trace and compile it
-y_sym = local_fn.s_vars['y_var'] # access the symbolic version of the function's 
+y_sym = local_fn.s_vars['y_var'] # access the symbolic version of the function's
                                  # local variable 'y', tagged as 'y_var'
-
 ```
 
-Tagging is especially useful in combination with autodiff's `Symbolic` class, as it allows tracing and compiling functions of purely local variables. An example of this behavior can be found in the Symbolic section of the Quickstart.
-
-## Caveats
-
-### dtypes
-
-Pay attention to dtypes -- they are locked when Theano compiles a function. In particular, note the following:
-- The gradient of an integer argument is defined as zero.
-- Theano only supports `float32` operations on the GPU
-
-### Advanced Indexing
-
-Autodiff supports most forms of advanced indexing. One notable exception is the combination of indices and slices, which Theano does not recognize (at the time of this writing). For example:
-
-```python
-x[[1, 2, 3], 2:] # not supported
-```
-
-### Control Flow and Loops
-
-Generally, PyAutoDiff supports any NumPy operation with a Theano equivalent. You will probably get unexpected results if you use more general Python operations like control flow tools (`for`, `if/else`, `try/except`, etc.) or iteraters without understanding how Theano handles them.
-
-When PyAutoDiff prepares to compile, it calls the Python function one time in order to find out what it does. With the exception of NumPy arrays and numbers, whatever happens on that first run is locked into the compiled function: the length of every `for` loop, the selected branch of every `if/else` statement, even the axis of every `np.sum(axis=my_var)`.
-
-In the current version of PyAutoDiff, there **is** a way to avoid this problem, but at the cost of significantly more expensive calculations. If an autodiff class is instantiated with keyword `use_cache=False`, then it will not cache its compiled functions. Therefore, it will reevaluate all control flow statements at every call. However, it will call the NumPy function, compile a Theano function, and call the Theano function every time -- meaning functions will take at least twice as long to run and possibly more. This should only be used as a last resort if more clever designs are simply not possible.
-
-**As a rule of thumb: if the code you're writing doesn't operate directly on a NumPy array, then there's a good chance it won't behave as you expect.**
-
-Here is an example of compilation "locking" a control flow, and how to set `use_cache` to avoid it:
-
-```python
-from autodiff import function
-
-def loop_mult(x, N):
-    y = 0
-    for i in range(N):
-        y += x
-    return y
-
-f = Function(loop_mult)
-print f(2, 4) # 8
-print f(2, 5) # also 8! The loop is locked in the compiled function.
-
-g = Function(loop_mult, use_cache=False)
-print g(2, 4) # 8
-print g(2, 5) # 10, but a much slower calculation than the cached version.
-```
+Tagging is especially useful in combination with AutoDiff's `Symbolic` class, as it allows tracing and compiling functions of purely local variables. An example of this behavior can be found in the Symbolic section of the Quickstart.
 
 ## Dependencies
   * [NumPy](http://www.numpy.org/)
   * [Theano](http://deeplearning.net/software/theano/)
+  * [Meta](https://github.com/numba/meta)
 
 
 ## With great thanks
-  * [James Bergstra](https://github.com/jaberg) for bringing PyAutoDiff to light.
+  * [James Bergstra](https://github.com/jaberg) for bringing AutoDiff to light.
   * Travis Oliphant for posting a very early version of [numba](http://numba.pydata.org/) that provided the inspiration and starting point for this project.
   * The entire Theano team.
 
