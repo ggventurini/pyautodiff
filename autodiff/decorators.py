@@ -1,4 +1,4 @@
-from autodiff.symbolic import Function, Gradient, HessianVector
+from autodiff.symbolic import Symbolic, Function, Gradient, HessianVector
 
 
 def function(fn=None, **kwargs):
@@ -89,3 +89,28 @@ def hessian_vector(fn=None, **kwargs):
         def hv_wrapper(pyfn):
             return HessianVector(pyfn, **kwargs)
         return hv_wrapper
+
+
+def symbolic(fn=None, **kwargs):
+    """
+    Wraps a function with an AutoDiff Symbolic instance, meaning it will act
+    as a function expecting and operating on Theano objects.
+
+    The function is not compiled.
+
+    Use:
+        @symbolic
+        def python_function(...):
+            return do_something()
+
+        python_function(...) # calls function as if it worked with Theano objs
+
+    """
+    if callable(fn):
+        return Symbolic(fn, **kwargs)
+    else:
+        def function_wrapper(pyfn):
+            return Symbolic(pyfn, **kwargs)
+        return function_wrapper
+
+theanify = symbolic

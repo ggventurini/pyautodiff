@@ -1,7 +1,11 @@
 import unittest
 import numpy as np
+import theano
+import theano.tensor as T
 
+import autodiff
 from autodiff.decorators import function, gradient, hessian_vector
+from autodiff.decorators import symbolic, theanify
 from autodiff.functions import tag
 
 
@@ -175,3 +179,31 @@ class TestClass(unittest.TestCase):
 
     def test_static_method(self):
         self.assertTrue(np.allclose(self.AD.static_method(1.0), 101.0))
+
+
+class TestSymbolic(unittest.TestCase):
+    def test_basic_fn(self):
+        @symbolic
+        def f(x):
+            return x
+        self.assertTrue(autodiff.utils.isvar(f(3.0)))
+        self.assertTrue(np.allclose(f(3.0).eval(), 3.0))
+
+    def test_theano_args(self):
+        @symbolic
+        def f(x, y):
+            return np.dot(x, y) + 1.0
+        xt = T.matrix('x')
+        yt = T.matrix('y')
+        z = f(xt, yt)
+        self.assertTrue(autodiff.utils.isvar(z))
+        fn = theano.function([xt, yt], z)
+        xval = np.random.random((5, 7))
+        yval = np.random.random((7, 3))
+        self.assertTrue(np.allclose(fn(xval, yval), 1 + np.dot(xval, yval)))
+
+
+
+class TestTheanify(unittest.TestCase):
+    def test_alias(self):
+        self.assertTrue(theanify is symbolic)
