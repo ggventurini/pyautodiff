@@ -16,7 +16,8 @@ logger = logging.getLogger('autodiff')
 # XXX FIXME This will not do - seed must be exposed.
 # from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 from theano.tensor.shared_randomstreams import RandomStreams
-global_randomstreams = RandomStreams(seed=12345)#np.random.randint(1, 999999))
+global_randomstreams = RandomStreams(seed=12345)
+# seed = np.random.randint(1, 999999))
 
 
 def get_ast(fn):
@@ -59,8 +60,6 @@ def print_source(ast):
     meta.asttools.python_source(ast)
 
 
-
-
 def simple_Call(func, args=None):
     """
     Simple alias for building Call nodes that doesn't require specification of
@@ -84,7 +83,6 @@ def isvar_ast(name):
                                        ctx=Load(),
                                        value=Name(ctx=Load(), id='___utils')))
     return isvar
-
 
 
 class Context(object):
@@ -127,7 +125,8 @@ class Context(object):
                               ___T=theano.tensor,
                               ___utils=autodiff.utils))
         if f.func_closure:
-            f_globals.update((v, transformer.shadow(c.cell_contents)) for v, c in
+            f_globals.update((v, transformer.shadow(c.cell_contents))
+                             for v, c in
                              zip(f.func_code.co_freevars, f.func_closure))
 
         for name in f.func_code.co_names:
@@ -147,7 +146,6 @@ class Context(object):
             new_f.func_defaults = utils.clean_int_args(*f.func_defaults)[0]
 
         return new_f
-
 
     def get_symbolic(self, x):
         """
@@ -175,8 +173,8 @@ class Context(object):
         elif isinstance(x, int) and -5 <= x <= 256:
             raise ValueError(
                 'Small integers (-5 <= x <= 256) can not be shadowed due to '
-                'CPython caching. Try casting the variable as a NumPy int type '
-                'or array before tracing: {0}'.format(x))
+                'CPython caching. Try casting the variable as a NumPy int '
+                'type or array before tracing: {0}'.format(x))
         else:
             raise ValueError(
                 'Requested the symbolic variable shadowing object {0}'
@@ -197,21 +195,21 @@ class ShadowClass(object):
     """
     __wraps___ = None
     __ignore___ = ['__class__',
-                  '__mro__',
-                  '__repr__',
-                  '__str__',
-                  '__new__',
-                  '__init__',
-                  '__dict__',
-                  '__call__',
-                  '__name__',
-                  '__setattr__',
-                  '__getattr__',
-                  '__getattribute__',
-                  '__shadow__']
+                   '__mro__',
+                   '__repr__',
+                   '__str__',
+                   '__new__',
+                   '__init__',
+                   '__dict__',
+                   '__call__',
+                   '__name__',
+                   '__setattr__',
+                   '__getattr__',
+                   '__getattribute__',
+                   '__shadow__']
 
     def __init__(self, obj, context):
-        if isinstance(obj,  type):
+        if isinstance(obj, type):
             raise TypeError()
         if self.__wraps___ is None:
             raise TypeError('__wraps__ not set.')
@@ -220,7 +218,7 @@ class ShadowClass(object):
         self.__dict__['_transformer__'] = TheanoTransformer(context)
 
     def __setattr__(SetComp, name, value):
-         raise TypeError(
+        raise TypeError(
             'To protect code integrity, attributes of shadowed objects '
             'can not be set: Shadowed {0}'.format(self._obj__))
 
@@ -239,20 +237,21 @@ class ShadowClass(object):
             def make_proxy(name):
                 def proxy(self, *args):
                     print name
-                    return self._transformer__.shadow(getattr(self._obj__, name))
+                    return self._transformer__.shadow(
+                        getattr(self._obj__, name))
                 return proxy
 
             type.__init__(cls, name, bases, dct)
             if cls.__wraps___:
                 for name in dir(cls.__wraps___):
                     if name.startswith("__"):
-                        if (name not in cls.__ignore___
-                            and name not in dct):
+                        if (name not in cls.__ignore___ and name not in dct):
                             attr = getattr(cls.__wraps___, name, None)
                             try:
                                 setattr(cls, name, property(make_proxy(name)))
                             except:
                                 pass
+
 
 class TheanoTransformer(NodeTransformer):
 
@@ -274,10 +273,10 @@ class TheanoTransformer(NodeTransformer):
         specified arguments at runtime.
         """
         wrapped = simple_Call(func=Attribute(attr=method_name,
-                                              ctx=Load(),
-                                              value=Name(ctx=Load(),
-                                                         id='___ctx')),
-                               args=args)
+                                             ctx=Load(),
+                                             value=Name(ctx=Load(),
+                                                        id='___ctx')),
+                              args=args)
 
         return wrapped
 
@@ -296,14 +295,15 @@ class TheanoTransformer(NodeTransformer):
 
         """
         Given a numerical variable x, return an equivalent Theano shared
-        variable and store the relationship in self.sym_vars. Otherwise return x.
+        variable and store the relationship in self.sym_vars. Otherwise return
+        x.
         """
 
         # skip Python builtins and noshadows
         if (id(x) in self.context._noshadow
-            or x is True
-            or x is False
-            or x is None):
+                or x is True
+                or x is False
+                or x is None):
             return x
 
         # skip Theano variables
@@ -327,14 +327,16 @@ class TheanoTransformer(NodeTransformer):
                 x = np.int_(x)
 
             if getattr(x, 'dtype', None) == bool:
-                logger.info('Warning: Theano has no bool type; upgrading to int8.')
+                logger.info('Warning: Theano has no bool type; '
+                            'upgrading to int8.')
                 x = x.astype('int8')
 
             if id(x) not in self.context.sym_vars:
                 # add to _nogc to ensure that the id won't be reused
                 self.context._nogc.append(x)
                 # create symbolic version:
-                if isinstance(x, np.ndarray) and id(x) in self.context.borrowable:
+                if (isinstance(x, np.ndarray)
+                        and id(x) in self.context.borrowable):
                     sym_x = theano.shared(x, borrow=True)
                 else:
                     sym_x = theano.shared(x)
@@ -385,8 +387,8 @@ class TheanoTransformer(NodeTransformer):
 
     def handle_bool_subscript(self, x):
         """
-        Theano doesn't have a bool type, but we can track certain variables that
-        we know must be boolean and possibly use that information (for
+        Theano doesn't have a bool type, but we can track certain variables
+        that we know must be boolean and possibly use that information (for
         advanced indexing, for example).
         """
         if utils.isvar(x) and x.dtype == 'int8':
@@ -439,7 +441,7 @@ class TheanoTransformer(NodeTransformer):
             return self.handle_escape
 
         elif func is autodiff.functions.escaped_call:
-            # call a function on escaped arguments, without transforming the AST
+            # call a function on escaped arguments without transforming the AST
             def escaped_call(fn, *args, **kwargs):
                 esc_args = utils.unflatten(
                     args, [escape(a) for a in utils.flatten(args)])
@@ -479,6 +481,7 @@ class TheanoTransformer(NodeTransformer):
             if func.__name__ in ['bool', 'bool_', 'bool8']:
                 logger.info('Warning: Theano has no bool type; '
                             'upgrading to int8.')
+
                 def bool_(x):
                     return T.neq(x, 0)
                 return bool_
@@ -572,8 +575,8 @@ class TheanoTransformer(NodeTransformer):
                 return rand_u
 
             # standard uniform random numbers (np.random.random)
-            elif ('method random of mtrand.RandomState' in str(func)
-                  or 'method random_sample of mtrand.RandomState' in str(func)):
+            elif ('method random of mtrand.RandomState' in str(func) or
+                  'method random_sample of mtrand.RandomState' in str(func)):
                 def rand_u(size):
                     return global_randomstreams.uniform(size=size)
                 return rand_u
@@ -640,11 +643,11 @@ class TheanoTransformer(NodeTransformer):
                to supply a replacement method. Note that in this case,
                `handle_array_methods` is called directly.
             2. A method is requested that DOES exist for Theano variables. In
-               this case, `handle_array_methods` is called by `handle_functions`
-               prior to calling the method. `handle_array_methods` is used to
-               supply a replacement function that properly handles the supplied
-               arguments (since they are compliant with the Numpy signature,
-               not the Theano one).
+               this case, `handle_array_methods` is called by
+               `handle_functions` prior to calling the method.
+               `handle_array_methods` is used to supply a replacement function
+               that properly handles the supplied arguments (since they are
+               compliant with the Numpy signature, not the Theano one).
         """
         # if we're not dealing with a Theano variable, nothing to do here.
         if not utils.isvar(var):
@@ -663,8 +666,8 @@ class TheanoTransformer(NodeTransformer):
                 if args == ((),):
                     if var.ndim > 1:
                         raise ValueError(
-                            'Reshape with `()` as an arg can only be used with '
-                            'vectors of length 1.')
+                            'Reshape with `()` as an arg can only be used '
+                            'with vectors of length 1.')
                     return var[0]
                 else:
                     return var.reshape(*args, **kwargs)
@@ -787,7 +790,8 @@ class TheanoTransformer(NodeTransformer):
 
         """
 
-        # TODO AugAssigns with unbounded subscripts decompile strangely and can't
+        # TODO
+        # AugAssigns with unbounded subscripts decompile strangely and can't
         # be recompiled. Specifically, they decompile as an Assign to a target
         # with a value that is an AugAssign of the same target and the true
         # value. To get around this, we just take the AugAssign (which appears
@@ -832,7 +836,8 @@ class TheanoTransformer(NodeTransformer):
             set_subt = build_subt(subscript=node.targets[0], value=value)
 
             # wrap set_subtensor statements in Assign to root tensor
-            assign_subtensor = Assign(targets=[Name(ctx=Store(), id=tensor.id)],
+            assign_subtensor = Assign(targets=[Name(ctx=Store(),
+                                                    id=tensor.id)],
                                       value=set_subt)
 
             # wrap assign_subtensor in If to ensure that the modification
@@ -847,10 +852,10 @@ class TheanoTransformer(NodeTransformer):
     def visit_Attribute(self, node):
         self.generic_visit(node)
         new_node = simple_Call(args=[node.value,
-                                Str(s=node.attr),
-                                self.ast_wrap('handle_array_methods',
-                                              [node.value, Str(s=node.attr)])],
-                                func=Name(ctx=Load(), id='getattr'))
+                               Str(s=node.attr),
+                               self.ast_wrap('handle_array_methods',
+                                             [node.value, Str(s=node.attr)])],
+                               func=Name(ctx=Load(), id='getattr'))
         return new_node
 
     def visit_AugAssign(self, node):
@@ -1041,8 +1046,8 @@ class TheanoTransformer(NodeTransformer):
                 ...
 
         This means that the if statement's test clause will be evaluated at
-        runtime. Note that this does NOT carry over to the compiled Theano code.
-        It just protects against the following case:
+        runtime. Note that this does NOT carry over to the compiled Theano
+        code. It just protects against the following case:
 
             if x:
                 <do something>
@@ -1059,19 +1064,19 @@ class TheanoTransformer(NodeTransformer):
         """
         Theano does not have a bool dtype, and therefore does not support
         Numpy's advanced indexing with boolean masks. For example, the
-        following is interpreted as requested many items at the indices 1 and 0,
-        not as a boolean mask:
+        following is interpreted as requested many items at the indices 1 and
+        0, not as a boolean mask:
 
             x[x > 0.5]
 
-        It is possible to replicate the boolean mask behavior in Theano with the
-        following construction:
+        It is possible to replicate the boolean mask behavior in Theano with
+        the following construction:
 
             x[(x > 0.5).nonzero()]
 
-        tensor.nonzero() returns a tuple of indices corresponding to the nonzero
-        elements. Thus, this properly selects the desired elements but is not
-        compatible with Numpy comparisons anywhere else.
+        tensor.nonzero() returns a tuple of indices corresponding to the
+        nonzero elements. Thus, this properly selects the desired elements but
+        is not compatible with Numpy comparisons anywhere else.
 
         To resolve this, if a Theano 'int8' subscript or index is requested,
         it is treated as a boolean mask and wrapped in a nonzero() call.
@@ -1083,4 +1088,3 @@ class TheanoTransformer(NodeTransformer):
             node.slice = Index(value=self.ast_wrap('handle_bool_subscript',
                                                    node.slice.value))
         return node
-
