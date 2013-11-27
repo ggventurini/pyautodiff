@@ -137,13 +137,13 @@ class Context(object):
                                              filename='<Context-AST>',
                                              globals=f_globals)
 
-        # recreate method, if necessary
-        if isinstance(f, types.MethodType):
-            new_f = types.MethodType(new_f, f.im_self, f.im_class)
-
         # add defaults, if necessary (meta erases them and won't recompile!)
         if f.func_defaults:
             new_f.func_defaults = utils.clean_int_args(*f.func_defaults)[0]
+
+        # recreate method, if necessary
+        if isinstance(f, types.MethodType):
+            new_f = types.MethodType(new_f, f.im_self, f.im_class)
 
         return new_f
 
