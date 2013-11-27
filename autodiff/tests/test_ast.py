@@ -703,6 +703,24 @@ class Namespaces(unittest.TestCase):
 
         self.assertTrue(checkfn(f, [2]))
 
+    def test_define_class(self):
+        """
+        This fails due to shadowing of s (and then not being to set values)
+        """
+        def f():
+            class StringAttr(object):
+                def __init__(self):
+                    self.s = "string"
+            S = StringAttr()
+            return S
+
+        self.assertTrue(checkfn(f, []))
+
+
+    def test_define_class(self)
+
+
+
     def test_freevars(self):
         class Test(object):
             def __init__(self):
@@ -924,11 +942,6 @@ class NumberMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.dot(x, x).sum(), [1]))
         self.assertTrue(checkfn(lambda x: np.dot(x, x).mean(), [1]))
 
-
-class IndexSlice(unittest.TestCase):
-    """
-    Test for coverage of indexing and slicing
-    """
 
 class Ops(unittest.TestCase):
     """
