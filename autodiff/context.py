@@ -170,7 +170,7 @@ class Context(object):
             return x
         elif id(x) in self.sym_vars:
             return self.sym_vars[id(x)]
-        elif isinstance(x, int) and -5 <= x <= 256:
+        elif isinstance(x, int) and not isinstance(x, bool) and -5 <= x <= 256:
             raise ValueError(
                 'Small integers (-5 <= x <= 256) can not be shadowed due to '
                 'CPython caching. Try casting the variable as a NumPy int '
