@@ -81,7 +81,7 @@ def isvar_ast(name):
     isvar = simple_Call(args=utils.as_seq(name),
                         func=Attribute(attr='isvar',
                                        ctx=Load(),
-                                       value=Name(ctx=Load(), id='___utils')))
+                                       value=Name(ctx=Load(), id='_utils__')))
     return isvar
 
 
@@ -120,10 +120,10 @@ class Context(object):
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
 
         f_globals = f.func_globals.copy()
-        f_globals.update(dict(___ctx=transformer,
-                              ___functions=autodiff.functions,
-                              ___T=theano.tensor,
-                              ___utils=autodiff.utils))
+        f_globals.update(dict(_ctx__=transformer,
+                              _functions__=autodiff.functions,
+                              _T__=theano.tensor,
+                              _utils__=autodiff.utils))
         if f.func_closure:
             f_globals.update((v, transformer.shadow(c.cell_contents))
                              for v, c in
@@ -192,9 +192,12 @@ class ShadowClass(object):
     """
     A class that [almost] transparently wraps other objects, shadowing any
     requested attributes and function calls. Attributes can not be set.
+
+    Inspired by http://stackoverflow.com/questions/9057669/
+        how-can-i-intercept-calls-to-pythons-magic-methods-in-new-style-classes
     """
-    __wraps___ = None
-    __ignore___ = ['__class__',
+    _wraps__ = None
+    _ignore__ = ['__class__',
                    '__mro__',
                    '__repr__',
                    '__str__',
@@ -211,9 +214,9 @@ class ShadowClass(object):
     def __init__(self, obj, context):
         if isinstance(obj, type):
             raise TypeError()
-        if self.__wraps___ is None:
-            raise TypeError('__wraps__ not set.')
-        assert isinstance(obj, self.__wraps___)
+        if self._wraps__ is None:
+            raise TypeError('_wraps__ not set.')
+        assert isinstance(obj, self._wraps__)
         self.__dict__['_obj__'] = obj
         self.__dict__['_transformer__'] = TheanoTransformer(context)
 
@@ -242,13 +245,13 @@ class ShadowClass(object):
                 return proxy
 
             type.__init__(cls, name, bases, dct)
-            if cls.__wraps___:
-                for name in dir(cls.__wraps___):
+            if cls._wraps__:
+                for name in dir(cls._wraps__):
                     if name.startswith("__"):
-                        if (name not in cls.__ignore___ and name not in dct):
-                            attr = getattr(cls.__wraps___, name, None)
+                        if (name not in cls._ignore__ and name not in dct):
+                            attr = getattr(cls._wraps__, name, None)
                             try:
-                                setattr(cls, name, property(make_proxy(name)))
+                                setattr(cls, name, attr)#property(make_proxy(name)))
                             except:
                                 pass
 
@@ -275,7 +278,7 @@ class TheanoTransformer(NodeTransformer):
         wrapped = simple_Call(func=Attribute(attr=method_name,
                                              ctx=Load(),
                                              value=Name(ctx=Load(),
-                                                        id='___ctx')),
+                                                        id='_ctx__')),
                               args=args)
 
         return wrapped
@@ -816,7 +819,7 @@ class TheanoTransformer(NodeTransformer):
                     args=[subscript_load, value],
                     func=Attribute(attr='set_subtensor',
                                    ctx=Load(),
-                                   value=Name(ctx=Load(), id='___T')))
+                                   value=Name(ctx=Load(), id='_T__')))
                 if isinstance(subscript.value, Subscript):
                     set_subtensor = build_subt(subscript.value, set_subtensor)
                 return set_subtensor
@@ -912,7 +915,7 @@ class TheanoTransformer(NodeTransformer):
 
         Becomes:
 
-            ___ctx.handle_comparison('eq', x, y)
+            _ctx__.handle_comparison('eq', x, y)
 
         Which internally performs:
 
