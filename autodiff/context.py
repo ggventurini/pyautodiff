@@ -399,6 +399,14 @@ class TheanoTransformer(NodeTransformer):
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
 
+    @staticmethod
+    def handle_escaped_call(fn, *args, **kwargs):
+        esc_args = utils.unflatten(
+            args, [TheanoTransformer.handle_escape(a) for a in utils.flatten(args)])
+        esc_kwargs = utils.unflatten(
+            kwargs, [TheanoTransformer.handle_escape(a) for a in utils.flatten(kwargs)])
+        return fn(*esc_args, **esc_kwargs)
+
     def handle_bool_subscript(self, x):
         """
         Theano doesn't have a bool type, but we can track certain variables
@@ -459,13 +467,7 @@ class TheanoTransformer(NodeTransformer):
 
         elif func is autodiff.functions.escaped_call:
             # call a function on escaped arguments without transforming the AST
-            def escaped_call(fn, *args, **kwargs):
-                esc_args = utils.unflatten(
-                    args, [escape(a) for a in utils.flatten(args)])
-                esc_kwargs = utils.unflatten(
-                    kwargs, [escape(a) for a in utils.flatten(kwargs)])
-                return fn(*esc_args, **esc_kwargs)
-            return escaped_call
+            return self.handle_escaped_call
 
         elif func is autodiff.functions.tag:
             # tag a variable
