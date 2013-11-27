@@ -66,4 +66,4 @@ def escaped_call(fn, *args, **kwargs):
     used only when necessary, as tracing will not be possible on the result (it
     will be treated as a constant value).
     """
-    return f(*args, **kwargs)
+    return fn(*args, **kwargs)
