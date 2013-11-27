@@ -87,15 +87,15 @@ def isvar_ast(name):
 
 class Context(object):
 
-    def __init__(self, borrowable=()):
+    def __init__(self, borrowable=None, ignore=None):
         self.sym_vars = dict()
         self.tags = dict()
         # FIXME do we need to hold on to all of these itermediates?
         # ensure these id's do not get recycled by garbage collection
         self._nogc = []
-        self._noshadow = set()
         self._top_def = None
-        self.borrowable = [id(b) for b in borrowable]
+        self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
+        self.ignore = utils.as_seq(ignore, tuple)
 
     def recompile(self, f, nested=False):
         """
@@ -184,7 +184,6 @@ class Context(object):
         self.sym_vars.clear()
         self.tags.clear()
         self._nogc = []
-        self._noshadow = set()
         self._top_node = None
 
 
@@ -302,8 +301,15 @@ class TheanoTransformer(NodeTransformer):
         x.
         """
 
-        # skip Python builtins and noshadows
-        if (id(x) in self.context._noshadow
+        # try checking if x is ignored (will fail for NumPy arrays)
+        try:
+            if x in self.context.ignore:
+                return x
+        except:
+            pass
+
+        # skip Python builtins and ignored id's
+        if (id(x) in self.context.ignore
                 or x is True
                 or x is False
                 or x is None):
@@ -321,6 +327,11 @@ class TheanoTransformer(NodeTransformer):
         # skip objects that are already classes, ShadowClasses, or special
         # autodiff classes
         elif isinstance(x, (type, ShadowClass, TheanoTransformer, Context)):
+            return x
+
+        # skip ignored types
+        elif isinstance(x,
+                tuple(i for i in self.context.ignore if isinstance(i, type))):
             return x
 
         # transform compatible numeric values into Theano variables
@@ -435,6 +446,9 @@ class TheanoTransformer(NodeTransformer):
             return self.handle_functions(func._obj__)
 
         if getattr(func, '__module__', None) == __name__:
+            return func
+
+        if func in self.context.ignore:
             return func
 
         # ** ======================= special autodiff functions

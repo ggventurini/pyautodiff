@@ -16,7 +16,7 @@ class Symbolic(object):
     the original (Python) function, its gradient, or a Hessian-vector product.
     """
 
-    def __init__(self, pyfn, context=None, borrowable=None):
+    def __init__(self, pyfn, context=None, borrowable=None, ignore=None):
         """
         Arguments
         ---------
@@ -30,7 +30,8 @@ class Symbolic(object):
         """
 
         if context is None:
-            context = Context(borrowable=utils.as_seq(borrowable, tuple))
+            context = Context(borrowable=utils.as_seq(borrowable, tuple),
+                              ignore=utils.as_seq(ignore, tuple))
         assert isinstance(context, Context)
         self.context = context
 
@@ -327,10 +328,11 @@ class Tracer(Symbolic):
     A Symbolic class for tracing variables through multiple functions.
     """
 
-    def __init__(self, context=None, borrowable=None):
+    def __init__(self, context=None, borrowable=None, ignore=None):
         super(Tracer, self).__init__(pyfn=lambda:None,
                                      context=context,
-                                     borrowable=borrowable)
+                                     borrowable=borrowable,
+                                     ignore=ignore)
 
     def trace(self, pyfn, *args, **kwargs):
         symbolic = Symbolic(pyfn=pyfn, context=self.context)
@@ -376,10 +378,12 @@ class Gradient(Function):
                  wrt=None,
                  reduction=None,
                  borrowable=None,
+                 ignore=None,
                  context=None,
                  use_cache=True):
         super(Gradient, self).__init__(pyfn=pyfn,
                                        borrowable=borrowable,
+                                       ignore=ignore,
                                        context=context,
                                        use_cache=use_cache)
         self.wrt = utils.as_seq(wrt, tuple)
