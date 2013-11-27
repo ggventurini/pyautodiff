@@ -364,7 +364,7 @@ class TheanoTransformer(NodeTransformer):
         # everything else: wrap in Shadowclass
         else:
             class Shadow(ShadowClass):
-                __wraps___ = x.__class__
+                _wraps__ = x.__class__
             return Shadow(x, self.context)
 
     @staticmethod
