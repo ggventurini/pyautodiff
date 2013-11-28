@@ -20,20 +20,100 @@ global_randomstreams = RandomStreams(seed=12345)
 # seed = np.random.randint(1, 999999))
 
 
-def get_ast(fn):
-    fn_def = meta.decompiler.decompile_func(fn)
-    if isinstance(fn_def, Lambda):
-        fn_def = FunctionDef(name='<lambda>',
-                             args=fn_def.args,
-                             body=[Return(fn_def.body)],
-                             decorator_list=[])
+#########################
+#########################
+# from numba source
 
-    # Meta gets these fields wrong...
-    argspec = inspect.getargspec(fn)
-    fn_def.args.vararg = argspec.varargs
-    fn_def.args.kwarg = argspec.keywords
+import linecache
+import textwrap
 
-    return fn_def
+try:
+    from meta.decompiler import decompile_func
+except Exception as exn:
+    def decompile_func(*args, **kwargs):
+        raise Exception("Could not import Meta -- Cannot recreate source "
+                        "from bytecode")
+
+
+def fix_ast_lineno(tree):
+    # NOTE: A hack to fix assertion error in debug mode due to bad lineno.
+    #       Lineno must increase monotonically for co_lnotab,
+    #       the "line number table" to work correctly.
+    #       This script just set all lineno to 1 and col_offset = to 0.
+    #       This makes it impossible to do traceback, but it is not possible
+    #       anyway since we are dynamically changing the source code.
+    for node in ast.walk(tree):
+        # only ast.expr and ast.stmt and their subclass has lineno and
+        # col_offset.
+        # if isinstance(node,  ast.expr) or isinstance(node, ast.stmt):
+        node.lineno = 1
+        node.col_offset = 0
+
+    return tree
+
+
+## Fixme:
+##  This should be changed to visit the AST and fix-up where a None object
+##  is present as this will likely not work for all AST.
+def _fix_ast(myast):
+    import _ast
+    # Remove Pass nodes from the end of the ast
+    while len(myast.body) > 0 and isinstance(myast.body[-1], _ast.Pass):
+        del myast.body[-1]
+    # Add a return node at the end of the ast if not present
+    if len(myast.body) < 1 or not isinstance(myast.body[-1], _ast.Return):
+        name = _ast.Name(id='None', ctx=_ast.Load(), lineno=0, col_offset=0)
+        myast.body.append(Return(name))
+    # remove _decorator list which sometimes confuses ast visitor
+    try:
+        indx = myast._fields.index('decorator_list')
+    except ValueError:
+        return
+    else:
+        myast.decorator_list = []
+
+
+def get_ast(func):
+    if func.__name__ == '<lambda>':
+        func_def = decompile_func(func)
+        if isinstance(func_def, Lambda):
+            func_def = FunctionDef(name='<lambda>',
+                                   args=func_def.args,
+                                   body=[Return(func_def.body)],
+                                   decorator_list=[])
+        assert isinstance(func_def, FunctionDef)
+        return func_def
+    try:
+        linecache.checkcache(inspect.getsourcefile(func))
+        source = inspect.getsource(func)
+        source_module = inspect.getmodule(func)
+    except IOError:
+        return decompile_func(func)
+    else:
+        # Split off decorators
+        # TODO: This is not quite correct, we can have comments or strings
+        # starting at column 0 and an indented function !
+        source = textwrap.dedent(source)
+        decorators = 0
+        # decorator can have multiple lines
+        while not source.lstrip().startswith('def'):
+            assert source
+            decorator, sep, source = source.partition('\n')
+            decorators += 1
+        source_file = getattr(source_module, '__file__', '<unknown file>')
+        module_ast = compile(source, source_file, "exec", PyCF_ONLY_AST, True)
+
+        lineoffset = func.__code__.co_firstlineno + decorators - 1
+        increment_lineno(module_ast, lineoffset)
+
+        assert len(module_ast.body) == 1
+        func_def = module_ast.body[0]
+        _fix_ast(func_def)
+        assert isinstance(func_def, FunctionDef)
+        return func_def
+
+#########################
+#########################
 
 
 def get_source(ast):
