@@ -300,10 +300,10 @@ class ShadowClass(object):
         self.__dict__['_obj__'] = obj
         self.__dict__['_transformer__'] = TheanoTransformer(context)
 
-    def __setattr__(SetComp, name, value):
-        raise TypeError(
-            'To protect code integrity, attributes of shadowed objects '
-            'can not be set: Shadowed {0}'.format(self._obj__))
+    # def __setattr__(self, name, value):
+        # raise TypeError(
+            # 'To protect code integrity, attributes of shadowed objects '
+            # 'can not be set: Shadowed {0}'.format(self._obj__))
 
     def __getattr__(self, name):
         attr = getattr(self._obj__, name)
