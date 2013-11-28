@@ -908,7 +908,7 @@ class TheanoTransformer(NodeTransformer):
         if isinstance(node.value, AugAssign):
             return self.visit_AugAssign(node.value)
 
-        self.generic_visit(node)
+        self.generic_visit(node.value)
 
         # handle subscripted assignment for tensor variables
         if isinstance(node.targets[0], Subscript):
@@ -931,7 +931,10 @@ class TheanoTransformer(NodeTransformer):
             # get root tensor; check for nested subscripts
             tensor = node.targets[0]
             while not isinstance(tensor, Name):
+            # while isinstance(tensor, Subscript):
                 tensor = tensor.value
+
+            # if isinstance(tensor, Name):
 
             # transform subscript into set_subtensor
             if isinstance(node.value, AugAssign):
@@ -953,6 +956,8 @@ class TheanoTransformer(NodeTransformer):
                            body=[assign_subtensor],
                            orelse=[node])
             return check_var
+            # else:
+                # return node
         else:
             return node
 
@@ -1003,6 +1008,9 @@ class TheanoTransformer(NodeTransformer):
         if node.kwargs:
             node.kwargs = self.ast_wrap('handle_shadow_class', node.kwargs)
 
+        return node
+
+    def visit_ClassDef(self, node):
         return node
 
     def visit_Compare(self, node):
