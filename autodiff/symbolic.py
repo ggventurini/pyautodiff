@@ -87,6 +87,13 @@ class Symbolic(object):
     def get_symbolic(self, x):
         return self.context.get_symbolic(x)
 
+    def get_soft_symbolic(self, x):
+        if (isinstance(x, (float, int, np.number, np.ndarray))
+                and not isinstance(x, bool)):
+            return self.get_symbolic(x)
+        else:
+            return x
+
     def trace(self, *args, **kwargs):
         """
         Call the symbolic function on args and kwargs, returning the symbolic
@@ -108,7 +115,7 @@ class Symbolic(object):
         # store the inputs and outputs so they can be accessed later
         # self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
         # self.s_outputs = utils.as_seq(results, tuple)
-        inputs = tuple(self.get_symbolic(a) for a in all_args)
+        inputs = tuple(self.get_soft_symbolic(a) for a in all_args)
         # outputs = utils.as_seq(results, tuple)
 
         return inputs, results
@@ -118,9 +125,11 @@ class Symbolic(object):
         Returns a dict containing inputs, outputs and graph corresponding to
         the Theano version of the pyfn.
         """
-        sym_inputs = tuple(self.get_symbolic(i) for i in utils.as_seq(inputs))
+        sym_inputs = tuple(self.get_soft_symbolic(i)
+                           for i in utils.as_seq(inputs))
 
-        sym_outputs = tuple(self.get_symbolic(o) for o in utils.as_seq(outputs))
+        sym_outputs = tuple(self.get_soft_symbolic(o)
+                            for o in utils.as_seq(outputs))
 
         # get symbolic inputs corresponding to shared inputs in s_inputs
         # this dict maps each shared variable to its (non-shared) type.
@@ -139,7 +148,6 @@ class Symbolic(object):
 
         # get symbolic outputs
         theano_outputs = tuple([graph[o] for o in sym_outputs])
-
 
         return theano_inputs, theano_outputs, graph
 
@@ -220,7 +228,7 @@ class Symbolic(object):
         grads = utils.flatten([T.grad(o, wrt=wrt) for o in outputs])
 
         sym_vectors = tuple(T.TensorType(
-            dtype=w.dtype, broadcastable=[False]*w.ndim)()
+            dtype=w.dtype, broadcastable=[False] * w.ndim)()
             for w in wrt)
         hessian_vectors = utils.as_seq(T.Rop(grads, wrt, sym_vectors), tuple)
 
@@ -339,7 +347,7 @@ class Tracer(Symbolic):
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False):
-        super(Tracer, self).__init__(pyfn=lambda:None,
+        super(Tracer, self).__init__(pyfn=lambda: None,
                                      context=context,
                                      borrowable=borrowable,
                                      ignore=ignore,
@@ -378,7 +386,8 @@ class Function(Symbolic):
            (len(all_args) > 0 and type(all_args[0]) is type)):
             all_args = all_args[1:]
 
-        key = tuple((np.asarray(a).ndim, np.asarray(a).dtype) for a in all_args)
+        key = tuple(
+            (np.asarray(a).ndim, np.asarray(a).dtype) for a in all_args)
         if key not in self.cache or not self.use_cache:
             self.context.reset()
             inputs, outputs = self.trace(*args, **kwargs)
@@ -476,7 +485,8 @@ class VectorArg(object):
         init_args = utils.as_seq(init_args, tuple)
         init_kwargs = utils.as_seq(init_kwargs, dict)
 
-        self.init_args = utils.expandedcallargs(pyfn, *init_args, **init_kwargs)
+        self.init_args = utils.expandedcallargs(
+            pyfn, *init_args, **init_kwargs)
 
         def wrapped_function(vector):
             return pyfn(*self.args_from_vector(vector))
@@ -516,7 +526,6 @@ class VectorArg(object):
         new_args = []
         idx = 0
         for arg in escape(self.init_args):
-            new_args.append(vector[idx : idx + arg.size].reshape(arg.shape))
+            new_args.append(vector[idx: idx + arg.size].reshape(arg.shape))
             idx += arg.size
         return new_args
-
