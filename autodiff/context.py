@@ -397,6 +397,7 @@ class TheanoTransformer(NodeTransformer):
         # skip Python builtins and ignored id's
         if (id(x) in self.context.ignore
                 or x is None
+                or isinstance(x, (str, bool))):
             return x
 
         # skip Theano variables
@@ -715,6 +716,11 @@ class TheanoTransformer(NodeTransformer):
             # anything else (like getattr)
             else:
                 return func
+
+        # ** ======================= A bound method not covered yet
+
+        # elif isinstance(func, types.MethodType):
+            # return func
 
         # ** ======================= Misc
 
