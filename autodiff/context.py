@@ -396,9 +396,7 @@ class TheanoTransformer(NodeTransformer):
 
         # skip Python builtins and ignored id's
         if (id(x) in self.context.ignore
-                or x is True
-                or x is False
-                or x is None):
+                or x is None
             return x
 
         # skip Theano variables
