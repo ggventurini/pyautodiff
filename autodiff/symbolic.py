@@ -16,7 +16,12 @@ class Symbolic(object):
     the original (Python) function, its gradient, or a Hessian-vector product.
     """
 
-    def __init__(self, pyfn, context=None, borrowable=None, ignore=None):
+    def __init__(self,
+                 pyfn,
+                 context=None,
+                 borrowable=None,
+                 ignore=None,
+                 escape_on_error=False):
         """
         Arguments
         ---------
@@ -31,7 +36,8 @@ class Symbolic(object):
 
         if context is None:
             context = Context(borrowable=utils.as_seq(borrowable, tuple),
-                              ignore=utils.as_seq(ignore, tuple))
+                              ignore=utils.as_seq(ignore, tuple),
+                              escape_on_error=escape_on_error)
         assert isinstance(context, Context)
         self.context = context
 
@@ -328,11 +334,16 @@ class Tracer(Symbolic):
     A Symbolic class for tracing variables through multiple functions.
     """
 
-    def __init__(self, context=None, borrowable=None, ignore=None):
+    def __init__(self,
+                 context=None,
+                 borrowable=None,
+                 ignore=None,
+                 escape_on_error=False):
         super(Tracer, self).__init__(pyfn=lambda:None,
                                      context=context,
                                      borrowable=borrowable,
-                                     ignore=ignore)
+                                     ignore=ignore,
+                                     escape_on_error=escape_on_error)
 
     def trace(self, pyfn, *args, **kwargs):
         symbolic = Symbolic(pyfn=pyfn, context=self.context)
@@ -345,10 +356,18 @@ class Function(Symbolic):
     initialization.
     """
 
-    def __init__(self, pyfn, context=None, borrowable=None, use_cache=True):
+    def __init__(self,
+                 pyfn,
+                 context=None,
+                 borrowable=None,
+                 ignore=None,
+                 escape_on_error=False,
+                 use_cache=True):
         super(Function, self).__init__(pyfn=pyfn,
                                        context=context,
-                                       borrowable=borrowable)
+                                       borrowable=borrowable,
+                                       ignore=ignore,
+                                       escape_on_error=escape_on_error)
 
         self._cache = dict()
         self.use_cache = use_cache
@@ -379,12 +398,14 @@ class Gradient(Function):
                  reduction=None,
                  borrowable=None,
                  ignore=None,
+                 escape_on_error=False,
                  context=None,
                  use_cache=True):
         super(Gradient, self).__init__(pyfn=pyfn,
                                        borrowable=borrowable,
                                        ignore=ignore,
                                        context=context,
+                                       escape_on_error=escape_on_error,
                                        use_cache=use_cache)
         self.wrt = utils.as_seq(wrt, tuple)
         self.reduction = reduction
@@ -442,6 +463,8 @@ class VectorArg(object):
                  init_kwargs=None,
                  context=None,
                  borrowable=None,
+                 ignore=None,
+                 escape_on_error=False,
                  function=False,
                  gradient=False,
                  hessian_vector=False):
@@ -460,7 +483,9 @@ class VectorArg(object):
 
         symbolic = Symbolic(pyfn=wrapped_function,
                             context=context,
-                            borrowable=borrowable)
+                            borrowable=borrowable,
+                            ignore=ignore,
+                            escape_on_error=escape_on_error)
 
         vector = theano.shared(self.vector_from_args(init_args, init_kwargs),
                                name='InputVector')

@@ -167,7 +167,7 @@ def isvar_ast(name):
 
 class Context(object):
 
-    def __init__(self, borrowable=None, ignore=None):
+    def __init__(self, borrowable=None, ignore=None, escape_on_error=False):
         self.sym_vars = dict()
         self.tags = dict()
         # FIXME do we need to hold on to all of these itermediates?
@@ -176,6 +176,7 @@ class Context(object):
         self._top_def = None
         self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
         self.ignore = utils.as_seq(ignore, tuple)
+        self.escape_on_error = escape_on_error
 
     def recompile(self, f, nested=False):
         """
@@ -310,7 +311,13 @@ class ShadowClass(object):
 
     def __call__(self, *args, **kwargs):
         handle_functions = self._transformer__.handle_functions
-        rval = handle_functions(self._obj__).__call__(*args, **kwargs)
+        try:
+            rval = handle_functions(self._obj__)(*args, **kwargs)
+        except:
+            if self._transformer__.context.escape_on_error:
+                rval = self._obj__(*args, **kwargs)
+            else:
+                raise
         return self._transformer__.shadow(rval)
 
     class __metaclass__(type):
@@ -726,7 +733,12 @@ class TheanoTransformer(NodeTransformer):
             try:
                 return self.context.recompile(func, nested=True)
             except:
-                raise ValueError('Unsupported function: {0}'.format(func))
+                if self.context.escape_on_error:
+                    def escapedfunc(*args, **kwargs):
+                        return self.handle_escaped_call(func, *args, **kwargs)
+                    return escapedfunc
+                else:
+                    raise ValueError('Unsupported function: {0}'.format(func))
 
         # ** ======================= Catchall (shouldn't be called)
 
