@@ -717,9 +717,6 @@ class Namespaces(unittest.TestCase):
         self.assertTrue(checkfn(f, []))
 
 
-    def test_define_class(self)
-
-
 
     def test_freevars(self):
         class Test(object):

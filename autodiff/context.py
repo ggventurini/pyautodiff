@@ -278,18 +278,18 @@ class ShadowClass(object):
     """
     _wraps__ = None
     _ignore__ = ['__class__',
-                   '__mro__',
-                   '__repr__',
-                   '__str__',
-                   '__new__',
-                   '__init__',
-                   '__dict__',
-                   '__call__',
-                   '__name__',
-                   '__setattr__',
-                   '__getattr__',
-                   '__getattribute__',
-                   '__shadow__']
+                 '__mro__',
+                 '__repr__',
+                 '__str__',
+                 '__new__',
+                 '__init__',
+                 '__dict__',
+                 '__call__',
+                 '__name__',
+                 '__setattr__',
+                 '__getattr__',
+                 '__getattribute__',
+                 '__shadow__']
 
     def __init__(self, obj, context):
         if isinstance(obj, type):
@@ -325,7 +325,6 @@ class ShadowClass(object):
 
             def make_proxy(name):
                 def proxy(self, *args):
-                    print name
                     return self._transformer__.shadow(
                         getattr(self._obj__, name))
                 return proxy
@@ -337,7 +336,7 @@ class ShadowClass(object):
                         if (name not in cls._ignore__ and name not in dct):
                             attr = getattr(cls._wraps__, name, None)
                             try:
-                                setattr(cls, name, attr)#property(make_proxy(name)))
+                                setattr(cls, name, attr) #property(make_proxy(name)))
                             except:
                                 pass
 
@@ -459,13 +458,12 @@ class TheanoTransformer(NodeTransformer):
         """
         Handles escaping ShadowClass instances.
         """
-        def remove_shadow_class(x):
-            if isinstance(x, ShadowClass):
-                return x._obj__
+        def remove_shadow(s):
+            if isinstance(s, ShadowClass):
+                return s._obj__
             else:
-                return x
-        return utils.unflatten(x, [remove_shadow_class(i)
-                                   for i in utils.flatten(x)])
+                return s
+        return utils.unflatten(x, [remove_shadow(i) for i in utils.flatten(x)])
 
     @staticmethod
     def handle_escape(x):
