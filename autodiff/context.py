@@ -315,6 +315,7 @@ class ShadowClass(object):
             rval = handle_functions(self._obj__)(*args, **kwargs)
         except:
             if self._transformer__.context.escape_on_error:
+                import ipdb; ipdb.set_trace()
                 rval = self._obj__(*args, **kwargs)
             else:
                 raise
@@ -372,6 +373,7 @@ class TheanoTransformer(NodeTransformer):
     # ** Direct Manipulation (Methods)
 
     def shadow(self, args):
+
         """
         Helper function for `_shadow` that calls it on a flattened version of
         its argument.
@@ -386,6 +388,7 @@ class TheanoTransformer(NodeTransformer):
         variable and store the relationship in self.sym_vars. Otherwise return
         x.
         """
+
 
         # try checking if x is ignored (will fail for NumPy arrays)
         try:
@@ -448,9 +451,10 @@ class TheanoTransformer(NodeTransformer):
 
         # everything else: wrap in Shadowclass
         else:
-            class Shadow(ShadowClass):
-                _wraps__ = x.__class__
-            return Shadow(x, self.context)
+            return x
+            # class Shadow(ShadowClass):
+                # _wraps__ = x.__class__
+            # return Shadow(x, self.context)
 
     @staticmethod
     def handle_shadow_class(x):
@@ -911,10 +915,9 @@ class TheanoTransformer(NodeTransformer):
         # to be correct) and replace the Assign with it.
         # This is the syntax that creates the weird AST:
         #    a[:b] += c
-        if isinstance(node.value, AugAssign):
-            return self.visit_AugAssign(node.value)
 
-        self.generic_visit(node.value)
+        # if isinstance(node.value, AugAssign):
+            # return self.visit_AugAssign(node.value)
 
         # handle subscripted assignment for tensor variables
         if isinstance(node.targets[0], Subscript):
@@ -937,35 +940,36 @@ class TheanoTransformer(NodeTransformer):
             # get root tensor; check for nested subscripts
             tensor = node.targets[0]
             while not isinstance(tensor, Name):
-            # while isinstance(tensor, Subscript):
-                tensor = tensor.value
+                try:
+                    tensor = tensor.value
+                except:
+                    break
 
-            # if isinstance(tensor, Name):
+            if isinstance(tensor, Name):
+                # transform subscript into set_subtensor
+                if isinstance(node.value, AugAssign):
+                    value = BinOp(op=node.value.op,
+                                  left=node.targets[0],
+                                  right=node.value.value)
+                else:
+                    value = node.value
+                set_subt = build_subt(subscript=node.targets[0], value=value)
 
-            # transform subscript into set_subtensor
-            if isinstance(node.value, AugAssign):
-                value = BinOp(op=node.value.op,
-                              left=node.targets[0],
-                              right=node.value.value)
+                # wrap set_subtensor statements in Assign to root tensor
+                assign_subtensor = Assign(targets=[Name(ctx=Store(),
+                                                        id=tensor.id)],
+                                          value=self.generic_visit(set_subt))
+
+                # wrap assign_subtensor in If to ensure that the modification
+                # is only applied to tensor args
+                check_var = If(test=isvar_ast(tensor),
+                               body=[assign_subtensor],
+                               orelse=[node])
+                return check_var
             else:
-                value = node.value
-            set_subt = build_subt(subscript=node.targets[0], value=value)
-
-            # wrap set_subtensor statements in Assign to root tensor
-            assign_subtensor = Assign(targets=[Name(ctx=Store(),
-                                                    id=tensor.id)],
-                                      value=set_subt)
-
-            # wrap assign_subtensor in If to ensure that the modification
-            # is only applied to tensor args
-            check_var = If(test=isvar_ast(tensor),
-                           body=[assign_subtensor],
-                           orelse=[node])
-            return check_var
-            # else:
-                # return node
+                return self.generic_visit(node)
         else:
-            return node
+            return self.generic_visit(node)
 
     def visit_Attribute(self, node):
         self.generic_visit(node)
@@ -974,7 +978,7 @@ class TheanoTransformer(NodeTransformer):
                                self.ast_wrap('handle_array_methods',
                                              [node.value, Str(s=node.attr)])],
                                func=Name(ctx=Load(), id='getattr'))
-        return new_node
+        return self.ast_wrap('shadow', new_node)
 
     def visit_AugAssign(self, node):
         """
@@ -1209,3 +1213,14 @@ class TheanoTransformer(NodeTransformer):
             node.slice = Index(value=self.ast_wrap('handle_bool_subscript',
                                                    node.slice.value))
         return node
+
+    def visit_Name(self, node):
+        """
+        Whenever a literal variable name is loaded, call the
+        'shadow' method on its value.
+        """
+        # self.generic_visit(node)
+        if isinstance(node.ctx, Load):
+            node = self.ast_wrap('shadow', node)
+        return node
+

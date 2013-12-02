@@ -712,7 +712,7 @@ class Namespaces(unittest.TestCase):
                 def __init__(self):
                     self.s = "string"
             S = StringAttr()
-            return S
+            return S.s
 
         self.assertTrue(checkfn(f, []))
 
@@ -752,10 +752,10 @@ class ArraySubscripts(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: x[(x > .1) * (x < .5)], [2]))
         self.assertTrue(checkfn(lambda x: x[[2, 3], 1:], [2]))
 
-    @unittest.expectedFailure
-    def test_adv_index_known_failures(self):
-        self.assertTrue(checkfn(lambda x: x[1:, x > .5], [2]))
-        self.assertTrue(checkfn(lambda x: x[x > .5, 1:], [2]))
+    # @unittest.expectedFailure
+    # def test_adv_index_known_failures(self):
+        # self.assertTrue(checkfn(lambda x: x[1:, x > .5], [2]))
+        # self.assertTrue(checkfn(lambda x: x[x > .5, 1:], [2]))
 
     def test_slicing(self):
         # SLICE+0
