@@ -87,13 +87,6 @@ class Symbolic(object):
     def get_symbolic(self, x):
         return self.context.get_symbolic(x)
 
-    def get_soft_symbolic(self, x):
-        if (isinstance(x, (float, int, np.number, np.ndarray))
-                and not isinstance(x, bool)):
-            return self.get_symbolic(x)
-        else:
-            return x
-
     def trace(self, *args, **kwargs):
         """
         Call the symbolic function on args and kwargs, returning the symbolic
@@ -115,7 +108,7 @@ class Symbolic(object):
         # store the inputs and outputs so they can be accessed later
         # self.s_inputs = tuple(self.get_symbolic(a) for a in all_args)
         # self.s_outputs = utils.as_seq(results, tuple)
-        inputs = tuple(self.get_soft_symbolic(a) for a in all_args)
+        inputs = tuple(self.get_symbolic(a) for a in all_args)
         # outputs = utils.as_seq(results, tuple)
 
         return inputs, results
@@ -125,10 +118,10 @@ class Symbolic(object):
         Returns a dict containing inputs, outputs and graph corresponding to
         the Theano version of the pyfn.
         """
-        sym_inputs = tuple(self.get_soft_symbolic(i)
+        sym_inputs = tuple(self.get_symbolic(i)
                            for i in utils.as_seq(inputs))
 
-        sym_outputs = tuple(self.get_soft_symbolic(o)
+        sym_outputs = tuple(self.get_symbolic(o)
                             for o in utils.as_seq(outputs))
 
         # get symbolic inputs corresponding to shared inputs in s_inputs
