@@ -1013,10 +1013,10 @@ class TheanoTransformer(NodeTransformer):
         node.func = self.ast_wrap('handle_functions', node.func)
 
         # the * and ** syntax won't work if an object has been shadowed...
-        if node.starargs:
-            node.starargs = self.ast_wrap('handle_shadow_class', node.starargs)
-        if node.kwargs:
-            node.kwargs = self.ast_wrap('handle_shadow_class', node.kwargs)
+        # if node.starargs:
+            # node.starargs = self.ast_wrap('handle_shadow_class', node.starargs)
+        # if node.kwargs:
+            # node.kwargs = self.ast_wrap('handle_shadow_class', node.kwargs)
 
         return node
 
