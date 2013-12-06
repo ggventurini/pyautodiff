@@ -243,6 +243,7 @@ class Python(unittest.TestCase):
             return x
         self.assertTrue(checkfn(f, [1]))
 
+
     def test_enumerate(self):
         def f1(x):
             z = np.arange(x.shape[0])
@@ -712,11 +713,14 @@ class Namespaces(unittest.TestCase):
                 def __init__(self):
                     self.s = "string"
             S = StringAttr()
-            return S.s
+            def f2(**kwargs):
+                if kwargs['string'] == 5:
+                    return 1
+                else:
+                    return 0
+            return f2(**{S.s: 5})
 
         self.assertTrue(checkfn(f, []))
-
-
 
     def test_freevars(self):
         class Test(object):
