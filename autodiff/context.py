@@ -1,3 +1,4 @@
+import __builtin__
 import logging
 import meta
 from ast import *
@@ -455,6 +456,15 @@ class TheanoTransformer(NodeTransformer):
             # class Shadow(ShadowClass):
                 # _wraps__ = x.__class__
             # return Shadow(x, self.context)
+
+
+    # ==================================================
+    # ==================================================
+    #
+    # Runtime Modifications
+    #
+    # ==================================================
+    # ==================================================
 
     @staticmethod
     def handle_shadow_class(x):
@@ -970,6 +980,16 @@ class TheanoTransformer(NodeTransformer):
                 return self.generic_visit(node)
         else:
             return self.generic_visit(node)
+
+
+    # ==================================================
+    # ==================================================
+    #
+    # AST Modifications
+    #
+    # ==================================================
+    # ==================================================
+
 
     def visit_Attribute(self, node):
         self.generic_visit(node)
