@@ -519,6 +519,6 @@ class VectorArg(object):
         new_args = []
         idx = 0
         for arg in escape(self.init_args):
-            new_args.append(vector[idx: idx + arg.size].reshape(arg.shape))
+            new_args.append(vector[idx: idx + arg.size].reshape(*arg.shape))
             idx += arg.size
         return new_args
