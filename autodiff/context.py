@@ -648,8 +648,8 @@ class TheanoTransformer(NodeTransformer):
         # ** ======================= Catchall (shouldn't be called)
 
         raise ValueError(
-            'handle_functions: No case matched function {0}; something is '
-            'wrong!'.format(func))
+            'handle_functions: No case matched function {0}. Something is '
+            'wrong -- should not reach this point!'.format(func))
 
     def handle_methods(self, var, method_name):
         """
@@ -879,8 +879,12 @@ class TheanoTransformer(NodeTransformer):
     # ==================================================
     # ==================================================
 
-
     def visit_Attribute(self, node):
+        """
+        When dealing with an attribute, first see if the object has that
+        attribute and return it. If not, call the handle_methods method.
+        """
+
         self.generic_visit(node)
         new_node = simple_Call(args=[node.value,
                                Str(s=node.attr),
