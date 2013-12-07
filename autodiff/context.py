@@ -473,7 +473,7 @@ class TheanoTransformer(NodeTransformer):
         # ** ======================= array methods (with tensor instances)
 
         elif utils.isvar(getattr(func, '__self__', None)):
-            return self.handle_array_methods(func.__self__, func.__name__)
+            return self.handle_methods(func.__self__, func.__name__)
 
         # ** ======================= Theano function
 
@@ -651,17 +651,17 @@ class TheanoTransformer(NodeTransformer):
             'handle_functions: No case matched function {0}; something is '
             'wrong!'.format(func))
 
-    def handle_array_methods(self, var, method_name):
+    def handle_methods(self, var, method_name):
         """
         This method is called whenever:
             1. An array method is requested that doesn't exist for Theano
-               variables (like _.swapaxes()). `handle_array_methods` is used
+               variables (like _.swapaxes()). `handle_methods` is used
                to supply a replacement method. Note that in this case,
-               `handle_array_methods` is called directly.
+               `handle_methods` is called directly.
             2. A method is requested that DOES exist for Theano variables. In
-               this case, `handle_array_methods` is called by
+               this case, `handle_methods` is called by
                `handle_functions` prior to calling the method.
-               `handle_array_methods` is used to supply a replacement function
+               `handle_methods` is used to supply a replacement function
                that properly handles the supplied arguments (since they are
                compliant with the Numpy signature, not the Theano one).
         """
@@ -884,7 +884,7 @@ class TheanoTransformer(NodeTransformer):
         self.generic_visit(node)
         new_node = simple_Call(args=[node.value,
                                Str(s=node.attr),
-                               self.ast_wrap('handle_array_methods',
+                               self.ast_wrap('handle_methods',
                                              [node.value, Str(s=node.attr)])],
                                func=Name(ctx=Load(), id='getattr'))
         return self.ast_wrap('shadow', new_node)
