@@ -332,9 +332,10 @@ class Python(unittest.TestCase):
     def test_dict_comprehension(self):
         def f():
             x = np.arange(10.0)
-            y = {xi : xi + 10 for xi in escape(x)}
-            return y
+            y = {escape(xi): xi + 10 for xi in escape(x)}
+            return y[5]
         self.assertTrue(checkfn(f, []))
+
 
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
