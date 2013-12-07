@@ -668,6 +668,9 @@ class TheanoTransformer(NodeTransformer):
                 return self.context.recompile(func, nested=True)
             except:
                 if self.context.escape_on_error:
+                    logger.warning(
+                        'Error when recompiling {0}. Calling escaped version '
+                        'because escape_on_error is True.'.format(func))
                     def escapedfunc(*args, **kwargs):
                         return self.handle_escaped_call(func, *args, **kwargs)
                     return escapedfunc
