@@ -28,10 +28,9 @@ def checkfn(f, var_ndim=None, *args, **kwargs):
     sym_vars = F(*(sym_values + sym_args), **sym_kwargs)
     sym_result = [v.eval() if utils.isvar(v) else v
                   for v in utils.as_seq(sym_vars)]
+
     if len(sym_result) == 0:
         sym_result = None
-    elif not isinstance(sym_vars, tuple):
-        sym_result = sym_result[0]
 
     py_result = override or f(*(values + args), **kwargs)
 
@@ -186,7 +185,6 @@ class Signatures(unittest.TestCase):
         self.assertTrue(checkfn(g, [], 1))
 
 
-
 class Python(unittest.TestCase):
     def test_range(self):
         def f(x):
@@ -314,6 +312,14 @@ class Python(unittest.TestCase):
                 return x[1]
             return f(*x)
         self.assertTrue(checkfn(g, [], 1, 2, 3))
+
+    def test_append(self):
+        def f():
+            l = []
+            for i in range(5):
+                l.append(i)
+            return l
+        self.assertTrue(checkfn(f, []))
 
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
