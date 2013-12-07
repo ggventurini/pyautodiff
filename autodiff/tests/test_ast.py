@@ -6,6 +6,7 @@ import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
 import autodiff.context as c
+from autodiff.functions import escape
 
 
 context = autodiff.context.Context()
@@ -319,6 +320,20 @@ class Python(unittest.TestCase):
             for i in range(5):
                 l.append(i)
             return l
+        self.assertTrue(checkfn(f, []))
+
+    def test_list_comprehension(self):
+        def f():
+            x = np.arange(10.0)
+            y = [xi + 10 for xi in escape(x)]
+            return y
+        self.assertTrue(checkfn(f, []))
+
+    def test_dict_comprehension(self):
+        def f():
+            x = np.arange(10.0)
+            y = {xi : xi + 10 for xi in escape(x)}
+            return y
         self.assertTrue(checkfn(f, []))
 
 class BasicMath(unittest.TestCase):
