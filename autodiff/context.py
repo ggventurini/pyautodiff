@@ -881,7 +881,7 @@ class TheanoTransformer(NodeTransformer):
             return getattr(T, operator)(left, right)
         elif operator == 'gt':
             return left > right
-        elif oeprator == 'ge':
+        elif operator == 'ge':
             return left >= right
         elif operator == 'lt':
             return left < right
