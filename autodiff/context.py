@@ -269,80 +269,6 @@ class Context(object):
         self._top_node = None
 
 
-class ShadowClass(object):
-    """
-    A class that [almost] transparently wraps other objects, shadowing any
-    requested attributes and function calls. Attributes can not be set.
-
-    Inspired by http://stackoverflow.com/questions/9057669/
-        how-can-i-intercept-calls-to-pythons-magic-methods-in-new-style-classes
-    """
-    _wraps__ = None
-    _ignore__ = ['__class__',
-                 '__mro__',
-                 '__repr__',
-                 '__str__',
-                 '__new__',
-                 '__init__',
-                 '__dict__',
-                 '__call__',
-                 '__name__',
-                 '__setattr__',
-                 '__getattr__',
-                 '__getattribute__',
-                 '__shadow__']
-
-    def __init__(self, obj, context):
-        if isinstance(obj, type):
-            raise TypeError()
-        if self._wraps__ is None:
-            raise TypeError('_wraps__ not set.')
-        assert isinstance(obj, self._wraps__)
-        self.__dict__['_obj__'] = obj
-        self.__dict__['_transformer__'] = TheanoTransformer(context)
-
-    # def __setattr__(self, name, value):
-        # raise TypeError(
-            # 'To protect code integrity, attributes of shadowed objects '
-            # 'can not be set: Shadowed {0}'.format(self._obj__))
-
-    def __getattr__(self, name):
-        attr = getattr(self._obj__, name)
-        return self._transformer__.shadow(attr)
-
-    def __call__(self, *args, **kwargs):
-        handle_functions = self._transformer__.handle_functions
-        try:
-            rval = handle_functions(self._obj__)(*args, **kwargs)
-        except:
-            if self._transformer__.context.escape_on_error:
-                import ipdb; ipdb.set_trace()
-                rval = self._obj__(*args, **kwargs)
-            else:
-                raise
-        return self._transformer__.shadow(rval)
-
-    class __metaclass__(type):
-        def __init__(cls, name, bases, dct):
-
-            def make_proxy(name):
-                def proxy(self, *args):
-                    return self._transformer__.shadow(
-                        getattr(self._obj__, name))
-                return proxy
-
-            type.__init__(cls, name, bases, dct)
-            if cls._wraps__:
-                for name in dir(cls._wraps__):
-                    if name.startswith("__"):
-                        if (name not in cls._ignore__ and name not in dct):
-                            attr = getattr(cls._wraps__, name, None)
-                            try:
-                                setattr(cls, name, attr) #property(make_proxy(name)))
-                            except:
-                                pass
-
-
 class TheanoTransformer(NodeTransformer):
 
     def __init__(self, context):
@@ -389,8 +315,6 @@ class TheanoTransformer(NodeTransformer):
         variable and store the relationship in self.sym_vars. Otherwise return
         x.
         """
-
-
         # try checking if x is ignored (will fail for NumPy arrays)
         try:
             if x in self.context.ignore:
@@ -402,20 +326,6 @@ class TheanoTransformer(NodeTransformer):
         if (id(x) in self.context.ignore
                 or x is None
                 or isinstance(x, (str, bool))):
-            return x
-
-        # skip Theano variables
-        elif utils.isvar(x):
-            return x
-
-        # skip functions defined in autodiff.functions
-        elif (isinstance(x, types.FunctionType)
-              and inspect.getmodule(x) is autodiff.functions):
-                return x
-
-        # skip objects that are already classes, ShadowClasses, or special
-        # autodiff classes
-        elif isinstance(x, (type, ShadowClass, TheanoTransformer, Context)):
             return x
 
         # skip ignored types
@@ -450,12 +360,8 @@ class TheanoTransformer(NodeTransformer):
             else:
                 return self.context.sym_vars[id(x)]
 
-        # everything else: wrap in Shadowclass
         else:
             return x
-            # class Shadow(ShadowClass):
-                # _wraps__ = x.__class__
-            # return Shadow(x, self.context)
 
 
     # ==================================================
@@ -467,21 +373,9 @@ class TheanoTransformer(NodeTransformer):
     # ==================================================
 
     @staticmethod
-    def handle_shadow_class(x):
-        """
-        Handles escaping ShadowClass instances.
-        """
-        def remove_shadow(s):
-            if isinstance(s, ShadowClass):
-                return s._obj__
-            else:
-                return s
-        return utils.unflatten(x, [remove_shadow(i) for i in utils.flatten(x)])
-
-    @staticmethod
     def handle_escape(x):
         """
-        Handles escaping variables, including ShadowClass and Theano variables
+        Handles escaping variables
         """
         def escape(x):
             if isinstance(x, theano.tensor.sharedvar.SharedVariable):
@@ -491,8 +385,6 @@ class TheanoTransformer(NodeTransformer):
                     return x.eval()
                 except:
                     raise ValueError('Could not escape {0}'.format(x))
-            elif isinstance(x, ShadowClass):
-                return x._obj__
             else:
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
@@ -547,9 +439,6 @@ class TheanoTransformer(NodeTransformer):
         Generally used to exchange NumPy functions for Theano equivalents.
         """
         # ** ======================= first handle functions defined here!
-
-        if isinstance(func, ShadowClass):
-            return self.handle_functions(func._obj__)
 
         if getattr(func, '__module__', None) == __name__:
             return func
