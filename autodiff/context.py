@@ -544,6 +544,15 @@ class TheanoTransformer(NodeTransformer):
                     return getattr(T, func.__name__)(shp, dtype)
                 return alloc
 
+            # handle asarray
+            elif func is np.asarray:
+                def _asarray(x):
+                    if not utils.isvar(x):
+                        return np.asarray(x)
+                    else:
+                        return x
+                return _asarray
+
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)
             else:
