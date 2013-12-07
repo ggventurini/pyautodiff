@@ -916,14 +916,17 @@ class TheanoTransformer(NodeTransformer):
         When dealing with an attribute, first see if the object has that
         attribute and return it. If not, call the handle_methods method.
         """
-
         self.generic_visit(node)
-        new_node = simple_Call(args=[node.value,
-                               Str(s=node.attr),
-                               self.ast_wrap('handle_methods',
-                                             [node.value, Str(s=node.attr)])],
-                               func=Name(ctx=Load(), id='getattr'))
-        return self.ast_wrap('shadow', new_node)
+        if isinstance(node.ctx, Store):
+            return node
+        else:
+            new_node = simple_Call(
+                args=[node.value,
+                      Str(s=node.attr),
+                      self.ast_wrap('handle_methods',
+                                    [node.value, Str(s=node.attr)])],
+                func=Name(ctx=Load(), id='getattr'))
+            return self.ast_wrap('shadow', new_node)
 
     def visit_AugAssign(self, node):
         """
