@@ -6,7 +6,7 @@ import inspect
 from autodiff.context import Context
 from autodiff.compat import OrderedDict
 import autodiff.utils as utils
-from autodiff.functions import escape
+from autodiff.functions import escape, escaped_call
 
 
 class Symbolic(object):
@@ -482,22 +482,25 @@ class VectorArg(object):
             pyfn, *init_args, **init_kwargs)
 
         def wrapped_function(vector):
-            return pyfn(*self.args_from_vector(vector))
+            return pyfn(*escaped_call(self.args_from_vector, vector))
 
-        symbolic = Symbolic(pyfn=wrapped_function,
+        def wrapper(*args, **kwargs):
+            vector = self.vector_from_args(args, kwargs)
+            v_args = self.args_from_vector(vector)
+            return vector, pyfn(*v_args)
+
+        symbolic = Symbolic(pyfn=wrapper,
                             context=context,
                             borrowable=borrowable,
                             ignore=ignore,
                             escape_on_error=escape_on_error)
 
-        vector = theano.shared(self.vector_from_args(init_args, init_kwargs),
-                               name='InputVector')
-        _, result = symbolic.trace(vector)
+        _, (sym_vector, result) = symbolic.trace(*init_args, **init_kwargs)
 
         fn = symbolic.compile(function=function,
                               gradient=gradient,
                               hessian_vector=hessian_vector,
-                              inputs=vector,
+                              inputs=sym_vector,
                               outputs=result)
         self.fn = fn
 
