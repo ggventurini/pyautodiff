@@ -178,6 +178,7 @@ class Context(object):
         self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
         self.ignore = utils.as_seq(ignore, tuple)
         self.escape_on_error = escape_on_error
+        self.shadowed_containers = dict()
 
     def recompile(self, f, nested=False):
         """
@@ -267,6 +268,7 @@ class Context(object):
         self.tags.clear()
         self._nogc = []
         self._top_node = None
+        self.shadowed_containers.clear()
 
 
 class TheanoTransformer(NodeTransformer):
@@ -306,7 +308,9 @@ class TheanoTransformer(NodeTransformer):
         its argument.
         """
         shadow_vars = [self._shadow_inner(x) for x in utils.flatten(args)]
-        return utils.unflatten(args, shadow_vars)
+        new_args = utils.unflatten(args, shadow_vars)
+        self.context.shadowed_containers[id(new_args)] = args
+        return new_args
 
     def _shadow_inner(self, x):
 
@@ -625,7 +629,23 @@ class TheanoTransformer(NodeTransformer):
                     return isinstance(escaped_obj, self.handle_escape(types))
                 return isinstance_
 
-            # anything else (like getattr)
+            # inplace list methods
+            elif isinstance(getattr(func, '__self__', None), list):
+                def _inplace_list(*args):
+                    l = self.context.shadowed_containers[id(func.__self__)]
+                    getattr(l, func.__name__)(*args)
+                    return func(*args)
+                return _inplace_list
+
+            # inplace dict methods
+            elif isinstance(getattr(func, '__self__', None), dict):
+                def _inplace_dict(*args):
+                    d = self.context.shadowed_containers[id(func.__self__)]
+                    getattr(d, func.__name__)(*args)
+                    return func(*args)
+                return _inplace_dict
+
+            # anything else
             else:
                 return func
 
