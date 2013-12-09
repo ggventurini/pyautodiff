@@ -557,8 +557,43 @@ class TheanoTransformer(NodeTransformer):
                         return x
                 return _asarray
 
+            # atleast_1d
+            elif func is np.atleast_1d:
+                def _atleast_1d(x):
+                    if x.ndim == 0:
+                        return x.dimshuffle('x')
+                    else:
+                        return x
+                return _atleast_1d
+
+            # atleast_2d
+            elif func is np.atleast_2d:
+                def _atleast_2d(x):
+                    if x.ndim == 0:
+                        return x.dimshuffle('x', 'x')
+                    elif x.ndim == 1:
+                        return x.dimshuffle('x', 0)
+                    else:
+                        return x
+                return _atleast_2d
+
+            # atleast_3d
+            elif func is np.atleast_3d:
+                def _atleast_3d(x):
+                    if x.ndim == 0:
+                        return x.dimshuffle('x', 'x', 'x')
+                    elif x.ndim == 1:
+                        return x.dimshuffle('x', 'x', 0)
+                    elif x.ndim == 2:
+                        return x.dimshuffle('x', 0, 1)
+                    else:
+                        return x
+                return _atleast_3d
+
+            # get equivalent Theano function
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)
+
             else:
                 raise ValueError(
                     'Autodiff unsupported function: {0}'.format(func))
