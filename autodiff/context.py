@@ -632,17 +632,22 @@ class TheanoTransformer(NodeTransformer):
             # inplace list methods
             elif isinstance(getattr(func, '__self__', None), list):
                 def _inplace_list(*args):
-                    l = self.context.shadowed_containers[id(func.__self__)]
-                    getattr(l, func.__name__)(*args)
+                    # check if the list is shadowing a different one
+                    if id(func.__self__) in self.context.shadowed_containers:
+                        l = self.context.shadowed_containers[id(func.__self__)]
+                        getattr(l, func.__name__)(*args)
                     return func(*args)
                 return _inplace_list
 
             # inplace dict methods
             elif isinstance(getattr(func, '__self__', None), dict):
                 def _inplace_dict(*args):
-                    d = self.context.shadowed_containers[id(func.__self__)]
-                    getattr(d, func.__name__)(*args)
+                    # check if the dict is shadowing a different one
+                    if id(func.__self__) in self.context.shadowed_containers:
+                        d = self.context.shadowed_containers[id(func.__self__)]
+                        getattr(d, func.__name__)(*args)
                     return func(*args)
+
                 return _inplace_dict
 
             # anything else
