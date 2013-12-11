@@ -488,26 +488,31 @@ class TheanoTransformer(NodeTransformer):
         # ** ======================= type/casting functions
 
         elif type(func) is type:
-            if func.__name__ in ['bool', 'bool_', 'bool8']:
+
+            if func in(bool, np.bool_, np.bool8):
                 logger.info('Warning: Theano has no bool type; '
                             'upgrading to int8.')
 
                 def bool_(x):
                     return T.neq(x, 0)
                 return bool_
+
             elif func.__name__ in T.basic._cast_mapping.keys():
                 def cast(x):
                     return T.cast(x, dtype=func.__name__)
                 return cast
-            elif func.__name__ == 'float':
+
+            elif func is float:
                 def float_(x):
                     return T.cast(x, dtype=theano.config.floatX)
                 return float_
-            elif func.__name__ == 'int':
+
+            elif func is int:
                 def int_(x):
                     return T.cast(x, dtype='int' + theano.config.floatX[-2:])
                 return int_
-            elif func.__name__ == 'enumerate':
+
+            elif func is enumerate:
                 def enumerate_(iterable, start=0):
                     if utils.isvar(iterable):
                         raise TypeError(
@@ -517,6 +522,7 @@ class TheanoTransformer(NodeTransformer):
                     else:
                         return enumerate(iterable, start=start)
                 return enumerate_
+
             else:
                 def new_type(*args, **kwargs):
                     try:
@@ -530,17 +536,16 @@ class TheanoTransformer(NodeTransformer):
         elif (getattr(func, '__module__', None)
               and getattr(func, '__module__').startswith('numpy')
               or isinstance(func, np.ufunc)
-              or str(func) == '<built-in function max>'
-              or str(func) == '<built-in function min>'):
+              or func in (min, max)):
 
             # abs
-            if func.__name__ in ('abs', 'absolute'):
+            if func.__name__ in (np.abs, np.absolute):
                 return abs
 
             # ones/zeros
             # FIXME submitted a PR to Theano to make syntax more
             # like Numpy; this change shouldn't be needed afterward.
-            elif func.__name__ in ('ones', 'zeros'):
+            elif func in (np.ones, np.zeros):
                 def alloc(shp, dtype=None):
                     if (not isinstance(shp, (list, tuple))
                             and not utils.isvar(shp)):
@@ -603,13 +608,13 @@ class TheanoTransformer(NodeTransformer):
         elif '<built-in' in str(func):
 
             # ranges
-            if func.__name__ in ('range', 'xrange'):
+            if func in (range, xrange):
                 def range_(*args):
                     return func(*(self.handle_escape(a) for a in args))
                 return range_
 
             # zip
-            elif func.__name__ == 'zip':
+            elif func is zip:
                 def zip_(*args):
                     if __builtin__.any(utils.isvar(a) for a in args):
                         raise TypeError(
@@ -621,22 +626,21 @@ class TheanoTransformer(NodeTransformer):
                 return zip_
 
             # uniform random numbers (np.random.uniform)
-            elif 'method uniform of mtrand.RandomState' in str(func):
+            elif func is np.random.uniform:
                 def rand_u(low=0.0, high=1.0, size=1):
                     return global_randomstreams.uniform(low=low,
                                                         high=high,
                                                         size=size)
                 return rand_u
 
-            # standard uniform random numbers (np.random.random)
-            elif ('method random of mtrand.RandomState' in str(func) or
-                  'method random_sample of mtrand.RandomState' in str(func)):
+            # standard uniform random numbers (np.random.random, np.random.rand)
+            elif func in (np.random.random, np.random.rand):
                 def rand_u(size):
                     return global_randomstreams.uniform(size=size)
                 return rand_u
 
             # normal random numbers (np.random.normal)
-            elif 'method normal of mtrand.RandomState' in str(func):
+            elif func is np.random.normal:
                 def rand_n(loc=0.0, scale=1.0, size=None):
                     return global_randomstreams.normal(avg=loc,
                                                        std=scale,
@@ -644,13 +648,13 @@ class TheanoTransformer(NodeTransformer):
                 return rand_n
 
             # standard normal random numbers (np.random.randn)
-            elif 'method randn of mtrand.RandomState' in str(func):
+            elif func is np.random.randn:
                 def rand_n(*size):
                     return global_randomstreams.normal(size=size)
                 return rand_n
 
             # binomial random numbers (np.random.binomial)
-            elif 'method binomial randn of mtrand.RandomState' in str(func):
+            elif func is np.random.binomial:
                 def rand_b(n, p, size=None):
                     return global_randomstreams.binomial(n=n, p=p, size=size)
                 return rand_b
