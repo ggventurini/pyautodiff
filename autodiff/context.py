@@ -220,9 +220,22 @@ class Context(object):
             if name in f_globals.iterkeys():
                 f_globals[name] = transformer.shadow(f_globals[name])
 
-        new_f = meta.decompiler.compile_func(ast_node=transformed_ast,
-                                             filename='<Context-AST>',
-                                             globals=f_globals)
+        try:
+            new_f = meta.decompiler.compile_func(ast_node=transformed_ast,
+                                                 filename='<Context-AST>',
+                                                 globals=f_globals)
+        except SyntaxError as err:
+            if "'return' with argument inside generator" in err.message:
+                if isinstance(transformed_ast.body[-1], Return):
+                    transformed_ast.body.pop(-1)
+                    new_f = meta.decompiler.compile_func(
+                        ast_node=transformed_ast,
+                        filename='<Context-AST>',
+                        globals=f_globals)
+            else:
+                raise
+        except:
+            raise
 
         # add defaults, if necessary (meta erases them and won't recompile!)
         if f.func_defaults:
