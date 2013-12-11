@@ -556,7 +556,7 @@ class TheanoTransformer(NodeTransformer):
               or func in (min, max)):
 
             # abs
-            if func.__name__ in (np.abs, np.absolute):
+            if func in (np.abs, np.absolute):
                 return abs
 
             # ones/zeros
