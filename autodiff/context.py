@@ -111,6 +111,10 @@ def get_ast(func):
         func_def = module_ast.body[0]
         _fix_ast(func_def)
         assert isinstance(func_def, FunctionDef)
+        # remove docstrings (really any unassigned strings)
+        for node in func_def.body:
+            if isinstance(node, Expr) and isinstance(node.value, Str):
+                func_def.body.remove(node)
         return func_def
 
 #########################
