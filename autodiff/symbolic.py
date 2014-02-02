@@ -2,12 +2,12 @@ import numpy as np
 import theano
 import theano.tensor as T
 import inspect
+import collections
+from collections import OrderedDict
 
 from autodiff.context import Context
-from autodiff.compat import OrderedDict
 import autodiff.utils as utils
 from autodiff.functions import escape, escaped_call
-import collections
 
 
 class Symbolic(object):

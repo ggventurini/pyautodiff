@@ -4,7 +4,8 @@ import inspect
 import theano
 import numpy as np
 
-from autodiff.compat import OrderedDict, getcallargs
+from collections import OrderedDict
+from inspect import getcallargs
 
 #import theano
 #from theano.sandbox.cuda import cuda_ndarray
