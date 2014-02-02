@@ -243,7 +243,7 @@ class Context(object):
 
         # recreate method, if necessary
         if isinstance(f, types.MethodType):
-            new_f = types.MethodType(new_f, f.__self__, f.__self__.__class__)
+            new_f = types.MethodType(new_f, f.__self__)
 
         return new_f
 
@@ -459,6 +459,7 @@ class TheanoTransformer(NodeTransformer):
 
         Generally used to exchange NumPy functions for Theano equivalents.
         """
+
         # ** ======================= first handle functions defined here!
 
         if getattr(func, '__module__', None) == __name__:
