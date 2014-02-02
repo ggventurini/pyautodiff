@@ -1,8 +1,14 @@
+import sys
 from setuptools import setup
 
+if sys.version < '3':
+    raise ImportError(
+        'This version of autodiff only support Python 3+. Please check out an '
+        'earlier branch for use with Python 2.')
+
 setup(
-    name='pyautodiff',
-    version='0.4',
+    name='autodiff',
+    version='0.5',
     maintainer='Lowin Data Company',
     maintainer_email='info@lowindata.com',
     description=('Automatic differentiation for NumPy.'),
@@ -13,8 +19,8 @@ setup(
     classifiers=[
         'Intended Audience :: Science/Research',
         'Intended Audience :: Developers',
-        'License :: OSI Approved',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: Software Development',
         'Topic :: Scientific/Engineering',
         'Operating System :: Microsoft :: Windows',
