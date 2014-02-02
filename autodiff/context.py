@@ -1147,7 +1147,7 @@ class TheanoTransformer(NodeTransformer):
                     args=[Name(ctx=Load(), id='v'),
                           Name(ctx=Load(), id='k')]))],
                 iter=simple_Call(
-                    func=Attribute(attr='iteritems',
+                    func=Attribute(attr='items',
                                    ctx=Load(),
                                    value=Name(ctx=Load(),
                                               id=node.args.kwarg))),
