@@ -174,7 +174,7 @@ class Symbolic(object):
                 reduction = getattr(theano.tensor, reduction.__name__)
             outputs = [reduction(o) if o.ndim > 0 else o for o in outputs]
 
-        if np.any([o.ndim != 0 for o in outputs]):
+        if any([o.ndim != 0 for o in outputs]):
             raise TypeError('Gradient requires either scalar outputs or a '
                             'reduction that returns a scalar.')
 
@@ -209,7 +209,7 @@ class Symbolic(object):
                 reduction = getattr(theano.tensor, reduction.__name__)
             outputs = [reduction(o) if o.ndim > 0 else o for o in outputs]
 
-        if np.any([o.ndim != 0 for o in outputs]):
+        if any([o.ndim != 0 for o in outputs]):
             raise TypeError('Gradient requires either scalar outputs or a '
                             'reduction that returns a scalar.')
 
