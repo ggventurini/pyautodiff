@@ -683,7 +683,8 @@ class TheanoTransformer(NodeTransformer):
             elif func is isinstance:
                 def isinstance_(obj, types):
                     escaped_obj = self.handle_escape(obj)
-                    if isinstance(escaped_obj, np.ndarray) and obj.ndim == 0:
+                    if (obj.ndim == 0 and
+                            isinstance(escaped_obj, (np.ndarray, np.number))):
                         escaped_obj = np.asscalar(escaped_obj)
                     return isinstance(escaped_obj, self.handle_escape(types))
                 return isinstance_
