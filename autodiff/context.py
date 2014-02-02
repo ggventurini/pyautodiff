@@ -1120,12 +1120,12 @@ class TheanoTransformer(NodeTransformer):
         # shadow and tag args
         for param in node.args.args:
             assigns.append(Assign(
-                targets=[Name(ctx=Store(), id=param.id)],
-                value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.id))))
+                targets=[Name(ctx=Store(), id=param.arg)],
+                value=self.ast_wrap('shadow', Name(ctx=Load(), id=param.arg))))
 
             tags.append(Expr(value=self.ast_wrap(
                 method_name='handle_tag_function_arg',
-                args=[Name(ctx=Load(), id=param.id), Str(s=param.id)])))
+                args=[Name(ctx=Load(), id=param.arg), Str(s=param.arg)])))
 
         # shadow the varargs
         if node.args.vararg:
