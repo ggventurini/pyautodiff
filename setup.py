@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='pyautodiff',
+    name='autodiff',
     version='0.3',
     maintainer='Lowin Data Company',
     maintainer_email='info@lowindata.com',
