@@ -523,6 +523,19 @@ class VectorArg(object):
         new_args = []
         idx = 0
         for arg in escape(self.init_args):
-            new_args.append(vector[idx: idx + arg.size].reshape(*arg.shape))
-            idx += arg.size
+            # new_args.append(vector[idx: idx + arg.size].reshape(*arg.shape))
+            # avoid using arg.size or prod(arg.shape) because Theano's prod
+            # doesn't support R-op
+            new_args.append(vector[idx: idx + safesize(arg)].reshape(*arg.shape))
+            idx += safesize(arg)
         return new_args
+
+
+def safesize(arg):
+    if arg.ndim == 0:
+        size = 1
+    else:
+        size = arg.shape[0]
+        for i in list(range(1, arg.ndim)):
+            size *= arg.shape[i]
+    return size
