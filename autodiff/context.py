@@ -122,7 +122,7 @@ def get_ast(func):
 
 
 def get_source(ast):
-    if hasattr(ast, 'func_code'):
+    if hasattr(ast, '__code__'):
         ast = get_ast(ast)
     elif isinstance(ast, collections.Callable):
         ast = get_ast(ast.__call__)
@@ -130,7 +130,7 @@ def get_source(ast):
 
 
 def print_ast(ast):
-    if hasattr(ast, 'func_code'):
+    if hasattr(ast, '__code__'):
         ast = get_ast(ast)
     elif isinstance(ast, collections.Callable):
         ast = get_ast(ast.__call__)
@@ -138,7 +138,7 @@ def print_ast(ast):
 
 
 def print_source(ast):
-    if hasattr(ast, 'func_code'):
+    if hasattr(ast, '__code__'):
         ast = get_ast(ast)
     elif isinstance(ast, collections.Callable):
         ast = get_ast(ast.__call__)
