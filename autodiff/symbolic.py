@@ -7,6 +7,7 @@ from autodiff.context import Context
 from autodiff.compat import OrderedDict
 import autodiff.utils as utils
 from autodiff.functions import escape, escaped_call
+import collections
 
 
 class Symbolic(object):
@@ -168,7 +169,7 @@ class Symbolic(object):
         if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
             reduction = getattr(theano.tensor, reduction)
 
-        if callable(reduction):
+        if isinstance(reduction, collections.Callable):
             if 'numpy' in reduction.__module__:
                 reduction = getattr(theano.tensor, reduction.__name__)
             outputs = [reduction(o) if o.ndim > 0 else o for o in outputs]
@@ -203,7 +204,7 @@ class Symbolic(object):
         if reduction in ['sum', 'max', 'mean', 'min', 'prod', 'std', 'var']:
             reduction = getattr(theano.tensor, reduction)
 
-        if callable(reduction):
+        if isinstance(reduction, collections.Callable):
             if 'numpy' in reduction.__module__:
                 reduction = getattr(theano.tensor, reduction.__name__)
             outputs = [reduction(o) if o.ndim > 0 else o for o in outputs]
@@ -514,7 +515,7 @@ class VectorArg(object):
         elif len(args) > 0:
             return np.asarray(args[0]).flatten()
         elif len(kwargs) > 0:
-            return np.asarray(kwargs.values()[0]).flatten()
+            return np.asarray(list(kwargs.values())[0]).flatten()
         else:
             return None
 

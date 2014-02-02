@@ -91,7 +91,7 @@ def itercode(code):
             extended_arg = 0
             i = i + 2
             if op == opcode.EXTENDED_ARG:
-                extended_arg = oparg * 65536L
+                extended_arg = oparg * 65536
 
         delta = yield num, op, oparg
         if delta is not None:
@@ -113,9 +113,9 @@ def flatten(container):
             rval.extend(flatten(d_i))
     elif isinstance(container, dict):
         if isinstance(container, OrderedDict):
-            sortedkeys = container.iterkeys()
+            sortedkeys = container.keys()
         else:
-            sortedkeys = sorted(container.iterkeys())
+            sortedkeys = sorted(container.keys())
         for k in sortedkeys:
             # if isinstance(k, (tuple, dict)):
                 # # -- if keys are tuples containing ndarrays, should
@@ -147,9 +147,9 @@ def unflatten(container, flat):
         elif isinstance(container, dict):
             rval = type(container)()
             if isinstance(container, OrderedDict):
-                sortedkeys = container.iterkeys()
+                sortedkeys = container.keys()
             else:
-                sortedkeys = sorted(container.iterkeys())
+                sortedkeys = sorted(container.keys())
             for k in sortedkeys:
                 v_clone, pos = unflatten_inner(container[k], pos)
                 rval[k] = v_clone

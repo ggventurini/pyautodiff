@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import copy
-import __builtin__
+import builtins
 import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
@@ -262,27 +262,27 @@ class Python(unittest.TestCase):
         def f():
             x = np.ones(5)
             y = np.ones(5) * 5
-            return __builtin__.sum([x, y])
+            return builtins.sum([x, y])
         self.assertTrue(checkfn(f, []))
 
     def test_max(self):
         def f():
             x = np.arange(5)
-            return __builtin__.max(x)
+            return builtins.max(x)
         self.assertTrue(checkfn(f, []))
 
         def f(x):
-            return __builtin__.max(x)
+            return builtins.max(x)
         self.assertTrue(checkfn(f, [1]))
 
     def test_min(self):
         def f():
             x = np.arange(5)
-            return __builtin__.min(x)
+            return builtins.min(x)
         self.assertTrue(checkfn(f, []))
 
         def f(x):
-            return __builtin__.min(x)
+            return builtins.min(x)
         self.assertTrue(checkfn(f, [1]))
 
     def test_isinstance(self):
@@ -415,7 +415,7 @@ class NumpyFns(unittest.TestCase):
     def test_dot(self):
         def fn(x, y):
             return np.dot(x, y)
-        for nd in np.ndindex(*([3] * fn.func_code.co_argcount)):
+        for nd in np.ndindex(*([3] * fn.__code__.co_argcount)):
             self.assertTrue(checkfn(fn, nd))
 
     def test_exp(self):

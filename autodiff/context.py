@@ -1,4 +1,3 @@
-import __builtin__
 import logging
 import meta
 from ast import *
@@ -10,6 +9,7 @@ import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
 import autodiff.functions
+import collections
 
 
 logger = logging.getLogger('autodiff')
@@ -124,7 +124,7 @@ def get_ast(func):
 def get_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
-    elif callable(ast):
+    elif isinstance(ast, collections.Callable):
         ast = get_ast(ast.__call__)
     return meta.asttools.dump_python_source(ast)
 
@@ -132,7 +132,7 @@ def get_source(ast):
 def print_ast(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
-    elif callable(ast):
+    elif isinstance(ast, collections.Callable):
         ast = get_ast(ast.__call__)
     meta.asttools.print_ast(ast)
 
@@ -140,7 +140,7 @@ def print_ast(ast):
 def print_source(ast):
     if hasattr(ast, 'func_code'):
         ast = get_ast(ast)
-    elif callable(ast):
+    elif isinstance(ast, collections.Callable):
         ast = get_ast(ast.__call__)
     meta.asttools.python_source(ast)
 
@@ -206,17 +206,17 @@ class Context(object):
 
         transformed_ast = fix_missing_locations(transformer.visit(f_ast))
 
-        f_globals = f.func_globals.copy()
+        f_globals = f.__globals__.copy()
         f_globals.update(dict(_ctx__=transformer,
                               _functions__=autodiff.functions,
                               _T__=theano.tensor,
                               _utils__=autodiff.utils))
-        if f.func_closure:
+        if f.__closure__:
             f_globals.update((v, transformer.shadow(c.cell_contents))
                              for v, c in
-                             zip(f.func_code.co_freevars, f.func_closure))
+                             zip(f.__code__.co_freevars, f.__closure__))
 
-        for name in f.func_code.co_names:
+        for name in f.__code__.co_names:
             if name in f_globals.iterkeys():
                 f_globals[name] = transformer.shadow(f_globals[name])
 
@@ -238,12 +238,12 @@ class Context(object):
             raise
 
         # add defaults, if necessary (meta erases them and won't recompile!)
-        if f.func_defaults:
-            new_f.func_defaults = utils.clean_int_args(*f.func_defaults)[0]
+        if f.__defaults__:
+            new_f.__defaults__ = utils.clean_int_args(*f.__defaults__)[0]
 
         # recreate method, if necessary
         if isinstance(f, types.MethodType):
-            new_f = types.MethodType(new_f, f.im_self, f.im_class)
+            new_f = types.MethodType(new_f, f.__self__, f.__self__.__class__)
 
         return new_f
 
@@ -257,7 +257,7 @@ class Context(object):
         if x is a string, it must have been tagged with
         autodiff.functions.tag().
         """
-        if isinstance(x, basestring):
+        if isinstance(x, str):
             if x in self.sym_vars:
                 return self.sym_vars[x]
             elif x in self.tags:
@@ -430,7 +430,7 @@ class TheanoTransformer(NodeTransformer):
             return x
 
     def handle_tag(self, obj, tag):
-        if not isinstance(tag, basestring):
+        if not isinstance(tag, str):
             raise ValueError('Tag must be a string. Received: {0}'.format(tag))
         if tag in self.context.tags:
             logger.warning(
@@ -633,7 +633,7 @@ class TheanoTransformer(NodeTransformer):
             # zip
             elif func is zip:
                 def zip_(*args):
-                    if __builtin__.any(utils.isvar(a) for a in args):
+                    if any(utils.isvar(a) for a in args):
                         raise TypeError(
                             'Called zip() on Tensor but Tensors '
                             'do not support iteration. Maybe try escaping '
@@ -788,7 +788,7 @@ class TheanoTransformer(NodeTransformer):
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
                 axis1, axis2 = (self.handle_escape(a) for a in args)
-                dims = range(var.ndim)
+                dims = list(range(var.ndim))
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
             return swapaxes
@@ -841,8 +841,8 @@ class TheanoTransformer(NodeTransformer):
             def reduce_(*args, **kwargs):
                 method = getattr(var, method_name)
                 all_args = inspect.getcallargs(method, *args, **kwargs)
-                for k, v in all_args.items():
-                    if v is method.im_self:
+                for k, v in list(all_args.items()):
+                    if v is method.__self__:
                         all_args.pop(k)
                 all_args['axis'] = self.handle_escape(all_args['axis'])
                 return method(**all_args)

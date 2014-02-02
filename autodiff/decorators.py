@@ -1,4 +1,5 @@
 from autodiff.symbolic import Symbolic, Function, Gradient, HessianVector
+import collections
 
 
 def function(fn=None, **kwargs):
@@ -21,7 +22,7 @@ def function(fn=None, **kwargs):
             def python_function(x=1, y=2):
                 return do_something()
     """
-    if callable(fn):
+    if isinstance(fn, collections.Callable):
         return Function(fn, **kwargs)
     else:
         def function_wrapper(pyfn):
@@ -51,7 +52,7 @@ def gradient(fn=None, **kwargs):
             return do_something()
 
     """
-    if callable(fn):
+    if isinstance(fn, collections.Callable):
         return Gradient(fn, **kwargs)
     else:
         def gradient_wrapper(pyfn):
@@ -83,7 +84,7 @@ def hessian_vector(fn=None, **kwargs):
             return do_something()
 
     """
-    if callable(fn):
+    if isinstance(fn, collections.Callable):
         return HessianVector(fn, **kwargs)
     else:
         def hv_wrapper(pyfn):
@@ -106,7 +107,7 @@ def symbolic(fn=None, **kwargs):
         python_function(...) # calls function as if it worked with Theano objs
 
     """
-    if callable(fn):
+    if isinstance(fn, collections.Callable):
         return Symbolic(fn, **kwargs)
     else:
         def function_wrapper(pyfn):

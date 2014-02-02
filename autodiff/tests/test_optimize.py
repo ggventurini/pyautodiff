@@ -115,7 +115,7 @@ class TestSVM(unittest.TestCase):
             loss = np.maximum(0, 1 - margin) ** 2
             l2_cost = 0.5 * l2_regularization * np.dot(weights, weights)
             loss = np.mean(loss) + l2_cost
-            print 'ran loss_fn(), returning', loss
+            print('ran loss_fn(), returning', loss)
             return loss
 
         w, b = fmin_l_bfgs_b(loss_fn, (np.zeros(5), np.zeros(())))
