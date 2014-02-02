@@ -502,9 +502,29 @@ class TheanoTransformer(NodeTransformer):
               and getattr(func, '__module__').startswith('theano')):
             return func
 
-        # ** ======================= type/casting functions
+        # ** ======================= type/casting functions and new builtins
 
         elif type(func) is type:
+
+            # range
+            if func is range:
+                def range_(*args):
+                    return func(*(self.handle_escape(a) for a in args))
+                return range_
+
+            # zip
+            if func is zip:
+                def zip_(*args):
+                    if any(utils.isvar(a) for a in args):
+                        raise TypeError(
+                            'Called zip() on Tensor but Tensors '
+                            'do not support iteration. Maybe try escaping '
+                            'the tensor?')
+                    else:
+                        return zip(*args)
+                return zip_
+
+            # casts
 
             if func in(bool, np.bool_, np.bool8):
                 logger.info('Warning: Theano has no bool type; '
@@ -624,26 +644,8 @@ class TheanoTransformer(NodeTransformer):
 
         elif '<built-in' in str(func):
 
-            # range
-            if func is range:
-                def range_(*args):
-                    return func(*(self.handle_escape(a) for a in args))
-                return range_
-
-            # zip
-            elif func is zip:
-                def zip_(*args):
-                    if any(utils.isvar(a) for a in args):
-                        raise TypeError(
-                            'Called zip() on Tensor but Tensors '
-                            'do not support iteration. Maybe try escaping '
-                            'the tensor?')
-                    else:
-                        return zip(*args)
-                return zip_
-
             # uniform random numbers (np.random.uniform)
-            elif func is np.random.uniform:
+            if func is np.random.uniform:
                 def rand_u(low=0.0, high=1.0, size=1):
                     return global_randomstreams.uniform(low=low,
                                                         high=high,
