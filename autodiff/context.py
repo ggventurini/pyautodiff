@@ -217,7 +217,7 @@ class Context(object):
                              zip(f.__code__.co_freevars, f.__closure__))
 
         for name in f.__code__.co_names:
-            if name in f_globals.iterkeys():
+            if name in f_globals.keys():
                 f_globals[name] = transformer.shadow(f_globals[name])
 
         try:
