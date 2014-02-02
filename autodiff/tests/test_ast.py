@@ -307,7 +307,6 @@ class Python(unittest.TestCase):
         self.assertTrue(checkfn(g, [], 1, 2, 3))
 
     def test_nested_def_tuple_index(self):
-        reload(autodiff.context)
         def g(*x):
             def f(*x):
                 return x[1]
