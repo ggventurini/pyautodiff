@@ -624,8 +624,8 @@ class TheanoTransformer(NodeTransformer):
 
         elif '<built-in' in str(func):
 
-            # ranges
-            if func in (range, xrange):
+            # range
+            if func is range:
                 def range_(*args):
                     return func(*(self.handle_escape(a) for a in args))
                 return range_
