@@ -214,6 +214,25 @@ class Python(unittest.TestCase):
             return x
         self.assertTrue(checkfn(f, [1], 3))
 
+        def f():
+            l = []
+            for i in range(3):
+                l.append(i)
+            return l
+        self.assertTrue(checkfn(f, []))
+
+        def f():
+            l1 = {i:i for i in range(3)}
+            l2 = [l1[i] for i in range(3)]
+            return l2
+        self.assertRaises(KeyError, checkfn, f, [])
+
+        def f():
+            l1 = {escape(i):i for i in range(3)}
+            l2 = [l1[escape(i)] for i in range(3)]
+            return l2
+        self.assertTrue(checkfn(f, []))
+
     def test_pass(self):
         def fn(x):
             pass
@@ -974,3 +993,29 @@ class Ops(unittest.TestCase):
             x[:] += 100
             return x
         self.assertTrue(checkfn(f, [2]))
+
+
+class Collections(unittest.TestCase):
+
+    def test_views(self):
+        from collections import OrderedDict
+
+        def f():
+            d = {1: 2, 3: 4, 5: 6}
+            return list(v for v in d.values())
+
+        self.assertTrue(checkfn(f, []))
+
+    def test_OrderedDict(self):
+        from collections import OrderedDict
+
+        o = OrderedDict(a=1, b=2, c=3)
+        def f():
+            x = 0
+            for v in o.values():
+                x += v
+            return x
+
+        self.assertTrue(checkfn(f, []))
+
+

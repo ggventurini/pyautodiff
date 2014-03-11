@@ -726,6 +726,13 @@ class TheanoTransformer(NodeTransformer):
               and func.__name__ == 'set_trace'):
             return func
 
+        # ** ======================= Special handling for OrderedDict views
+
+        elif func in (collections.abc.ValuesView,
+                      collections.abc.KeysView,
+                      collections.abc.ItemsView):
+            return func
+
         # ** ======================= Anything else
 
         else:
