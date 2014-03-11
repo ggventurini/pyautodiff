@@ -116,7 +116,11 @@ def flatten(container):
         if isinstance(container, OrderedDict):
             sortedkeys = container.keys()
         else:
-            sortedkeys = sorted(container.keys())
+            try:
+                sortedkeys = sorted(container.keys())
+            except TypeError:
+                sortedkeys = container.keys()
+
         for k in sortedkeys:
             # if isinstance(k, (tuple, dict)):
                 # # -- if keys are tuples containing ndarrays, should
@@ -150,7 +154,10 @@ def unflatten(container, flat):
             if isinstance(container, OrderedDict):
                 sortedkeys = container.keys()
             else:
-                sortedkeys = sorted(container.keys())
+                try:
+                    sortedkeys = sorted(container.keys())
+                except TypeError:
+                    sortedkeys = container.keys()
             for k in sortedkeys:
                 v_clone, pos = unflatten_inner(container[k], pos)
                 rval[k] = v_clone
