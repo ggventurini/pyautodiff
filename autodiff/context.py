@@ -571,8 +571,9 @@ class TheanoTransformer(NodeTransformer):
 
         # ** ======================= numpy functions
 
-        elif (getattr(func, '__module__', None)
-              and getattr(func, '__module__').startswith('numpy')
+        elif (inspect.getmodule(func) is np
+              or (getattr(func, '__module__', None)
+                  and getattr(func, '__module__').startswith('numpy'))
               or isinstance(func, np.ufunc)
               or func in (min, max)):
 
@@ -640,6 +641,11 @@ class TheanoTransformer(NodeTransformer):
             else:
                 raise ValueError(
                     'Autodiff unsupported function: {0}'.format(func))
+
+        # ** ======================= ignore the inspect module
+
+        elif inspect.getmodule(func) is inspect:
+            return func
 
         # ** ======================= built-ins
 
