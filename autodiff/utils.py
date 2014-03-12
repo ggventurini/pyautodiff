@@ -147,7 +147,11 @@ def unflatten(container, flat):
             for d_i in container:
                 d_i_clone, pos = unflatten_inner(d_i, pos)
                 rval.append(d_i_clone)
-            rval = type(container)(rval)
+            # check for namedtuple, which has a different __new__ signature
+            if hasattr(container, '_fields'):
+                rval = type(container)(*rval)
+            else:
+                rval = type(container)(rval)
 
         elif isinstance(container, dict):
             rval = type(container)()
