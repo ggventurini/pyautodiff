@@ -5,6 +5,8 @@
 
 AutoDiff automatically compiles NumPy code with [Theano](http://deeplearning.net/software/theano/)'s powerful symbolic engine, allowing users to take advantage of features like mathematical optimization, GPU acceleration, and automatic  differentiation.
 
+Please note that development has shifted to Python 3, though this branch maintains support for Python 2. Python 3 users should check out the [python3](https://github.com/LowinData/pyautodiff/tree/python3) branch.
+
 ## Quickstart
 
 ### Decorators
