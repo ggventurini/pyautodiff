@@ -943,6 +943,12 @@ class ArraySubscripts(unittest.TestCase):
             return x
         self.assertTrue(checkfn(f, [2]))
 
+        def f():
+            d = {1: {2: 3}}
+            d[1][2] = 4
+            return d[1][2]
+        self.assertTrue(checkfn(f, []))
+
 
 class TestMethods(unittest.TestCase):
     def test_instance_method(self):
@@ -1017,5 +1023,3 @@ class Collections(unittest.TestCase):
             return x
 
         self.assertTrue(checkfn(f, []))
-
-

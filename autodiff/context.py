@@ -969,7 +969,7 @@ class TheanoTransformer(NodeTransformer):
                 # wrap set_subtensor statements in Assign to root tensor
                 assign_subtensor = Assign(targets=[Name(ctx=Store(),
                                                         id=tensor.id)],
-                                          value=self.generic_visit(set_subt))
+                                          value=set_subt)
 
                 # wrap assign_subtensor in If to ensure that the modification
                 # is only applied to tensor args
