@@ -744,7 +744,7 @@ class TheanoTransformer(NodeTransformer):
         else:
             try:
                 return self.context.recompile(func, nested=True)
-            except:
+            except Exception as err:
                 if self.context.escape_on_error:
                     logger.warning(
                         'Error when recompiling {0}. Calling escaped version '
@@ -753,7 +753,9 @@ class TheanoTransformer(NodeTransformer):
                         return self.handle_escaped_call(func, *args, **kwargs)
                     return escapedfunc
                 else:
-                    raise ValueError('Unsupported function: {0}'.format(func))
+                    raise ValueError(
+                        'Unsupported function: {}. The following error was '
+                        'raised: {}'.format(func, err))
 
         # ** ======================= Catchall (shouldn't be called)
 
