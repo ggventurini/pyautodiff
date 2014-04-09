@@ -532,6 +532,10 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.sort(x), [2]))
         self.assertTrue(checkfn(lambda x: np.sort(x, 0), [2]))
 
+    def test_concatenate(self):
+        self.assertTrue(checkfn(lambda x, y: np.vstack((x, y)), [2, 2]))
+        self.assertTrue(checkfn(lambda x, y: np.hstack((x, y)), [2, 2]))
+
 
 class ArrayMethodsAttributes(unittest.TestCase):
     """

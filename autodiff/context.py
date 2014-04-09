@@ -634,6 +634,18 @@ class TheanoTransformer(NodeTransformer):
                         return x
                 return _atleast_3d
 
+            # vstack
+            elif func is np.vstack:
+                def _vstack(tup):
+                    return T.vertical_stack(*tup)
+                return _vstack
+
+            # hstack
+            elif func is np.hstack:
+                def _hstack(tup):
+                    return T.horizontal_stack(*tup)
+                return _hstack
+
             # get equivalent Theano function
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)
