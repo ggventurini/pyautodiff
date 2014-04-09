@@ -7,6 +7,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+import autodiff.utils
 import autodiff.optimize
 
 from autodiff.symbolic import Symbolic, Function, Gradient, HessianVector
