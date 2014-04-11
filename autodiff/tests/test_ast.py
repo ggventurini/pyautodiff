@@ -483,10 +483,9 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.sum(x), [2]))
         self.assertTrue(checkfn(lambda x: np.sum(x, 1), [2]))
         self.assertTrue(checkfn(lambda x: np.sum(x, axis=1), [2]))
-        self.assertRaises(TypeError, checkfn,
-                          lambda x, a: np.sum(x, a), [2], 0)
-        self.assertRaises(TypeError, checkfn,
-                          lambda x, a: np.sum(x, axis=a), [2], 0)
+        self.assertTrue(checkfn(lambda x: np.sum(x, axis=1), [2]))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, axis=a), [2], 0))
 
     def test_sqrt(self):
         def fn(x):
@@ -535,6 +534,11 @@ class NumpyFns(unittest.TestCase):
     def test_concatenate(self):
         self.assertTrue(checkfn(lambda x, y: np.vstack((x, y)), [2, 2]))
         self.assertTrue(checkfn(lambda x, y: np.hstack((x, y)), [2, 2]))
+
+    def test_axis(self):
+        def f(x, axis=1):
+            return np.std(x, axis=axis)
+        self.assertTrue(checkfn(f, [2]))
 
 
 class ArrayMethodsAttributes(unittest.TestCase):

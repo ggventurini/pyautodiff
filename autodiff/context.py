@@ -646,6 +646,27 @@ class TheanoTransformer(NodeTransformer):
                     return T.horizontal_stack(*tup)
                 return _hstack
 
+            # functions taking axis as an argument -- make sure to escape it
+            elif func in (np.argmax,
+                          np.argmin,
+                          np.argsort,
+                          np.max,
+                          np.mean,
+                          np.min,
+                          np.prod,
+                          np.std,
+                          np.sum,
+                          np.var):
+                def reduce_(*args, **kwargs):
+                    theano_func = getattr(T, func.__name__)
+                    if 'axis' in kwargs:
+                        kwargs['axis'] = self.handle_escape(kwargs['axis'])
+                    elif len(args) >= 2:
+                        args = list(args)
+                        args[1] = self.handle_escape(args[1])
+                    return theano_func(*args, **kwargs)
+                return reduce_
+
             # get equivalent Theano function
             elif hasattr(T, func.__name__):
                 return getattr(T, func.__name__)
