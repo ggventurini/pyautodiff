@@ -404,8 +404,10 @@ class TheanoTransformer(NodeTransformer):
             elif utils.isvar(x):
                 try:
                     return x.eval()
-                except:
-                    raise ValueError('Could not escape {0}'.format(x))
+                except Exception as e:
+                    raise ValueError(
+                        'Could not escape {}. \nThe following error was '
+                        'raised when trying to call eval():\n{}'.format(x, e))
             else:
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
