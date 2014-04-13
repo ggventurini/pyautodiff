@@ -666,6 +666,13 @@ class TheanoTransformer(NodeTransformer):
                     elif len(args) >= 2:
                         args = list(args)
                         args[1] = self.handle_escape(args[1])
+
+                    # sometimes Theano uses 'a', sometimes it uses 'x'
+                    np_first_arg = inspect.getargspec(func).args[0]
+                    t_first_arg = inspect.getargspec(theano_func).args[0]
+                    if np_first_arg in kwargs:
+                        if np_first_arg != t_first_arg:
+                            kwargs[t_first_arg] = kwargs.pop(np_first_arg)
                     return theano_func(*args, **kwargs)
                 return reduce_
 
