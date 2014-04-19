@@ -235,7 +235,8 @@ class Symbolic(object):
                 inputs=None,
                 outputs=None,
                 wrt=None,
-                reduction=None):
+                reduction=None,
+                allow_input_downcast=False):
 
         assert isinstance(function, bool)
         assert isinstance(gradient, bool)
@@ -278,23 +279,32 @@ class Symbolic(object):
 
         fn = theano.function(inputs=inputs,
                              outputs=outputs,
-                             on_unused_input='ignore')
+                             on_unused_input='ignore',
+                             allow_input_downcast=allow_input_downcast)
 
         return fn
 
-    def compile_function(self, inputs=None, outputs=None):
+    def compile_function(self,
+                         inputs=None,
+                         outputs=None,
+                         allow_input_downcast=False):
         """
         Based on traced variables, compile a Theano function of the inputs that
         returns the outputs.
         """
-        fn = self.compile(function=True, inputs=inputs, outputs=outputs)
+        fn = self.compile(
+            function=True,
+            inputs=inputs,
+            outputs=outputs,
+            allow_input_downcast=allow_input_downcast)
         return fn
 
     def compile_gradient(self,
                          inputs=None,
                          outputs=None,
                          wrt=None,
-                         reduction=None):
+                         reduction=None,
+                         allow_input_downcast=False):
         """
         Based on traced variables, compile a Theano function of the
         inputs that returns the gradient of the outputs with respect to wrt.
@@ -302,18 +312,21 @@ class Symbolic(object):
         be specified (since gradients are defined with respect to scalars); if
         None is supplied, it is assumed to be 'sum'.
         """
-        fn = self.compile(gradient=True,
-                          inputs=inputs,
-                          outputs=outputs,
-                          wrt=wrt,
-                          reduction=reduction)
+        fn = self.compile(
+            gradient=True,
+            inputs=inputs,
+            outputs=outputs,
+            wrt=wrt,
+            reduction=reduction,
+            allow_input_downcast=allow_input_downcast)
         return fn
 
     def compile_function_gradient(self,
                                   inputs=None,
                                   outputs=None,
                                   wrt=None,
-                                  reduction=None):
+                                  reduction=None,
+                                  allow_input_downcast=False):
         """
         Based on traced variables, compile a Theano function of the
         inputs that returns both the outputs and the gradient of the outputs
@@ -322,12 +335,14 @@ class Symbolic(object):
         respect to scalars); if None is supplied, it is assumed to be 'sum'.
         """
 
-        fn = self.compile(function=True,
-                          gradient=True,
-                          inputs=inputs,
-                          outputs=outputs,
-                          wrt=wrt,
-                          reduction=reduction)
+        fn = self.compile(
+            function=True,
+            gradient=True,
+            inputs=inputs,
+            outputs=outputs,
+            wrt=wrt,
+            reduction=reduction,
+            allow_input_downcast=allow_input_downcast)
         return fn
 
 
@@ -526,7 +541,8 @@ class VectorArg(object):
             # new_args.append(vector[idx: idx + arg.size].reshape(*arg.shape))
             # avoid using arg.size or prod(arg.shape) because Theano's prod
             # doesn't support R-op
-            new_args.append(vector[idx: idx + safesize(arg)].reshape(*arg.shape))
+            new_args.append(
+                vector[idx: idx + safesize(arg)].reshape(*arg.shape))
             idx += safesize(arg)
         return new_args
 
