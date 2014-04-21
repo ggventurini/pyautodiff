@@ -10,10 +10,19 @@ import autodiff.context as c
 from autodiff.functions import escape
 
 
-context = autodiff.context.Context()
-
+context = autodiff.context.Context(force_floatX=False)
+context_floatX = autodiff.context.Context(force_floatX=True)
 
 def checkfn(f, var_ndim=None, *args, **kwargs):
+    test_floatX = kwargs.pop('test_floatX', True)
+    result1 = _checkfn(context, f, var_ndim, *args, **kwargs)
+    if test_floatX:
+        result2 = _checkfn(context_floatX, f, var_ndim, *args, **kwargs)
+        return result1 and result2
+    else:
+        return result1
+
+def _checkfn(context, f, var_ndim=None, *args, **kwargs):
     context.reset()
 
     override = kwargs.pop('override', None)
@@ -325,8 +334,8 @@ class Python(unittest.TestCase):
                 return 1
             elif isinstance(x, float):
                 return -1
-        self.assertTrue(checkfn(f, [], 1))
-        self.assertTrue(checkfn(f, [], 1.0))
+        self.assertTrue(checkfn(f, [], 1, test_floatX=False))
+        self.assertTrue(checkfn(f, [], 1.0, test_floatX=False))
 
     def test_tuple_index(self):
         def f(*x):

@@ -430,6 +430,13 @@ class TheanoTransformer(NodeTransformer):
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
 
+    def handle_int(self, x):
+        escaped_x = self.handle_escape(x)
+        if utils.isvar(x) and x.ndim == 0 and 'float' in x.dtype:
+            return int(escaped_x)
+        else:
+            return escaped_x
+
     @staticmethod
     def handle_escaped_call(fn, *args, **kwargs):
         esc_args = utils.unflatten(
@@ -547,7 +554,7 @@ class TheanoTransformer(NodeTransformer):
             # range
             if func is range:
                 def range_(*args):
-                    return func(*(self.handle_escape(a) for a in args))
+                    return func(*(self.handle_int(a) for a in args))
                 return range_
 
             # zip
@@ -671,6 +678,18 @@ class TheanoTransformer(NodeTransformer):
                         return x
                 return _atleast_3d
 
+            # reshape
+            elif func is np.reshape:
+                def _reshape(*args, **kwargs):
+                    callargs = inspect.getcallargs(T.reshape, *args, **kwargs)
+                    x, newshape = callargs['x'], callargs['newshape']
+                    if isinstance(newshape, (list, tuple)):
+                        newshape = [s.astype('int64') for s in newshape]
+                    else:
+                        newshape = newshape.astype('int64')
+                    return T.reshape(x, newshape)
+                return _reshape
+
             # vstack
             elif func is np.vstack:
                 def _vstack(tup):
@@ -697,14 +716,10 @@ class TheanoTransformer(NodeTransformer):
                 def reduce_(*args, **kwargs):
                     theano_func = getattr(T, func.__name__)
                     if 'axis' in kwargs:
-                        kwargs['axis'] = self.handle_escape(kwargs['axis'])
-                        if kwargs['axis'] is not None:
-                            kwargs['axis'] = int(kwargs['axis'])
+                        kwargs['axis'] = self.handle_int(kwargs['axis'])
                     elif len(args) >= 2:
                         args = list(args)
-                        args[1] = self.handle_escape(args[1])
-                        if args[1] is not None:
-                            args[1] = int(args[1])
+                        args[1] = self.handle_int(args[1])
 
                     # sometimes Theano uses 'a', sometimes it uses 'x'
                     np_first_arg = inspect.getargspec(func).args[0]
@@ -712,6 +727,7 @@ class TheanoTransformer(NodeTransformer):
                     if np_first_arg in kwargs:
                         if np_first_arg != t_first_arg:
                             kwargs[t_first_arg] = kwargs.pop(np_first_arg)
+
                     return theano_func(*args, **kwargs)
                 return reduce_
 
@@ -769,6 +785,11 @@ class TheanoTransformer(NodeTransformer):
             # isinstance
             elif func is isinstance:
                 def isinstance_(obj, types):
+                    if self.context.force_floatX:
+                        raise TypeError(
+                            'isinstance does not work as expected when '
+                            'force_floatX is True. Consider escaping the '
+                            'call.')
                     escaped_obj = self.handle_escape(obj)
                     if (isinstance(escaped_obj, (np.ndarray, np.number))
                             and obj.ndim == 0):
@@ -867,6 +888,9 @@ class TheanoTransformer(NodeTransformer):
         # Theano's reshape requires dim to be in a collection, unlike Numpy.
         if method_name == 'reshape':
             def reshape(*args, **kwargs):
+                if 'shape' in kwargs:
+                    args = [kwargs.pop('shape')] + list(args)
+
                 if not isinstance(args[0], (list, tuple)):
                     args = [args]
 
@@ -879,8 +903,24 @@ class TheanoTransformer(NodeTransformer):
                             'with vectors of length 1.')
                     return var[0]
                 else:
+                    args = list(args)
+                    args[0] = [a.astype('int64') for a in args[0]]
                     return var.reshape(*args, **kwargs)
             return reshape
+
+        # ** ======================= repeat
+
+        elif method_name == 'repeat':
+            def repeat(repeats, axis=None):
+                if isinstance(repeats, (list, tuple)):
+                    repeats = [r.astype('int64') for r in repeats]
+                else:
+                    repeats = repeats.astype('int64')
+
+                if utils.isvar(axis):
+                    axis = axis.astype('int64')
+                return var.repeat(repeats, axis)
+            return repeat
 
         # ** ======================= swapaxes
 
