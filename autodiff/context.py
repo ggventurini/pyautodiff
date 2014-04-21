@@ -438,14 +438,28 @@ class TheanoTransformer(NodeTransformer):
             kwargs, [TheanoTransformer.handle_escape(a) for a in utils.flatten(kwargs)])
         return fn(*esc_args, **esc_kwargs)
 
-    def handle_bool_subscript(self, x):
+    def handle_subscript(self, x):
         """
         Theano doesn't have a bool type, but we can track certain variables
         that we know must be boolean and possibly use that information (for
         advanced indexing, for example).
+
+        We also cast non-integer scalar indices to ints (they may be coerced
+        to floats by the force_floatX option, for example).
         """
-        if utils.isvar(x) and x.dtype == 'int8':
-            return x.nonzero()
+        if isinstance(x, (list, tuple)):
+            return type(x)(self._handle_subscript_inner(xi) for xi in x)
+        else:
+            return self._handle_subscript_inner(x)
+
+    def _handle_subscript_inner(self, x):
+        if utils.isvar(x):
+            if x.ndim > 0 and x.dtype == 'int8':
+                return x.nonzero()
+            elif x.ndim == 0 and 'int' not in x.dtype:
+                return x.astype('int64')
+            else:
+                return x
         else:
             return x
 
@@ -1301,7 +1315,7 @@ class TheanoTransformer(NodeTransformer):
         """
         self.generic_visit(node)
         if isinstance(node.slice, Index):
-            node.slice = Index(value=self.ast_wrap('handle_bool_subscript',
+            node.slice = Index(value=self.ast_wrap('handle_subscript',
                                                    node.slice.value))
         return node
 
