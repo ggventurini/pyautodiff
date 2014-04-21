@@ -706,6 +706,7 @@ class TheanoTransformer(NodeTransformer):
             elif func in (np.argmax,
                           np.argmin,
                           np.argsort,
+                          np.concatenate,
                           np.max,
                           np.mean,
                           np.min,
@@ -971,6 +972,7 @@ class TheanoTransformer(NodeTransformer):
         elif method_name in ('argmax',
                              'argmin',
                              'argsort',
+                             'concatenate'
                              'max',
                              'mean',
                              'min',
