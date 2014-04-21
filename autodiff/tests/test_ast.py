@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import copy
 import builtins
+import theano
 import theano.tensor as T
 import autodiff
 import autodiff.utils as utils
@@ -64,6 +65,20 @@ class Tags(unittest.TestCase):
         self.assertTrue('arg2' in context.sym_vars)
         self.assertTrue('arg3' not in context.sym_vars)
         self.assertTrue('arg4' not in context.sym_vars)
+
+
+class ForceFloatX(unittest.TestCase):
+    def test_force_floatX(self):
+        def f(x):
+            return x
+        ctx = autodiff.context.Context(force_floatX=False)
+        ctx_floatX = autodiff.context.Context(force_floatX=True)
+        F = ctx.recompile(f)
+        F_floatX = ctx_floatX.recompile(f)
+
+        x = np.array([1, 2, 3])
+        self.assertTrue(F(x).dtype == 'int64')
+        self.assertTrue(F_floatX(x).dtype == theano.config.floatX)
 
 
 class Signatures(unittest.TestCase):

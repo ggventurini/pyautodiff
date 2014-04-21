@@ -134,7 +134,7 @@ AutoDiff takes NumPy functions and attempts to make them compatible with Theano 
 
  In AutoDiff, there **is** a way to sometimes avoid this problem, but at the cost of significantly more expensive calculations. If an `autodiff` class is instantiated with keyword `use_cache=False`, then it will not cache its compiled functions. Therefore, it will reevaluate all control flow statements at every call. However, compile and call a Theano function every time it is called -- meaning functions will take significantly longer to run. This should only be used as a last resort if more clever designs are simply not possible -- note that it will not solve all problems, as Theano and NumPy have certain irreconcilable differences.
 
-In addition, other small details may be important. For example, `dtypes` matter! In particular, Theano considers the gradient of an integer argument to be undefined, and also only supports `float32` dtypes on the GPU.
+In addition, other small details may be important. For example, `dtypes` matter! In particular, Theano considers the gradient of an integer argument to be undefined, and also only supports `float32` dtypes on the GPU. To assist with this, Autodiff optionally allows input downcasts (on by default) and can automatically cast all variables to Theano's global floatX setting.
 
 ## Concepts
 

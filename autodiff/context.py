@@ -172,7 +172,11 @@ def isvar_ast(name):
 
 class Context(object):
 
-    def __init__(self, borrowable=None, ignore=None, escape_on_error=False):
+    def __init__(self,
+                 borrowable=None,
+                 force_floatX=False,
+                 ignore=None,
+                 escape_on_error=False):
         self.sym_vars = dict()
         self.tags = dict()
         # FIXME do we need to hold on to all of these itermediates?
@@ -180,6 +184,7 @@ class Context(object):
         self._nogc = []
         self._top_def = None
         self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
+        self.force_floatX = force_floatX
         self.ignore = utils.as_seq(ignore, tuple)
         self.escape_on_error = escape_on_error
         self.shadowed_containers = dict()
@@ -366,16 +371,29 @@ class TheanoTransformer(NodeTransformer):
                 x = x.astype('int8')
 
             if id(x) not in self.context.sym_vars:
+
+                # store id because x will be changed if force_floatX is True
+                id_x = id(x)
+
                 # add to _nogc to ensure that the id won't be reused
                 self.context._nogc.append(x)
-                # create symbolic version:
-                if (isinstance(x, np.ndarray)
-                        and id(x) in self.context.borrowable):
-                    sym_x = theano.shared(x, borrow=True)
-                else:
+
+                # check if symbolic variable should be copied or borrowed
+                borrow = id_x in self.context.borrowable
+
+                # cast x if requested
+                if self.context.force_floatX:
+                    x = np.array(x, dtype=theano.config.floatX)
+
+                # create symbolic version
+                try:
+                    sym_x = theano.shared(x, borrow=borrow)
+                except:
                     sym_x = theano.shared(x)
+
                 # store symbolic version
-                self.context.sym_vars[id(x)] = sym_x
+                self.context.sym_vars[id_x] = sym_x
+
                 # return symbolic version
                 return sym_x
             else:
@@ -501,8 +519,11 @@ class TheanoTransformer(NodeTransformer):
 
         # ** ======================= Theano function
 
-        elif (getattr(func, '__module__', None)
-              and getattr(func, '__module__').startswith('theano')):
+        elif (getattr(func, '__module__', None) and
+                getattr(func, '__module__', '').startswith('theano')):
+            return func
+
+        elif isinstance(func, T.elemwise.Elemwise):
             return func
 
         # ** ======================= type/casting functions and new builtins

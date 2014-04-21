@@ -43,6 +43,20 @@ class TestSymbolic(unittest.TestCase):
         F = s.compile_function(x, o)
         self.assertTrue(np.allclose(F(x), f(x)))
 
+    def test_force_floatX(self):
+        def f(x):
+            return x + 1
+        s = Symbolic(f, force_floatX=False)
+        x = np.random.random((3, 4)).astype('int')
+        o = s.trace(x)[1]
+        F = s.compile_function(x, o)
+        self.assertTrue(np.allclose(F(x), f(x)))
+
+        s2 = Symbolic(f, force_floatX=True)
+        o2 = s2.trace(x)[1]
+        F2 = s2.compile_function(x, o2)
+        self.assertTrue(np.allclose(F2(x), f(x).astype(theano.config.floatX)))
+
     def test_compile_gradient(self):
         def f(x):
             return x ** 2

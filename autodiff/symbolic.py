@@ -20,6 +20,7 @@ class Symbolic(object):
     def __init__(self,
                  pyfn,
                  context=None,
+                 force_floatX=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False):
@@ -38,6 +39,7 @@ class Symbolic(object):
         if context is None:
             context = Context(borrowable=utils.as_seq(borrowable, tuple),
                               ignore=utils.as_seq(ignore, tuple),
+                              force_floatX=force_floatX,
                               escape_on_error=escape_on_error)
         assert isinstance(context, Context)
         self.context = context
@@ -353,11 +355,13 @@ class Tracer(Symbolic):
 
     def __init__(self,
                  context=None,
+                 force_floatX=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False):
         super(Tracer, self).__init__(pyfn=lambda: None,
                                      context=context,
+                                     force_floatX=force_floatX,
                                      borrowable=borrowable,
                                      ignore=ignore,
                                      escape_on_error=escape_on_error)
@@ -376,12 +380,14 @@ class Function(Symbolic):
     def __init__(self,
                  pyfn,
                  context=None,
+                 force_floatX=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False,
                  use_cache=True):
         super(Function, self).__init__(pyfn=pyfn,
                                        context=context,
+                                       force_floatX=force_floatX,
                                        borrowable=borrowable,
                                        ignore=ignore,
                                        escape_on_error=escape_on_error)
@@ -414,12 +420,14 @@ class Gradient(Function):
                  pyfn,
                  wrt=None,
                  reduction=None,
+                 force_floatX=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False,
                  context=None,
                  use_cache=True):
         super(Gradient, self).__init__(pyfn=pyfn,
+                                       force_floatX=force_floatX,
                                        borrowable=borrowable,
                                        ignore=ignore,
                                        context=context,
@@ -480,6 +488,7 @@ class VectorArg(object):
                  init_args=None,
                  init_kwargs=None,
                  context=None,
+                 force_floatX=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False,
@@ -507,6 +516,7 @@ class VectorArg(object):
 
         symbolic = Symbolic(pyfn=wrapper,
                             context=context,
+                            force_floatX=force_floatX,
                             borrowable=borrowable,
                             ignore=ignore,
                             escape_on_error=escape_on_error)
