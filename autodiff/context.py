@@ -698,9 +698,13 @@ class TheanoTransformer(NodeTransformer):
                     theano_func = getattr(T, func.__name__)
                     if 'axis' in kwargs:
                         kwargs['axis'] = self.handle_escape(kwargs['axis'])
+                        if kwargs['axis'] is not None:
+                            kwargs['axis'] = int(kwargs['axis'])
                     elif len(args) >= 2:
                         args = list(args)
                         args[1] = self.handle_escape(args[1])
+                        if args[1] is not None:
+                            args[1] = int(args[1])
 
                     # sometimes Theano uses 'a', sometimes it uses 'x'
                     np_first_arg = inspect.getargspec(func).args[0]
@@ -883,7 +887,7 @@ class TheanoTransformer(NodeTransformer):
         # Theano has no swapaxes method
         elif method_name == 'swapaxes':
             def swapaxes(*args, **kwargs):
-                axis1, axis2 = (self.handle_escape(a) for a in args)
+                axis1, axis2 = (int(self.handle_escape(a)) for a in args)
                 dims = list(range(var.ndim))
                 dims[axis1], dims[axis2] = dims[axis2], dims[axis1]
                 return var.dimshuffle(*dims)
@@ -941,6 +945,8 @@ class TheanoTransformer(NodeTransformer):
                     if v is method.__self__:
                         all_args.pop(k)
                 all_args['axis'] = self.handle_escape(all_args['axis'])
+                if all_args['axis'] is not None:
+                    all_args['axis'] = int(all_args['axis'])
                 return method(**all_args)
             return reduce_
 
