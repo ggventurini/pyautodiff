@@ -236,7 +236,7 @@ class Symbolic(object):
                 outputs=None,
                 wrt=None,
                 reduction=None,
-                allow_input_downcast=False):
+                allow_input_downcast=True):
 
         assert isinstance(function, bool)
         assert isinstance(gradient, bool)
@@ -287,7 +287,7 @@ class Symbolic(object):
     def compile_function(self,
                          inputs=None,
                          outputs=None,
-                         allow_input_downcast=False):
+                         allow_input_downcast=True):
         """
         Based on traced variables, compile a Theano function of the inputs that
         returns the outputs.
@@ -304,7 +304,7 @@ class Symbolic(object):
                          outputs=None,
                          wrt=None,
                          reduction=None,
-                         allow_input_downcast=False):
+                         allow_input_downcast=True):
         """
         Based on traced variables, compile a Theano function of the
         inputs that returns the gradient of the outputs with respect to wrt.
@@ -326,7 +326,7 @@ class Symbolic(object):
                                   outputs=None,
                                   wrt=None,
                                   reduction=None,
-                                  allow_input_downcast=False):
+                                  allow_input_downcast=True):
         """
         Based on traced variables, compile a Theano function of the
         inputs that returns both the outputs and the gradient of the outputs
