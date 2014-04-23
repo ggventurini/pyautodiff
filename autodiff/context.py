@@ -430,12 +430,17 @@ class TheanoTransformer(NodeTransformer):
                 return x
         return utils.unflatten(x, [escape(i) for i in utils.flatten(x)])
 
-    def handle_int(self, x):
-        escaped_x = self.handle_escape(x)
-        if utils.isvar(x) and x.ndim == 0 and 'float' in x.dtype:
+    def handle_int(self, x, escape=False):
+        if escape:
+            escaped_x = self.handle_escape(x)
             return int(escaped_x)
+
+        if utils.isvar(x) and x.ndim == 0 and 'float' in x.dtype:
+            return x.astype('int64')
+        elif np.asarray(x).ndim == 0 and np.asarray(x).dtype == 'float':
+            return int(x)
         else:
-            return escaped_x
+            return x
 
     @staticmethod
     def handle_escaped_call(fn, *args, **kwargs):
@@ -554,7 +559,8 @@ class TheanoTransformer(NodeTransformer):
             # range
             if func is range:
                 def range_(*args):
-                    return func(*(self.handle_int(a) for a in args))
+                    return func(
+                        *(self.handle_int(a, escape=True) for a in args))
                 return range_
 
             # zip
@@ -684,9 +690,9 @@ class TheanoTransformer(NodeTransformer):
                     callargs = inspect.getcallargs(T.reshape, *args, **kwargs)
                     x, newshape = callargs['x'], callargs['newshape']
                     if isinstance(newshape, (list, tuple)):
-                        newshape = [s.astype('int64') for s in newshape]
+                        newshape = [self.handle_int(s) for s in newshape]
                     else:
-                        newshape = newshape.astype('int64')
+                        newshape = self.handle_int(newshape)
                     return T.reshape(x, newshape)
                 return _reshape
 
@@ -717,10 +723,11 @@ class TheanoTransformer(NodeTransformer):
                 def reduce_(*args, **kwargs):
                     theano_func = getattr(T, func.__name__)
                     if 'axis' in kwargs:
-                        kwargs['axis'] = self.handle_int(kwargs['axis'])
+                        kwargs['axis'] = self.handle_int(
+                            kwargs['axis'], escape=True)
                     elif len(args) >= 2:
                         args = list(args)
-                        args[1] = self.handle_int(args[1])
+                        args[1] = self.handle_int(args[1], escape=True)
 
                     # sometimes Theano uses 'a', sometimes it uses 'x'
                     np_first_arg = inspect.getargspec(func).args[0]
@@ -906,7 +913,7 @@ class TheanoTransformer(NodeTransformer):
                     return var[0]
                 else:
                     args = list(args)
-                    args[0] = [a.astype('int64') for a in args[0]]
+                    args[0] = [self.handle_int(a) for a in args[0]]
                     return var.reshape(*args, **kwargs)
             return reshape
 
@@ -915,12 +922,11 @@ class TheanoTransformer(NodeTransformer):
         elif method_name == 'repeat':
             def repeat(repeats, axis=None):
                 if isinstance(repeats, (list, tuple)):
-                    repeats = [r.astype('int64') for r in repeats]
+                    repeats = [self.handle_int(r) for r in repeats]
                 else:
-                    repeats = repeats.astype('int64')
+                    repeats = self.handle_int(repeats)
 
-                if utils.isvar(axis):
-                    axis = axis.astype('int64')
+                axis = self.handle_int(axis, escape=True)
                 return var.repeat(repeats, axis)
             return repeat
 

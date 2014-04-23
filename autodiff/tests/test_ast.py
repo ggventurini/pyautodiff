@@ -685,6 +685,10 @@ class ArrayMethodsAttributes(unittest.TestCase):
         self.assertTrue(checkfn(fn, [2], 2, 8))
         self.assertTrue(checkfn(fn, [2], 2, -1))
 
+        def fn(x):
+            return x.reshape(2, 8)
+        self.assertTrue(checkfn(fn, [2]))
+
     def test_sort(self):
         def fn(x):
             x.sort()
