@@ -280,10 +280,16 @@ class Context(object):
                 'Small integers (-5 <= x <= 256) can not be shadowed due to '
                 'CPython caching. Try casting the variable as a NumPy int '
                 'type or array before tracing: {0}'.format(x))
+        elif np.asarray(x).dtype == 'object':
+            raise ValueError(
+                'Requested the symbolic variable shadowing object {0}, but '
+                'it was not traced because it is not compatible with any '
+                'Theano type.'.format(x))
         else:
             raise ValueError(
-                'Requested the symbolic variable shadowing object {0}'
-                ', but it was not traced.'.format(repr(x)))
+                'Requested the symbolic variable shadowing object {0}, but '
+                'it was not traced because it did not appear in the '
+                'function.'.format(x))
 
     def reset(self):
         self.sym_vars.clear()
