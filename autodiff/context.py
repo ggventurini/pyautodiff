@@ -972,7 +972,7 @@ class TheanoTransformer(NodeTransformer):
         elif method_name in ('argmax',
                              'argmin',
                              'argsort',
-                             'concatenate'
+                             'concatenate',
                              'max',
                              'mean',
                              'min',
