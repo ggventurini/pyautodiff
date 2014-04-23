@@ -432,8 +432,7 @@ class TheanoTransformer(NodeTransformer):
 
     def handle_int(self, x, escape=False):
         if escape:
-            escaped_x = self.handle_escape(x)
-            return int(escaped_x)
+            x = self.handle_escape(x)
 
         if utils.isvar(x) and x.ndim == 0 and 'float' in x.dtype:
             return x.astype('int64')

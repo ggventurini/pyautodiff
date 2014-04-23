@@ -508,7 +508,9 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(lambda x: np.sum(x, 1), [2]))
         self.assertTrue(checkfn(lambda x: np.sum(x, axis=1), [2]))
         self.assertTrue(checkfn(lambda x: np.sum(x, axis=1), [2]))
+        self.assertTrue(checkfn(lambda x: np.sum(x, axis=None), [2]))
         self.assertTrue(checkfn(lambda x, a: np.sum(x, a), [2], 0))
+        self.assertTrue(checkfn(lambda x, a: np.sum(x, a), [2], None))
         self.assertTrue(checkfn(lambda x, a: np.sum(x, axis=a), [2], 0))
 
     def test_sqrt(self):
