@@ -436,7 +436,7 @@ class TheanoTransformer(NodeTransformer):
 
         if utils.isvar(x) and x.ndim == 0 and 'float' in x.dtype:
             return x.astype('int64')
-        elif np.asarray(x).ndim == 0 and np.asarray(x).dtype == 'float':
+        elif np.asarray(x).ndim == 0 and np.asarray(x).dtype.kind == 'f':
             return int(x)
         else:
             return x
@@ -558,8 +558,8 @@ class TheanoTransformer(NodeTransformer):
             # range
             if func is range:
                 def range_(*args):
-                    return func(
-                        *(self.handle_int(a, escape=True) for a in args))
+                    int_args = (self.handle_int(a, escape=True) for a in args)
+                    return func(*int_args)
                 return range_
 
             # zip
