@@ -496,6 +496,16 @@ class NumpyFns(unittest.TestCase):
             return np.log10(x)
         self.assertTrue(checkfn(fn, [2]))
 
+    def test_max(self):
+        def fn(x):
+            return np.max(x, 0)
+        self.assertTrue(checkfn(fn, [2]))
+
+    def test_min(self):
+        def fn(x):
+            return np.min(x, 0)
+        self.assertTrue(checkfn(fn, [2]))
+
     def test_maximum(self):
         def fn(x, y):
             return np.maximum(x, y)

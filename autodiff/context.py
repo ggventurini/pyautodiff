@@ -737,8 +737,16 @@ class TheanoTransformer(NodeTransformer):
                           np.std,
                           np.sum,
                           np.var):
+
                 def reduce_(*args, **kwargs):
-                    theano_func = getattr(T, func.__name__)
+
+                    func_name = func.__name__
+                    if func_name == 'amax':
+                        func_name = 'max'
+                    elif func_name == 'amin':
+                        func_name = 'min'
+
+                    theano_func = getattr(T, func_name)
                     if 'axis' in kwargs:
                         kwargs['axis'] = self.handle_int(
                             kwargs['axis'], escape=True)
