@@ -1,3 +1,4 @@
+import builtins
 import logging
 import meta
 from ast import *
@@ -465,7 +466,11 @@ class TheanoTransformer(NodeTransformer):
         to floats by the force_floatX option, for example).
         """
         if isinstance(x, (list, tuple)):
-            return type(x)(self._handle_subscript_inner(xi) for xi in x)
+            # check for namedtuples, which need their __new__ args expanded
+            if hasattr(x, '_fields'):
+                return type(x)(*[self._handle_subscript_inner(xi) for xi in x])
+            else:
+                return type(x)(self._handle_subscript_inner(xi) for xi in x)
         else:
             return self._handle_subscript_inner(x)
 
@@ -569,7 +574,7 @@ class TheanoTransformer(NodeTransformer):
                 return range_
 
             # zip
-            if func is zip:
+            elif func is zip:
                 def zip_(*args):
                     if any(utils.isvar(a) for a in args):
                         raise TypeError(
@@ -581,8 +586,7 @@ class TheanoTransformer(NodeTransformer):
                 return zip_
 
             # casts
-
-            if func in(bool, np.bool_, np.bool8):
+            elif func in(bool, np.bool_, np.bool8):
                 logger.info('Warning: Theano has no bool type; '
                             'upgrading to int8.')
 
@@ -605,6 +609,7 @@ class TheanoTransformer(NodeTransformer):
                     return T.cast(x, dtype='int' + theano.config.floatX[-2:])
                 return int_
 
+            # enumerate
             elif func is enumerate:
                 def enumerate_(iterable, start=0):
                     if utils.isvar(iterable):
@@ -615,6 +620,10 @@ class TheanoTransformer(NodeTransformer):
                     else:
                         return enumerate(iterable, start=start)
                 return enumerate_
+
+            # any other builtin function (tuple, list, set, Exception)
+            elif func in builtins.__dict__.values():
+                return func
 
             else:
                 def new_type(*args, **kwargs):
