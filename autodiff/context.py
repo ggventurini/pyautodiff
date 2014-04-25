@@ -338,7 +338,10 @@ class TheanoTransformer(NodeTransformer):
         """
         shadow_vars = [self._shadow_inner(x) for x in utils.flatten(args)]
         new_args = utils.unflatten(args, shadow_vars)
-        self.context.shadowed_containers[id(new_args)] = args
+        if isinstance(new_args, (list, dict, tuple, set)):
+            self.context.shadowed_containers[id(new_args)] = args
+            # add to _nogc to ensure that the id won't be reused
+            self.context._nogc.append(new_args)
         return new_args
 
     def _shadow_inner(self, x):
@@ -821,25 +824,20 @@ class TheanoTransformer(NodeTransformer):
                 return isinstance_
 
             # inplace list methods
-            elif isinstance(getattr(func, '__self__', None), list):
-                def _inplace_list(*args):
-                    # check if the list is shadowing a different one
+            elif isinstance(
+                getattr(func, '__self__', None), (list, dict, set, tuple)):
+                def _inplace(*args):
+                    # check if the container is shadowing a different one
                     if id(func.__self__) in self.context.shadowed_containers:
-                        l = self.context.shadowed_containers[id(func.__self__)]
-                        getattr(l, func.__name__)(*args)
-                    return func(*args)
-                return _inplace_list
-
-            # inplace dict methods
-            elif isinstance(getattr(func, '__self__', None), dict):
-                def _inplace_dict(*args):
-                    # check if the dict is shadowing a different one
-                    if id(func.__self__) in self.context.shadowed_containers:
-                        d = self.context.shadowed_containers[id(func.__self__)]
-                        getattr(d, func.__name__)(*args)
-                    return func(*args)
-
-                return _inplace_dict
+                        c = self.context.shadowed_containers[id(func.__self__)]
+                        tmp = getattr(c, func.__name__)(*args)
+                        if tmp is None:
+                            return c
+                        else:
+                            return tmp
+                    else:
+                        return func(*args)
+                return _inplace
 
             # anything else
             else:
