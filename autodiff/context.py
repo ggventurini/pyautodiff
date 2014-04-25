@@ -798,12 +798,12 @@ class TheanoTransformer(NodeTransformer):
             # isinstance
             elif func is isinstance:
                 def isinstance_(obj, types):
-                    if self.context.force_floatX:
-                        if int in utils.as_seq(types):
-                            logger.warning(
-                                'You are trying to check for ints but '
-                                'force_floatX is True, so the check may fail. '
-                                'Consider escaping the call.')
+                    # if self.context.force_floatX:
+                    #     if int in utils.as_seq(types):
+                    #         logger.debug(
+                    #             'You are trying to check for ints but '
+                    #             'force_floatX is True, so the check may fail. '
+                    #             'Consider escaping the call.')
                     escaped_obj = self.handle_escape(obj)
                     if (isinstance(escaped_obj, (np.ndarray, np.number))
                             and obj.ndim == 0):

@@ -285,7 +285,6 @@ class Python(unittest.TestCase):
             return x
         self.assertTrue(checkfn(f, [1]))
 
-
     def test_enumerate(self):
         def f1(x):
             z = np.arange(x.shape[0])
@@ -378,6 +377,23 @@ class Python(unittest.TestCase):
             return y[5]
         self.assertTrue(checkfn(f, []))
 
+    def test_tuple_type(self):
+        def f():
+            x = tuple((3, 4, 5))
+            return x
+
+        def f2(x, y):
+            return tuple(i for i in [x, y])
+
+        self.assertTrue(checkfn(f, []))
+        self.assertTrue(checkfn(f2, [], 1.0, 2.0))
+
+    def test_inplace_container(self):
+        def f():
+            x = {3,4,5}
+            x.remove(4)
+            return sum(x)
+        self.assertTrue(checkfn(f, []))
 
 class BasicMath(unittest.TestCase):
     def test_basic_ops(self):
