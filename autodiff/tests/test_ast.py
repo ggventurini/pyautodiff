@@ -593,6 +593,31 @@ class NumpyFns(unittest.TestCase):
         self.assertTrue(checkfn(f, [2]))
 
 
+class RandomNumbers(unittest.TestCase):
+    def check_random(self, fn, *args, **kwargs):
+        context.reset()
+        F = context.recompile(fn)
+        result1 = F(*args, **kwargs).eval()
+        result2 = F(*args, **kwargs).eval()
+        return np.allclose(result1, result2)
+
+    def test_random(self):
+        self.assertFalse(
+            self.check_random(lambda: np.random.random((10, 10))))
+        self.assertFalse(
+            self.check_random(lambda s: np.random.random(s), 10.0))
+        self.assertFalse(
+            self.check_random(lambda s: np.random.random(s), (10, 10)))
+
+    def test_random_binomial(self):
+        self.assertFalse(
+            self.check_random(lambda: np.random.binomial(1, .5, (10, 10))))
+        self.assertFalse(
+            self.check_random(lambda s: np.random.binomial(1, .5, s), 10.0))
+        self.assertFalse(self.check_random(
+            lambda s: np.random.binomial(1, .5, s), (10, 10)))
+
+
 class ArrayMethodsAttributes(unittest.TestCase):
     """
     Test for coverage of array methods and attributes

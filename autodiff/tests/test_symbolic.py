@@ -13,7 +13,6 @@ def checkfn(symF, *args, **kwargs):
     return np.allclose(sym_result, py_result)
 
 
-
 #========= Tests
 
 
@@ -80,6 +79,22 @@ class TestSymbolic(unittest.TestCase):
         sym_result = F(x)
         self.assertTrue(np.allclose(sym_result[0], f(x).sum()))
         self.assertTrue(np.allclose(sym_result[1], 2 * x))
+
+
+class TestAST(unittest.TestCase):
+
+    def test_randomstreams(self):
+        """
+        Make sure random numbers are different with each call (previously
+        the use of clone_get_equiv broke this, since there is a Theano
+        bug when cloning randomstreams.)
+        """
+        def f():
+            return np.random.random((10, 10))
+        F = Function(f)
+        result1 = F()
+        result2 = F()
+        self.assertFalse(np.allclose(result1, result2))
 
 
 class TestTracer(unittest.TestCase):

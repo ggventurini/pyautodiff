@@ -784,6 +784,9 @@ class TheanoTransformer(NodeTransformer):
             # uniform random numbers (np.random.uniform)
             if func is np.random.uniform:
                 def rand_u(low=0.0, high=1.0, size=1):
+                    if not isinstance(size, (list, tuple)):
+                        size = [size]
+                    size = [self.handle_int(s) for s in size]
                     return global_randomstreams.uniform(low=low,
                                                         high=high,
                                                         size=size)
@@ -792,12 +795,18 @@ class TheanoTransformer(NodeTransformer):
             # standard uniform random numbers (np.random.random, np.random.rand)
             elif func in (np.random.random, np.random.rand):
                 def rand_u(size):
+                    if not isinstance(size, (list, tuple)):
+                        size = [size]
+                    size = [self.handle_int(s) for s in size]
                     return global_randomstreams.uniform(size=size)
                 return rand_u
 
             # normal random numbers (np.random.normal)
             elif func is np.random.normal:
-                def rand_n(loc=0.0, scale=1.0, size=None):
+                def rand_n(loc=0.0, scale=1.0, size=1):
+                    if not isinstance(size, (list, tuple)):
+                        size = [size]
+                    size = [self.handle_int(s) for s in size]
                     return global_randomstreams.normal(avg=loc,
                                                        std=scale,
                                                        size=size)
@@ -806,12 +815,16 @@ class TheanoTransformer(NodeTransformer):
             # standard normal random numbers (np.random.randn)
             elif func is np.random.randn:
                 def rand_n(*size):
+                    size = [self.handle_int(s) for s in size]
                     return global_randomstreams.normal(size=size)
                 return rand_n
 
             # binomial random numbers (np.random.binomial)
             elif func is np.random.binomial:
-                def rand_b(n, p, size=None):
+                def rand_b(n, p, size=1):
+                    if not isinstance(size, (list, tuple)):
+                        size = [size]
+                    size = [self.handle_int(s) for s in size]
                     return global_randomstreams.binomial(n=n, p=p, size=size)
                 return rand_b
 

@@ -116,37 +116,6 @@ class Symbolic(object):
 
         return inputs, results
 
-    def get_theano_vars(self, inputs=None, outputs=None):
-        """
-        Returns a dict containing inputs, outputs and graph corresponding to
-        the Theano version of the pyfn.
-        """
-        sym_inputs = tuple(self.get_symbolic(i)
-                           for i in utils.as_seq(inputs))
-
-        sym_outputs = tuple(self.get_symbolic(o)
-                            for o in utils.as_seq(outputs))
-
-        # get symbolic inputs corresponding to shared inputs in s_inputs
-        # this dict maps each shared variable to its (non-shared) type.
-        s_memo = OrderedDict((var, var.type())
-                             for var in utils.flatten(sym_inputs))
-        theano_inputs = tuple(s_memo.values())
-
-        # get new graph, replacing shared inputs with symbolic ones
-        # graph is a dict mapping "old" variables to "new" ones, where "old"
-        # is the chain including shared variables, and "new" is the chain
-        # with the non-shared replacements.
-        graph = theano.gof.graph.clone_get_equiv(
-            inputs=theano.gof.graph.inputs(sym_outputs),
-            outputs=sym_outputs,
-            memo=s_memo.copy())
-
-        # get symbolic outputs
-        theano_outputs = tuple([graph[o] for o in sym_outputs])
-
-        return theano_inputs, theano_outputs, graph
-
     def get_function_compile_args(self, inputs, outputs):
         """
         Helper function: given the symbolic inputs and outputs,
@@ -158,7 +127,6 @@ class Symbolic(object):
     def get_gradient_compile_args(self,
                                   inputs,
                                   outputs,
-                                  graph,
                                   wrt=None,
                                   reduction=None):
         """
@@ -184,7 +152,7 @@ class Symbolic(object):
         if len(wrt) == 0:
             wrt = [i for i in inputs]
         else:
-            wrt = [graph[self.get_symbolic(w)] for w in wrt]
+            wrt = [self.get_symbolic(w) for w in wrt]
 
         grads = utils.flatten([T.grad(o, wrt=wrt) for o in outputs])
 
@@ -193,7 +161,6 @@ class Symbolic(object):
     def get_hessian_vector_compile_args(self,
                                         inputs,
                                         outputs,
-                                        graph,
                                         wrt=None,
                                         reduction=None):
         """
@@ -219,7 +186,7 @@ class Symbolic(object):
         if len(wrt) == 0:
             wrt = [i for i in inputs]
         else:
-            wrt = [graph[self.get_symbolic(w)] for w in wrt]
+            wrt = [self.get_symbolic(w) for w in wrt]
 
         grads = utils.flatten([T.grad(o, wrt=wrt) for o in outputs])
 
@@ -249,38 +216,43 @@ class Symbolic(object):
                 'At least one of `function`, `gradient`, or `hessian_vector` '
                 'must be True when calling `compile()`.')
 
-        fn_inputs, fn_outputs, fn_graph = self.get_theano_vars(inputs, outputs)
+        sym_inputs = tuple(
+          self.get_symbolic(i) for i in utils.as_seq(inputs))
+        sym_outputs = tuple(
+          self.get_symbolic(o) for o in utils.as_seq(outputs))
 
-        inputs = fn_inputs
-        outputs = ()
+        fn_inputs = sym_inputs
+        fn_outputs = ()
 
         if function:
-            fn_args = self.get_function_compile_args(inputs=fn_inputs,
-                                                     outputs=fn_outputs)
-            outputs += fn_args['outputs']
+            fn_args = self.get_function_compile_args(inputs=sym_inputs,
+                                                     outputs=sym_outputs)
+            fn_outputs += fn_args['outputs']
 
         if gradient:
-            g_args = self.get_gradient_compile_args(inputs=fn_inputs,
-                                                    outputs=fn_outputs,
-                                                    graph=fn_graph,
+            g_args = self.get_gradient_compile_args(inputs=sym_inputs,
+                                                    outputs=sym_outputs,
                                                     wrt=wrt,
                                                     reduction=reduction)
-            outputs += g_args['outputs']
+            fn_outputs += g_args['outputs']
 
         if hessian_vector:
-            hv_args = self.get_hessian_vector_compile_args(inputs=fn_inputs,
-                                                           outputs=fn_outputs,
-                                                           graph=fn_graph,
+            hv_args = self.get_hessian_vector_compile_args(inputs=sym_inputs,
+                                                           outputs=sym_outputs,
                                                            wrt=wrt,
                                                            reduction=reduction)
-            inputs = hv_args['inputs']
-            outputs += hv_args['outputs']
+            fn_inputs = hv_args['inputs']
+            fn_outputs += hv_args['outputs']
 
-        if len(outputs) == 1:
-            outputs = outputs[0]
+        if len(fn_outputs) == 1:
+            fn_outputs = fn_outputs[0]
 
-        fn = theano.function(inputs=inputs,
-                             outputs=outputs,
+        new_inputs = tuple(i.type() for i in fn_inputs)
+        givens = dict(zip(fn_inputs, new_inputs))
+
+        fn = theano.function(inputs=new_inputs,
+                             outputs=fn_outputs,
+                             givens=givens,
                              on_unused_input='ignore',
                              allow_input_downcast=allow_input_downcast)
 
