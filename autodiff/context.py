@@ -451,13 +451,13 @@ class TheanoTransformer(NodeTransformer):
         else:
             return x
 
-    @staticmethod
-    def handle_escaped_call(fn, *args, **kwargs):
+    def handle_escaped_call(self, fn, *args, **kwargs):
         esc_args = utils.unflatten(
             args, [TheanoTransformer.handle_escape(a) for a in utils.flatten(args)])
         esc_kwargs = utils.unflatten(
             kwargs, [TheanoTransformer.handle_escape(a) for a in utils.flatten(kwargs)])
-        return fn(*esc_args, **esc_kwargs)
+        escaped_result = fn(*esc_args, **esc_kwargs)
+        return self.shadow(escaped_result)
 
     def handle_subscript(self, x):
         """
@@ -781,12 +781,27 @@ class TheanoTransformer(NodeTransformer):
 
         elif '<built-in' in str(func):
 
-            # uniform random numbers (np.random.uniform)
-            if func is np.random.uniform:
-                def rand_u(low=0.0, high=1.0, size=1):
+            # def escaped_random(*args, **kwargs):
+            #     return self.handle_escaped_call(func, *args, **kwargs)
+            # return escaped_random
+
+
+
+            def handle_size(size):
+                if not utils.isvar(size):
                     if not isinstance(size, (list, tuple)):
                         size = [size]
                     size = [self.handle_int(s) for s in size]
+                else:
+                    if size.ndim == 0:
+                        size = size.dimshuffle('x')
+                    size = size.astype('int64')
+                return size
+
+            # uniform random numbers (np.random.uniform)
+            if func is np.random.uniform:
+                def rand_u(low=0.0, high=1.0, size=1):
+                    size = handle_size(size)
                     return global_randomstreams.uniform(low=low,
                                                         high=high,
                                                         size=size)
@@ -795,18 +810,14 @@ class TheanoTransformer(NodeTransformer):
             # standard uniform random numbers (np.random.random, np.random.rand)
             elif func in (np.random.random, np.random.rand):
                 def rand_u(size):
-                    if not isinstance(size, (list, tuple)):
-                        size = [size]
-                    size = [self.handle_int(s) for s in size]
+                    size = handle_size(size)
                     return global_randomstreams.uniform(size=size)
                 return rand_u
 
             # normal random numbers (np.random.normal)
             elif func is np.random.normal:
                 def rand_n(loc=0.0, scale=1.0, size=1):
-                    if not isinstance(size, (list, tuple)):
-                        size = [size]
-                    size = [self.handle_int(s) for s in size]
+                    size = handle_size(size)
                     return global_randomstreams.normal(avg=loc,
                                                        std=scale,
                                                        size=size)
@@ -822,9 +833,7 @@ class TheanoTransformer(NodeTransformer):
             # binomial random numbers (np.random.binomial)
             elif func is np.random.binomial:
                 def rand_b(n, p, size=1):
-                    if not isinstance(size, (list, tuple)):
-                        size = [size]
-                    size = [self.handle_int(s) for s in size]
+                    size = handle_size(size)
                     return global_randomstreams.binomial(n=n, p=p, size=size)
                 return rand_b
 

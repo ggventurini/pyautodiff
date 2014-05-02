@@ -609,6 +609,11 @@ class RandomNumbers(unittest.TestCase):
         self.assertFalse(
             self.check_random(lambda s: np.random.random(s), (10, 10)))
 
+    def test_random_shape(self):
+        self.assertFalse(
+            self.check_random(
+                lambda x: np.random.random(x.shape), np.ones((10, 10))))
+
     def test_random_binomial(self):
         self.assertFalse(
             self.check_random(lambda: np.random.binomial(1, .5, (10, 10))))
