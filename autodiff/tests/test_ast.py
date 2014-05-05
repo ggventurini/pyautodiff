@@ -549,6 +549,13 @@ class NumpyFns(unittest.TestCase):
             return np.tanh(x)
         self.assertTrue(checkfn(fn, [2]))
 
+    def test_transpose(self):
+        self.assertTrue(checkfn(lambda x: np.transpose(x), [2]))
+        self.assertTrue(checkfn(lambda x: np.transpose(x, (0, 1)), [2]))
+        self.assertTrue(checkfn(lambda x, a: np.transpose(x, a), [2], (0, 1)))
+        self.assertTrue(checkfn(
+            lambda x, a0, a1: np.transpose(x, (a0, a1)), [2], 0, 1))
+
     def test_zeros_like(self):
         def fn(x):
             return np.zeros_like(x)

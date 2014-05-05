@@ -725,6 +725,14 @@ class TheanoTransformer(NodeTransformer):
                     return T.horizontal_stack(*tup)
                 return _hstack
 
+            # transpose
+            elif func is np.transpose:
+                def _transpose(a, axes=None):
+                    if axes is not None:
+                        axes = [self.handle_int(a, escape=True) for a in axes]
+                    return T.transpose(x=a, axes=axes)
+                return _transpose
+
             # functions taking axis as an argument -- make sure to escape it
             elif func in (np.argmax,
                           np.argmin,
