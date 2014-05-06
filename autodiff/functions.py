@@ -67,3 +67,14 @@ def escaped_call(fn, *args, **kwargs):
     will be treated as a constant value).
     """
     return fn(*args, **kwargs)
+
+def shadow(obj):
+    """
+    NOTE: In its raw form, this function simply calls fn on the supplied
+    arguments. Only when encountered by an Autodiff context object does that
+    change as described below.
+
+    Allows users to force autodiff to shadow an array, for example one returned
+    by escape().
+    """
+    return obj

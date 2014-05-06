@@ -541,6 +541,9 @@ class TheanoTransformer(NodeTransformer):
             # tag a variable
             return self.handle_tag
 
+        elif func is autodiff.functions.shadow:
+            return self.shadow
+
         # ** ======================= autodiff classes
 
         elif isinstance(func, autodiff.symbolic.Symbolic):
