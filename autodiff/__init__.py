@@ -13,4 +13,5 @@ import autodiff.optimize
 from autodiff.symbolic import Symbolic, Function, Gradient, HessianVector
 from autodiff.decorators import function, gradient, hessian_vector
 from autodiff.functions import escape, tag, escaped_call, shadow
+from autodiff.context import get_ast, print_ast, print_source
 
