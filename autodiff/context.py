@@ -376,8 +376,8 @@ class TheanoTransformer(NodeTransformer):
                 x = np.int_(x)
 
             if getattr(x, 'dtype', None) == bool:
-                logger.info('Warning: Theano has no bool type; '
-                            'upgrading to int8.')
+                logger.info('Note: Theano has no bool type; '
+                            'upcasting bool to int8.')
                 x = x.astype('int8')
 
             if id(x) not in self.context.sym_vars:
