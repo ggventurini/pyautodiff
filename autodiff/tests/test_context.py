@@ -1191,6 +1191,3 @@ class InferUpdates(unittest.TestCase):
         self.assertTrue(np.allclose(compiled(), 5.0))
         self.assertTrue(np.allclose(compiled_upd(), 5.0))
         self.assertTrue(np.allclose(compiled_upd(), 10.0))
-
-
-

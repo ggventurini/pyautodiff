@@ -187,7 +187,7 @@ class Context(object):
         self._nogc = []
         self._top_def = None
         self.infer_updates = infer_updates
-        self.updates = dict()
+        self.updates = collections.OrderedDict()
         self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
         self.force_floatX = force_floatX
         self.ignore = utils.as_seq(ignore, tuple)

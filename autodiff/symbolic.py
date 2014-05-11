@@ -23,6 +23,7 @@ class Symbolic(object):
                  force_floatX=False,
                  borrowable=None,
                  ignore=None,
+                 infer_updates=False,
                  escape_on_error=False):
         """
         Arguments
@@ -40,6 +41,7 @@ class Symbolic(object):
             context = Context(borrowable=utils.as_seq(borrowable, tuple),
                               ignore=utils.as_seq(ignore, tuple),
                               force_floatX=force_floatX,
+                              infer_updates=infer_updates,
                               escape_on_error=escape_on_error)
         assert isinstance(context, Context)
         self.context = context
@@ -250,9 +252,15 @@ class Symbolic(object):
         new_inputs = tuple(i.type() for i in fn_inputs)
         givens = dict(zip(fn_inputs, new_inputs))
 
+        if self.context.infer_updates:
+            updates = self.context.updates
+        else:
+            updates = collections.OrderedDict()
+
         fn = theano.function(inputs=new_inputs,
                              outputs=fn_outputs,
                              givens=givens,
+                             updates=updates,
                              on_unused_input='ignore',
                              allow_input_downcast=allow_input_downcast)
 
@@ -328,12 +336,14 @@ class Tracer(Symbolic):
     def __init__(self,
                  context=None,
                  force_floatX=False,
+                 infer_updates=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False):
         super(Tracer, self).__init__(pyfn=lambda: None,
                                      context=context,
                                      force_floatX=force_floatX,
+                                     infer_updates=infer_updates,
                                      borrowable=borrowable,
                                      ignore=ignore,
                                      escape_on_error=escape_on_error)
@@ -355,6 +365,7 @@ class Function(Symbolic):
                  force_floatX=False,
                  borrowable=None,
                  ignore=None,
+                 infer_updates=False,
                  escape_on_error=False,
                  use_cache=True):
         super(Function, self).__init__(pyfn=pyfn,
@@ -362,6 +373,7 @@ class Function(Symbolic):
                                        force_floatX=force_floatX,
                                        borrowable=borrowable,
                                        ignore=ignore,
+                                       infer_updates=infer_updates,
                                        escape_on_error=escape_on_error)
 
         self._cache = dict()
@@ -393,6 +405,7 @@ class Gradient(Function):
                  wrt=None,
                  reduction=None,
                  force_floatX=False,
+                 infer_updates=False,
                  borrowable=None,
                  ignore=None,
                  escape_on_error=False,
@@ -402,6 +415,7 @@ class Gradient(Function):
                                        force_floatX=force_floatX,
                                        borrowable=borrowable,
                                        ignore=ignore,
+                                       infer_updates=infer_updates,
                                        context=context,
                                        escape_on_error=escape_on_error,
                                        use_cache=use_cache)
@@ -463,6 +477,7 @@ class VectorArg(object):
                  force_floatX=False,
                  borrowable=None,
                  ignore=None,
+                 infer_updates=False,
                  escape_on_error=False,
                  function=False,
                  gradient=False,
@@ -489,6 +504,7 @@ class VectorArg(object):
         symbolic = Symbolic(pyfn=wrapper,
                             context=context,
                             force_floatX=force_floatX,
+                            infer_updates=infer_updates,
                             borrowable=borrowable,
                             ignore=ignore,
                             escape_on_error=escape_on_error)
