@@ -1124,3 +1124,73 @@ class Collections(unittest.TestCase):
             return x
 
         self.assertTrue(checkfn(f, []))
+
+class InferUpdates(unittest.TestCase):
+    def test_assign_updates(self):
+        c = autodiff.context.Context(infer_updates=False)
+        c_upd = autodiff.context.Context(infer_updates=True)
+
+        class Test:
+            def __init__(self):
+                self.reset()
+            def reset(self):
+                self.tmp = 0.0
+
+        test = Test()
+
+        def f(x):
+            test.tmp = test.tmp + x
+            return test.tmp
+
+        F = c.recompile(f)
+        F_upd = c_upd.recompile(f)
+
+        inp = 5.0
+        test.reset()
+        out = F(inp)
+        test.reset()
+        out_upd = F_upd(inp)
+
+        compiled = theano.function([], out, updates=c.updates)
+        compiled_upd = theano.function([], out_upd, updates=c_upd.updates)
+
+        self.assertTrue(np.allclose(compiled(), 5.0))
+        self.assertTrue(np.allclose(compiled(), 5.0))
+        self.assertTrue(np.allclose(compiled_upd(), 5.0))
+        self.assertTrue(np.allclose(compiled_upd(), 10.0))
+
+    def test_augassign_updates(self):
+        c = autodiff.context.Context(infer_updates=False)
+        c_upd = autodiff.context.Context(infer_updates=True)
+
+        class Test:
+            def __init__(self):
+                self.reset()
+            def reset(self):
+                self.tmp = 0.0
+
+        test = Test()
+
+        def f(x):
+            test.tmp += x
+            return test.tmp
+
+        F = c.recompile(f)
+        F_upd = c_upd.recompile(f)
+
+        inp = 5.0
+        test.reset()
+        out = F(inp)
+        test.reset()
+        out_upd = F_upd(inp)
+
+        compiled = theano.function([], out, updates=c.updates)
+        compiled_upd = theano.function([], out_upd, updates=c_upd.updates)
+
+        self.assertTrue(np.allclose(compiled(), 5.0))
+        self.assertTrue(np.allclose(compiled(), 5.0))
+        self.assertTrue(np.allclose(compiled_upd(), 5.0))
+        self.assertTrue(np.allclose(compiled_upd(), 10.0))
+
+
+

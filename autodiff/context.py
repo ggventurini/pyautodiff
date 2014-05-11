@@ -1,5 +1,6 @@
 import builtins
 import logging
+import copy
 import meta
 from ast import *
 import types
@@ -177,6 +178,7 @@ class Context(object):
                  borrowable=None,
                  force_floatX=False,
                  ignore=None,
+                 infer_updates=False,
                  escape_on_error=False):
         self.sym_vars = dict()
         self.tags = dict()
@@ -184,6 +186,8 @@ class Context(object):
         # ensure these id's do not get recycled by garbage collection
         self._nogc = []
         self._top_def = None
+        self.infer_updates = infer_updates
+        self.updates = dict()
         self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
         self.force_floatX = force_floatX
         self.ignore = utils.as_seq(ignore, tuple)
@@ -331,7 +335,6 @@ class TheanoTransformer(NodeTransformer):
     # ** Direct Manipulation (Methods)
 
     def shadow(self, args):
-
         """
         Helper function for `_shadow` that calls it on a flattened version of
         its argument.
@@ -450,6 +453,18 @@ class TheanoTransformer(NodeTransformer):
             return int(x)
         else:
             return x
+
+    def handle_assign_updates(self, args):
+        target, value = args
+        self.shadow(target)
+        if id(target) in self.context.sym_vars and utils.isvar(value):
+            target_var = self.context.sym_vars[id(target)]
+            self.context.updates[target_var] = value
+        elif (isinstance(target, T.sharedvar.SharedVariable)
+                and target in self.context.sym_vars.values()
+                and utils.isvar(value)):
+            self.context.updates[target] = value
+        return value
 
     def handle_escaped_call(self, fn, *args, **kwargs):
         esc_args = utils.unflatten(
@@ -1085,6 +1100,38 @@ class TheanoTransformer(NodeTransformer):
     # ** --------------------------------------------------------
     # ** AST Manipulation (Node Visitors)
 
+    def insert_breakpoint(self, _):
+        import ipdb; ipdb.set_trace()
+
+    def visit_Assign_with_updates(self, node):
+        """
+        Given an assignment, attempt to infer a symbolic update from the
+        target and value.
+        """
+
+        load_targets = copy.deepcopy(node.targets)
+        value = node.value
+
+        for t in load_targets:
+            load_transformer.generic_visit(t)
+
+        node_with_updates = copy.deepcopy(node)
+
+        node_with_updates.value = self.ast_wrap(
+            'handle_assign_updates', List(
+                ctx=Load(),
+                elts=load_targets + [value]))
+        body=[node_with_updates]
+
+        # wrap this in a try because if this is the first time a variable
+        # is being assigned, then load_targets will try to reference
+        # a nonexistant variable!
+        return Try(
+            body=body,
+            handlers=[ExceptHandler(body=[node])],
+            finalbody=[],
+            orelse=[])
+
     def visit_Assign(self, node):
         """
         Applies the following transformations:
@@ -1102,7 +1149,6 @@ class TheanoTransformer(NodeTransformer):
                     x[a:b][c] = y
 
         """
-
         # TODO
         # AugAssigns with unbounded subscripts decompile strangely and can't
         # be recompiled. Specifically, they decompile as an Assign to a target
@@ -1117,7 +1163,6 @@ class TheanoTransformer(NodeTransformer):
 
         # handle subscripted assignment for tensor variables
         if isinstance(node.targets[0], Subscript):
-
             # helper function to transform subscript into (possibly nested)
             # T.set_subtensor statements
             def build_subt(subscript, value):
@@ -1158,15 +1203,21 @@ class TheanoTransformer(NodeTransformer):
 
                 # wrap assign_subtensor in If to ensure that the modification
                 # is only applied to tensor args
-                check_var = If(test=isvar_ast(tensor),
-                               body=[assign_subtensor],
-                               orelse=[node])
-                return check_var
+                self.generic_visit(node.value)
+                if self.context.infer_updates:
+                    node = self.visit_Assign_with_updates(node)
+                return If(test=isvar_ast(tensor),
+                          body=[assign_subtensor],
+                          orelse=[node])
             else:
-                return self.generic_visit(node)
+                self.generic_visit(node)
         else:
-            return self.generic_visit(node)
+            self.generic_visit(node)
 
+        if self.context.infer_updates:
+            return self.visit_Assign_with_updates(node)
+        else:
+            return node
 
     # ==================================================
     # ==================================================
@@ -1198,22 +1249,14 @@ class TheanoTransformer(NodeTransformer):
         See documentation for self.visit_Assign() for information on
         transformations applied here.
         """
-
-        if isinstance(node.target, Subscript):
-            # apply op directly
-            value = BinOp(left=Subscript(ctx=Load(),
-                                         slice=node.target.slice,
-                                         value=node.target.value),
-                          right=node.value,
-                          op=node.op)
-
-            # farm out the work to visit_Assign
-            assign_node = self.visit_Assign(Assign(targets=[node.target],
-                                                   value=value))
-            return assign_node
-        else:
-            self.generic_visit(node)
-            return node
+        #transform into assign
+        load_target = load_transformer.generic_visit(copy.deepcopy(node.target))
+        value = BinOp(op=node.op,
+                      left=self.ast_wrap('shadow', load_target),
+                      right=node.value)
+        new_node = Assign(targets=[node.target],
+                          value=value)
+        return self.visit_Assign(new_node)
 
     def visit_Call(self, node):
         """
@@ -1437,3 +1480,14 @@ class TheanoTransformer(NodeTransformer):
             node = self.ast_wrap('shadow', node)
         return node
 
+
+class LoadTransformer(NodeTransformer):
+    def generic_visit(self, node):
+        node = super(LoadTransformer, self).generic_visit(node)
+        if hasattr(node, 'ctx'):
+            if isinstance(node.ctx, Store):
+                node.ctx = Load()
+
+        return node
+
+load_transformer = LoadTransformer()
