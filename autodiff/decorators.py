@@ -92,7 +92,7 @@ def hessian_vector(fn=None, **kwargs):
         return hv_wrapper
 
 
-def symbolic(fn=None, **kwargs):
+def as_symbolic(fn=None, **kwargs):
     """
     Wraps a function with an AutoDiff Symbolic instance, meaning it will act
     as a function expecting and operating on Theano objects.
@@ -100,7 +100,7 @@ def symbolic(fn=None, **kwargs):
     The function is not compiled.
 
     Use:
-        @symbolic
+        @as_symbolic
         def python_function(...):
             return do_something()
 
@@ -114,4 +114,4 @@ def symbolic(fn=None, **kwargs):
             return Symbolic(pyfn, **kwargs)
         return function_wrapper
 
-theanify = symbolic
+theanify = as_symbolic
