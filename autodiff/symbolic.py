@@ -540,7 +540,7 @@ class VectorArg(object):
             # avoid using arg.size or prod(arg.shape) because Theano's prod
             # doesn't support R-op
             new_args.append(
-                vector[idx: idx + safesize(arg)].reshape(*arg.shape))
+                vector[idx: idx + safesize(arg)].reshape(arg.shape))
             idx += safesize(arg)
         return new_args
 

@@ -781,11 +781,12 @@ class TheanoTransformer(NodeTransformer):
                         args[1] = self.handle_int(args[1], escape=True)
 
                     # sometimes Theano uses 'a', sometimes it uses 'x'
-                    np_first_arg = inspect.getargspec(func).args[0]
-                    t_first_arg = inspect.getargspec(theano_func).args[0]
-                    if np_first_arg in kwargs:
-                        if np_first_arg != t_first_arg:
-                            kwargs[t_first_arg] = kwargs.pop(np_first_arg)
+                    if func not in (np.concatenate,):
+                        np_first_arg = inspect.getargspec(func).args[0]
+                        t_first_arg = inspect.getargspec(theano_func).args[0]
+                        if np_first_arg in kwargs:
+                            if np_first_arg != t_first_arg:
+                                kwargs[t_first_arg] = kwargs.pop(np_first_arg)
 
                     return theano_func(*args, **kwargs)
                 return reduce_
@@ -968,8 +969,11 @@ class TheanoTransformer(NodeTransformer):
                 if 'shape' in kwargs:
                     args = [kwargs.pop('shape')] + list(args)
 
-                if not isinstance(args[0], (list, tuple)):
-                    args = [args]
+
+                if args and not isinstance(args[0], (list, tuple)):
+                    args = tuple([args])
+                else:
+                    args = ((),)
 
                 # Theano doesn't handle (), as an arg, which NumPy interprets
                 # as casting length-1 vectors to scalars
@@ -981,7 +985,8 @@ class TheanoTransformer(NodeTransformer):
                     return var[0]
                 else:
                     args = list(args)
-                    args[0] = [self.handle_int(a) for a in args[0]]
+                    if args:
+                        args = [self.handle_int(a) for a in args[0]]
                     return var.reshape(*args, **kwargs)
             return reshape
 
