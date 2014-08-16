@@ -10,7 +10,7 @@ logger.addHandler(ch)
 import autodiff.utils
 import autodiff.optimize
 
-from autodiff.symbolic import Symbolic, Function, Gradient, HessianVector
+from autodiff.symbolic import Symbolic, Tracer, Function, Gradient, HessianVector
 from autodiff.decorators import (function, gradient, hessian_vector,
     as_symbolic, theanify)
 from autodiff.functions import escape, tag, escaped_call, shadow

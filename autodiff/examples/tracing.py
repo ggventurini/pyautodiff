@@ -1,6 +1,6 @@
 import numpy as np
 import theano.tensor
-from autodiff import Symbolic, tag
+from autodiff import Tracer, tag
 
 # -- a vanilla function
 def f1(x):
@@ -18,7 +18,7 @@ def f3(x):
 
 # -- create a general symbolic tracer and apply it to the three functions
 x = np.random.random(10)
-tracer = Symbolic()
+tracer = Tracer()
 
 out1 = tracer.trace(f1, x)
 out2 = tracer.trace(f2, out1)
