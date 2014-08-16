@@ -25,7 +25,7 @@ def test_svm():
         loss = np.maximum(0, 1 - margin) ** 2
         l2_cost = 0.5 * l2_regularization * np.dot(weights, weights)
         loss = np.mean(loss) + l2_cost
-        print 'ran loss_fn(), returning', loss
+        print('ran loss_fn(), returning {}'.format(loss))
         return loss
 
     # -- call optimizer
@@ -36,7 +36,7 @@ def test_svm():
 
     assert np.allclose(final_loss, 0.7229)
 
-    print 'optimization successful!'
+    print('optimization successful!')
 
 
 if __name__ == '__main__':
