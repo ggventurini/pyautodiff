@@ -970,8 +970,9 @@ class TheanoTransformer(NodeTransformer):
                     args = [kwargs.pop('shape')] + list(args)
 
 
-                if args and not isinstance(args[0], (list, tuple)):
-                    args = tuple([args])
+                if args:
+                    if not isinstance(args[0], (list, tuple)):
+                        args = tuple([args])
                 else:
                     args = ((),)
 
@@ -987,6 +988,8 @@ class TheanoTransformer(NodeTransformer):
                     args = list(args)
                     if args:
                         args = [self.handle_int(a) for a in args[0]]
+                        if not isinstance(args[0], (list, tuple)):
+                            args = [args]
                     return var.reshape(*args, **kwargs)
             return reshape
 
