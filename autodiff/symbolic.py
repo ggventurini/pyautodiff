@@ -524,7 +524,7 @@ class VectorArg(object):
     def vector_from_args(self, args, kwargs):
         if len(args) + len(kwargs) > 1:
             all_args = utils.expandedcallargs(self.pyfn, *args, **kwargs)
-            return np.concatenate([np.asarray(a).flat for a in all_args])
+            return np.concatenate([np.asarray(a).flatten() for a in all_args])
         elif len(args) > 0:
             return np.asarray(args[0]).flatten()
         elif len(kwargs) > 0:
