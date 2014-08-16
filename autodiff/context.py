@@ -1376,17 +1376,23 @@ class TheanoTransformer(NodeTransformer):
 
         # shadow the varargs
         if node.args.vararg:
+            if isinstance(node.args.vararg, str):
+                node.args.vararg = arg(annotation=None, arg=node.args.vararg)
+
             assigns.append(Assign(
-                targets=[Name(ctx=Store(), id=node.args.vararg)],
+                targets=[Name(ctx=Store(), id=node.args.vararg.arg)],
                 value=self.ast_wrap('shadow', Name(ctx=Load(),
-                                                   id=node.args.vararg))))
+                                                   id=node.args.vararg.arg))))
 
         # shadow and tag the kwargs
         if node.args.kwarg:
+            if isinstance(node.args.kwarg, str):
+                node.args.kwarg = arg(annotation=None, arg=node.args.kwarg)
+
             assigns.append(Assign(
-                targets=[Name(ctx=Store(), id=node.args.kwarg)],
+                targets=[Name(ctx=Store(), id=node.args.kwarg.arg)],
                 value=self.ast_wrap('shadow', Name(ctx=Load(),
-                                                   id=node.args.kwarg))))
+                                                   id=node.args.kwarg.arg))))
 
             tags.append(For(
                 body=[Expr(value=self.ast_wrap(
@@ -1397,7 +1403,7 @@ class TheanoTransformer(NodeTransformer):
                     func=Attribute(attr='items',
                                    ctx=Load(),
                                    value=Name(ctx=Load(),
-                                              id=node.args.kwarg))),
+                                              id=node.args.kwarg.arg))),
                 orelse=[],
                 target=Tuple(ctx=Store(), elts=[Name(ctx=Store(), id='k'),
                                                 Name(ctx=Store(), id='v')])))
