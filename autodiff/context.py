@@ -972,7 +972,7 @@ class TheanoTransformer(NodeTransformer):
 
                 if args:
                     if not isinstance(args[0], (list, tuple)):
-                        args = tuple([args])
+                        args = [args]
                 else:
                     args = ((),)
 
@@ -985,10 +985,9 @@ class TheanoTransformer(NodeTransformer):
                             'with vectors of length 1.')
                     return var[0]
                 else:
-                    args = list(args)
                     if args:
                         args = [self.handle_int(a) for a in args[0]]
-                        if not isinstance(args[0], (list, tuple)):
+                        if len(args) > 1:
                             args = [args]
                     return var.reshape(*args, **kwargs)
             return reshape
