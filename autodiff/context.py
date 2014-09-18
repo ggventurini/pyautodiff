@@ -181,6 +181,7 @@ class Context(object):
         self._top_def = None
         self.borrowable = [id(b) for b in utils.as_seq(borrowable)]
         self.ignore = utils.as_seq(ignore, tuple)
+        self.ignore += (utils.orderedcallargs,)
         self.escape_on_error = escape_on_error
         self.shadowed_containers = dict()
 
@@ -464,7 +465,7 @@ class TheanoTransformer(NodeTransformer):
         if getattr(func, '__module__', None) == __name__:
             return func
 
-        if func in self.context.ignore:
+        elif func in self.context.ignore:
             return func
 
         # ** ======================= special autodiff functions
@@ -767,12 +768,12 @@ class TheanoTransformer(NodeTransformer):
         # Theano's reshape requires dim to be in a collection, unlike Numpy.
         if method_name == 'reshape':
             def reshape(*args, **kwargs):
-                if not isinstance(args[0], (list, tuple)):
+                if args and not isinstance(args[0], (list, tuple)):
                     args = [args]
 
                 # Theano doesn't handle (), as an arg, which NumPy interprets
                 # as casting length-1 vectors to scalars
-                if args == ((),):
+                if args in ( (), ((),) ):
                     if var.ndim > 1:
                         raise ValueError(
                             'Reshape with `()` as an arg can only be used '
