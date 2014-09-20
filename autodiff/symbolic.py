@@ -522,7 +522,7 @@ class VectorArg(object):
         new_args = []
         idx = 0
         for arg in escape(self.init_args):
-            if arg.shape:
+            if arg.ndim:
                 new_args.append(vector[idx: idx + arg.size].reshape(*arg.shape))
             else:
                 new_args.append(vector[idx: idx + arg.size][0])
