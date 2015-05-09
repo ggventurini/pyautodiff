@@ -1,5 +1,5 @@
 import sys
-from setuptools import setup
+from setuptools import setup, find_packages
 
 if sys.version < '3':
     raise ImportError(
@@ -9,6 +9,7 @@ if sys.version < '3':
 setup(
     name='autodiff',
     version='0.5',
+    packages=find_packages(),
     maintainer='Lowin Data Company',
     maintainer_email='info@lowindata.com',
     description=('Automatic differentiation for NumPy.'),
