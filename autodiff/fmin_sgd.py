@@ -223,7 +223,7 @@ def fmin_sgd(*args, **kwargs):
         t = time.time()
         vals = obj.nextN(print_interval)
         if len(vals):
-            print 'Value', np.mean(vals), 'time', (time.time() - t)
+            print('Value', np.mean(vals), 'time', (time.time() - t))
         else:
             break
     return obj.current_args
